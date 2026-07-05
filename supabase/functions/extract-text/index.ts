@@ -6,6 +6,7 @@ import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { extractText, getDocumentProxy } from "npm:unpdf";
 import { isGeminiModel, callGeminiApi, geminiImagePart, geminiPdfPart, geminiTextPart } from "../_shared/gemini-client.ts";
 import { logAiUsage, anthropicUsage } from "../_shared/logAiUsage.ts";
+import { storageCreateSignedUrl, storageDownload } from "../_shared/storage.ts";
 
 /**
  * Edge Function: extract-text
@@ -137,9 +138,7 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const { data: blob, error: dlErr } = await supabaseServiceRole.storage
-        .from(fileRec.bucket)
-        .download(fileRec.storage_path);
+      const { data: blob, error: dlErr } = await storageDownload(supabaseServiceRole, fileRec.bucket, fileRec.storage_path);
       if (dlErr || !blob) {
         return new Response(
           JSON.stringify({ error: "Не удалось скачать файл" }),
@@ -458,9 +457,7 @@ Deno.serve(async (req: Request) => {
 
     // Создаём signed URL для файла
     const t_start = performance.now();
-    const { data: signedData, error: signedError } = await supabaseServiceRole.storage
-      .from(storageBucket)
-      .createSignedUrl(storagePath, 300);
+    const { data: signedData, error: signedError } = await storageCreateSignedUrl(supabaseServiceRole, storageBucket, storagePath, 300);
 
     if (signedError || !signedData?.signedUrl) {
       console.error("[EXTRACT-TEXT] Failed to create signed URL:", signedError);
@@ -633,9 +630,7 @@ Deno.serve(async (req: Request) => {
 
       if (useGemini) {
         // Gemini Vision fallback (supports both images and PDF via native API)
-        const { data: fileBlob, error: dlError } = await supabaseServiceRole.storage
-          .from(storageBucket)
-          .download(storagePath);
+        const { data: fileBlob, error: dlError } = await storageDownload(supabaseServiceRole, storageBucket, storagePath);
 
         if (dlError || !fileBlob) {
           console.error("[EXTRACT-TEXT] Failed to download file for Gemini:", dlError);

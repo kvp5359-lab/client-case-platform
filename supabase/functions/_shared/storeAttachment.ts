@@ -13,6 +13,7 @@
  */
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { STORAGE_BUCKETS, storageUpload } from "../_shared/storage.ts";
 
 export interface StoreAttachmentInput {
   buffer: ArrayBuffer;
@@ -49,7 +50,7 @@ export async function storeAttachment(
   const storagePath =
     `${input.workspaceId}/${input.projectId}/${input.messageId}/${safeName}`;
 
-  const { error: upErr } = await service.storage.from("files").upload(
+  const { error: upErr } = await storageUpload(service, STORAGE_BUCKETS.files, 
     storagePath,
     input.buffer,
     { contentType: input.mimeType, upsert: false },

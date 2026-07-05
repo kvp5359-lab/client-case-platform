@@ -13,6 +13,7 @@ import {
   ExtractionError,
 } from "../_shared/ai-extraction.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
+import { storageDownload } from "../_shared/storage.ts";
 
 interface ExtractFormDataRequest {
   document_id: string;
@@ -141,9 +142,7 @@ Deno.serve(async (req: Request) => {
         storagePath = fileRecord.storage_path;
       }
     }
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from(bucket)
-      .download(storagePath);
+    const { data: fileData, error: downloadError } = await storageDownload(supabase, bucket, storagePath);
 
     if (downloadError || !fileData) {
       return new Response(

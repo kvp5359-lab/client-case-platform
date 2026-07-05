@@ -27,6 +27,7 @@ import type {
   TgUser,
   TgChatBinding,
 } from "./types.ts";
+import { STORAGE_BUCKETS, storageRemove, storageUpload } from "../_shared/storage.ts";
 
 // =============================================================================
 // Статус документов
@@ -532,7 +533,7 @@ async function uploadDocumentCore(
 
   const ts = Date.now();
   const storagePath = `${binding.workspace_id}/${doc.id}/v1_${ts}_${f.safeName}`;
-  const { error: upErr } = await service.storage.from("files").upload(storagePath, dl.buffer, {
+  const { error: upErr } = await storageUpload(service, STORAGE_BUCKETS.files, storagePath, dl.buffer, {
     contentType: f.mimeType,
     upsert: false,
   });
@@ -556,7 +557,7 @@ async function uploadDocumentCore(
     .single();
   if (fileErr || !fileRow) {
     console.error("files insert:", fileErr);
-    await service.storage.from("files").remove([storagePath]);
+    await storageRemove(service, STORAGE_BUCKETS.files, [storagePath]);
     await service.from("documents").delete().eq("id", doc.id);
     return { ok: false, reason: "file_insert_failed" };
   }
@@ -571,7 +572,7 @@ async function uploadDocumentCore(
   });
   if (verErr) {
     console.error("add_document_version:", verErr);
-    await service.storage.from("files").remove([storagePath]);
+    await storageRemove(service, STORAGE_BUCKETS.files, [storagePath]);
     await service.from("files").delete().eq("id", fileRow.id);
     await service.from("documents").delete().eq("id", doc.id);
     return { ok: false, reason: "version_failed" };

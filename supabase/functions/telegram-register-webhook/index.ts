@@ -16,6 +16,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeadersFor } from "../_shared/edge.ts";
+import { STORAGE_BUCKETS, storageGetPublicUrl, storageUpload } from "../_shared/storage.ts";
 
 interface RequestBody {
   integration_id: string;
@@ -252,15 +253,13 @@ async function cacheBotAvatar(
 
   // 5. Заливаем в Supabase Storage. Bucket participant-avatars публичный.
   const storagePath = `bots/${integrationId}.jpg`;
-  const { error: upErr } = await service.storage
-    .from("participant-avatars")
-    .upload(storagePath, blob, { contentType: "image/jpeg", upsert: true });
+  const { error: upErr } = await storageUpload(service, STORAGE_BUCKETS.participantAvatars, storagePath, blob, { contentType: "image/jpeg", upsert: true });
   if (upErr) {
     console.warn("[cacheBotAvatar] upload error:", upErr);
     return null;
   }
 
-  const { data } = service.storage.from("participant-avatars").getPublicUrl(storagePath);
+  const { data } = storageGetPublicUrl(service, STORAGE_BUCKETS.participantAvatars, storagePath);
   // К URL добавляем параметр-крушитель кеша по integration_id, чтобы при
   // переподключении нового токена/аватарки фронт обновил картинку.
   return `${data.publicUrl}?t=${Date.now()}`;

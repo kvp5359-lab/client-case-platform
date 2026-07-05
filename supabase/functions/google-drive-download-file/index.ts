@@ -4,6 +4,7 @@ import { corsHeadersFor } from "../_shared/edge.ts";
 import { getValidAccessTokenForUser } from "../_shared/googleDriveToken.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { findInvalidUUID, isValidGoogleDriveId } from "../_shared/validation.ts";
+import { STORAGE_BUCKETS, storageUpload, storageRemove } from "../_shared/storage.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -150,10 +151,7 @@ Deno.serve(async (req) => {
     const storagePath = `${workspaceId}/${documentKitId}/${documentId}/${timestamp}_${fileName}`;
 
     // Upload to Supabase Storage (бакет 'files')
-    const { data: uploadData, error: uploadError } = await supabaseAdmin
-      .storage
-      .from("files")
-      .upload(storagePath, fileBuffer, {
+    const { data: uploadData, error: uploadError } = await storageUpload(supabaseAdmin, STORAGE_BUCKETS.files, storagePath, fileBuffer, {
         contentType: metadata.mimeType,
         upsert: false,
       });
@@ -183,7 +181,7 @@ Deno.serve(async (req) => {
 
     if (filesError) {
       console.error("Files record error:", filesError);
-      await supabaseAdmin.storage.from("files").remove([storagePath]);
+      await storageRemove(supabaseAdmin, STORAGE_BUCKETS.files, [storagePath]);
       throw new Error(`Failed to create files record: ${filesError.message}`);
     }
 
@@ -207,7 +205,7 @@ Deno.serve(async (req) => {
     if (documentFileError) {
       console.error("Document file creation error:", documentFileError);
       // Z8-03: cleanup orphaned storage file and files record
-      await supabaseAdmin.storage.from("files").remove([storagePath]);
+      await storageRemove(supabaseAdmin, STORAGE_BUCKETS.files, [storagePath]);
       await supabaseAdmin.from("files").delete().eq("id", filesRecord.id);
       throw new Error(`Failed to create document file entry: ${documentFileError.message}`);
     }

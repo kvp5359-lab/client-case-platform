@@ -7,6 +7,7 @@ import {
   blobToBase64,
   type ChatMessage,
 } from "../_shared/ai-chat-setup.ts";
+import { storageDownload } from "../_shared/storage.ts";
 
 interface ChatWithDocumentsRequest {
   document_ids?: string[];  // optional
@@ -206,9 +207,7 @@ Deno.serve(async (req: Request) => {
               }
             }
 
-            const { data: fileData, error: downloadError } = await supabase.storage
-              .from(storageBucket)
-              .download(storagePath);
+            const { data: fileData, error: downloadError } = await storageDownload(supabase, storageBucket, storagePath);
 
             if (downloadError || !fileData) {
               console.warn(`[CHAT] Failed to download file for document ${doc.id}:`, downloadError);

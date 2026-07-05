@@ -20,6 +20,7 @@ import {
   jsonRes,
   preflight,
 } from "../_shared/edge.ts";
+import { STORAGE_BUCKETS, storageGetPublicUrl, storageUpload } from "../_shared/storage.ts";
 
 const BOT_TOKEN = Deno.env.get("TELEGRAM_BUSINESS_BOT_TOKEN") ??
   Deno.env.get("TELEGRAM_BOT_TOKEN") ?? "";
@@ -145,9 +146,7 @@ Deno.serve(async (req) => {
   const bytes = new Uint8Array(await dlRes.arrayBuffer());
 
   const storagePath = `tg/${tgUserId}.jpg`;
-  const { error: uploadError } = await service.storage
-    .from("participant-avatars")
-    .upload(storagePath, bytes, {
+  const { error: uploadError } = await storageUpload(service, STORAGE_BUCKETS.participantAvatars, storagePath, bytes, {
       contentType: "image/jpeg",
       upsert: true,
     });
@@ -155,9 +154,7 @@ Deno.serve(async (req) => {
     return jsonRes({ error: "storage_upload_failed", detail: uploadError.message }, 500, req);
   }
 
-  const { data: publicUrl } = service.storage
-    .from("participant-avatars")
-    .getPublicUrl(storagePath);
+  const { data: publicUrl } = storageGetPublicUrl(service, STORAGE_BUCKETS.participantAvatars, storagePath);
 
   // Cache-buster: file menяется при перезагрузке, чтобы клиенты подхватили новую версию.
   const url = `${publicUrl.publicUrl}?v=${Date.now()}`;

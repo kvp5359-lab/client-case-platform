@@ -16,35 +16,11 @@
  */
 
 import { supabase } from '@/lib/supabase'
+import type { BucketRef } from './buckets'
 
-/** Все бакеты хранилища. Строковые литералы бакетов в коде запрещены — только эти константы. */
-export const STORAGE_BUCKETS = {
-  /** Вложения сообщений + документы проектов (основной бакет). */
-  files: 'files',
-  /** Легаси-бакет документов проектов. */
-  documentFiles: 'document-files',
-  /** Шаблоны документов. */
-  documentTemplates: 'document-templates',
-  /** Вложения мессенджера (часть путей). */
-  messageAttachments: 'message-attachments',
-  /** Аватары участников (публичный). */
-  participantAvatars: 'participant-avatars',
-  /** Docbuilder — сгенерированные документы (публичный). */
-  docbuilder: 'docbuilder',
-  /** Docbuilder — скриншоты (публичный). */
-  docbuilderScreenshots: 'docbuilder-screenshots',
-  /** Docbuilder — обложки (публичный). */
-  docbuilderCovers: 'docbuilder-covers',
-} as const
-
-export type StorageBucket = (typeof STORAGE_BUCKETS)[keyof typeof STORAGE_BUCKETS]
-
-/**
- * Ссылка на бакет: известная константа (с автодополнением) ЛИБО произвольная
- * строка — потому что часть бакетов приходит из БД (`files.bucket`).
- * `string & {}` сохраняет автоподсказку по константам, но принимает любую строку.
- */
-export type BucketRef = StorageBucket | (string & {})
+// Реэкспорт констант/типов бакетов (определены в client-free `./buckets`).
+export { STORAGE_BUCKETS } from './buckets'
+export type { StorageBucket, BucketRef } from './buckets'
 
 type UploadOptions = {
   cacheControl?: string

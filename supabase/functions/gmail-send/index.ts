@@ -21,6 +21,7 @@ import { getValidGmailTokenForUser } from "../_shared/gmailToken.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { isValidUUID } from "../_shared/validation.ts";
 import { uint8ArrayToBase64 } from "../_shared/encoding.ts";
+import { STORAGE_BUCKETS, storageDownload } from "../_shared/storage.ts";
 
 interface AttachmentInput {
   storagePath: string;
@@ -233,9 +234,7 @@ Deno.serve(async (req: Request) => {
     const attachmentParts: string[] = [];
     if (hasAttachments) {
       for (const att of attachmentInputs) {
-        const { data: fileData, error: downloadError } = await supabaseAdmin.storage
-          .from("files")
-          .download(att.storagePath);
+        const { data: fileData, error: downloadError } = await storageDownload(supabaseAdmin, STORAGE_BUCKETS.files, att.storagePath);
 
         if (downloadError || !fileData) {
           console.error(`[gmail-send] Failed to download attachment ${att.fileName}:`, downloadError);

@@ -24,6 +24,7 @@ import {
 } from "../_shared/edge.ts";
 import { markMessageSent, markMessageFailed } from "../_shared/messageSendStatus.ts";
 import { stripHtmlBasic } from "../_shared/channelText.ts";
+import { STORAGE_BUCKETS, storageCreateSignedUrl } from "../_shared/storage.ts";
 
 interface RequestBody {
   message_id: string;
@@ -147,9 +148,7 @@ Deno.serve(async (req: Request) => {
 
     for (let i = 0; i < attachments.length; i++) {
       const att = attachments[i];
-      const { data: signed } = await service.storage
-        .from("files")
-        .createSignedUrl(att.storage_path as string, 60 * 60);
+      const { data: signed } = await storageCreateSignedUrl(service, STORAGE_BUCKETS.files, att.storage_path as string, 60 * 60);
 
       if (!signed?.signedUrl) {
         console.warn("[wazzup-send] signed url failed for", att.storage_path);

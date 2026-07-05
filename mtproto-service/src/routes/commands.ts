@@ -12,6 +12,7 @@
  */
 
 import type { FastifyPluginAsync, FastifyReply } from "fastify"
+import { STORAGE_BUCKETS, storageUpload, storageGetPublicUrl, storageDownload } from "../storage.js"
 import bigInt from "big-integer"
 import { Api, TelegramClient } from "telegram"
 import { CustomFile } from "telegram/client/uploads.js"
@@ -529,9 +530,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
 
       // 4. Заливаем в Supabase Storage.
       const path = `tg/${body.data.client_tg_user_id}.jpg`
-      const { error: uploadErr } = await supabase.storage
-        .from("participant-avatars")
-        .upload(path, buffer as Buffer, {
+      const { error: uploadErr } = await storageUpload(STORAGE_BUCKETS.participantAvatars, path, buffer as Buffer, {
           contentType: "image/jpeg",
           upsert: true,
         })
@@ -539,9 +538,7 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(500).send({ error: "Storage upload failed", detail: uploadErr.message })
       }
 
-      const { data: pub } = supabase.storage
-        .from("participant-avatars")
-        .getPublicUrl(path)
+      const { data: pub } = storageGetPublicUrl(STORAGE_BUCKETS.participantAvatars, path)
       const avatarUrl = `${pub.publicUrl}?v=${Date.now()}`
 
       // 5. Апдейтим participants.avatar_url + стампим avatar_fetched_at (B9),
@@ -769,7 +766,7 @@ async function fetchAttachments(messageId: string): Promise<
       }
     }
 
-    const { data: blob, error } = await supabase.storage.from(bucket).download(path)
+    const { data: blob, error } = await storageDownload(bucket, path)
     if (error || !blob) {
       throw new Error(`Не удалось скачать вложение "${row.file_name}": ${error?.message ?? "no data"}`)
     }

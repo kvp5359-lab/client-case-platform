@@ -23,6 +23,7 @@ import {
 import { ensureValidGmailToken, type GmailAccountData } from "../_shared/gmailToken.ts";
 import { uint8ArrayToBase64 } from "../_shared/encoding.ts";
 import { markMessageSent, markMessageFailed } from "../_shared/messageSendStatus.ts";
+import { STORAGE_BUCKETS, storageDownload } from "../_shared/storage.ts";
 
 const ROOT_DOMAIN = "clientcase.app";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
@@ -353,9 +354,7 @@ Deno.serve(async (req: Request) => {
     // wall-time и снижает риск WORKER_RESOURCE_LIMIT по таймауту.
     const downloaded = await Promise.all(
       rows.map(async (row) => {
-        const { data: blob, error: dlErr } = await service.storage
-          .from("files")
-          .download(row.storage_path);
+        const { data: blob, error: dlErr } = await storageDownload(service, STORAGE_BUCKETS.files, row.storage_path);
         if (dlErr || !blob) {
           console.error("[email-internal-send] attachment download failed:", row.storage_path, dlErr);
           return null;

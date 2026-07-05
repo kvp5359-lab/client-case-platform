@@ -11,6 +11,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeadersFor } from "../_shared/edge.ts";
 import { safeErrorResponse, checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { isValidUUID } from "../_shared/validation.ts";
+import { storageDownload } from "../_shared/storage.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -120,9 +121,7 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      const { data: blob, error: dlErr } = await serviceClient.storage
-        .from(fileRecord.bucket)
-        .download(fileRecord.storage_path);
+      const { data: blob, error: dlErr } = await storageDownload(serviceClient, fileRecord.bucket, fileRecord.storage_path);
       if (dlErr || !blob) {
         return safeErrorResponse(req, corsHeadersFor, {
           status: 500,
@@ -216,9 +215,7 @@ Deno.serve(async (req: Request) => {
         storagePath = fileRecord.storage_path;
       }
     }
-    const { data: fileData, error: downloadError } = await serviceClient.storage
-      .from(bucket)
-      .download(storagePath);
+    const { data: fileData, error: downloadError } = await storageDownload(serviceClient, bucket, storagePath);
 
     if (downloadError || !fileData) {
       return safeErrorResponse(req, corsHeadersFor, {

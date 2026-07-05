@@ -12,6 +12,7 @@
  */
 
 import type { NewMessageEvent } from "telegram/events/NewMessage.js"
+import { STORAGE_BUCKETS, storageUpload, storageGetPublicUrl } from "../storage.js"
 import { Api, TelegramClient } from "telegram"
 import { randomBytes } from "node:crypto"
 import { supabase } from "../db.js"
@@ -412,9 +413,7 @@ async function downloadAndStoreMedia(args: {
   // к треду.
   const storagePath = `${args.workspaceId}/${args.threadId}/${args.messageId}/${Date.now()}-${random}.${ext}`
 
-  const { error: uploadError } = await supabase.storage
-    .from("message-attachments")
-    .upload(storagePath, buffer, {
+  const { error: uploadError } = await storageUpload(STORAGE_BUCKETS.messageAttachments, storagePath, buffer, {
       contentType: args.info.mimeType ?? "application/octet-stream",
       upsert: false,
     })
@@ -496,9 +495,7 @@ export async function fetchAndStoreAvatar(
   }
 
   const path = `tg/${args.clientTgUserId}.jpg`
-  const { error: upErr } = await supabase.storage
-    .from("participant-avatars")
-    .upload(path, buf as Buffer, {
+  const { error: upErr } = await storageUpload(STORAGE_BUCKETS.participantAvatars, path, buf as Buffer, {
       contentType: "image/jpeg",
       upsert: true,
     })
@@ -506,9 +503,7 @@ export async function fetchAndStoreAvatar(
     logger.warn({ err: upErr, clientTgUserId: args.clientTgUserId }, "avatar storage upload failed")
     return
   }
-  const { data: pub } = supabase.storage
-    .from("participant-avatars")
-    .getPublicUrl(path)
+  const { data: pub } = storageGetPublicUrl(STORAGE_BUCKETS.participantAvatars, path)
   const avatarUrl = `${pub.publicUrl}?v=${Date.now()}`
 
   await supabase

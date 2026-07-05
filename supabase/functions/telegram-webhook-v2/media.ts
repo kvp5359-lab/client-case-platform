@@ -20,6 +20,7 @@
 import { service } from "./shared.ts";
 import { collectFiles, MAX_FILE_SIZE_MB } from "./pure.ts";
 import type { TgFileDescriptor, TgMessage } from "./types.ts";
+import { STORAGE_BUCKETS, storageUpload } from "../_shared/storage.ts";
 
 const MAX_FETCH_ATTEMPTS = 3;
 /** Базовая задержка между ретраями (мс). На каждой попытке удваивается. */
@@ -246,7 +247,7 @@ async function processSingleFile(
   }
 
   const storagePath = `${workspaceId}/${projectId}/${messageId}/${f.safeName}`;
-  const { error: upErr } = await service.storage.from("files").upload(storagePath, dl.buffer, {
+  const { error: upErr } = await storageUpload(service, STORAGE_BUCKETS.files, storagePath, dl.buffer, {
     contentType: f.mimeType,
     upsert: false,
   });

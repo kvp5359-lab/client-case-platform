@@ -6,6 +6,7 @@
 
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { ensureValidGmailToken, type GmailAccountData } from "../_shared/gmailToken.ts";
+import { STORAGE_BUCKETS, storageUpload } from "../_shared/storage.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -305,7 +306,7 @@ async function processGmailMessage(sc: SupabaseClient, accessToken: string, gmai
         const bytes = new Uint8Array(bs.length); for (let i = 0; i < bs.length; i++) bytes[i] = bs.charCodeAt(i);
         const ext = att.name.includes(".") ? "." + att.name.split(".").pop() : "";
         const sp = `${account.workspace_id}/${projectId}/email-attachments/${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
-        const { error: ue } = await sc.storage.from("files").upload(sp, bytes, { upsert: false, contentType: att.mimeType || "application/octet-stream" });
+        const { error: ue } = await storageUpload(sc, STORAGE_BUCKETS.files, sp, bytes, { upsert: false, contentType: att.mimeType || "application/octet-stream" });
         if (ue) continue;
         const { data: fr } = await sc.from("files").insert({ workspace_id: account.workspace_id, bucket: "files", storage_path: sp, file_name: att.name, file_size: bytes.length, mime_type: att.mimeType || "application/octet-stream" }).select("id").single();
         if (!fr) continue;

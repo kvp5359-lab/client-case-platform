@@ -3,6 +3,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { corsHeadersFor } from "../_shared/edge.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { isValidUUID } from "../_shared/validation.ts";
+import { storageDownload } from "../_shared/storage.ts";
 
 interface ILovePDFStartResponse {
   server: string;
@@ -118,10 +119,7 @@ Deno.serve(async (req) => {
     }
 
     // Download file from Supabase Storage
-    const { data: fileData, error: downloadError } = await supabaseClient
-      .storage
-      .from(sourceBucket)
-      .download(sourceStoragePath);
+    const { data: fileData, error: downloadError } = await storageDownload(supabaseClient, sourceBucket, sourceStoragePath);
 
     if (downloadError || !fileData) {
       console.error('Failed to download from storage:', downloadError);

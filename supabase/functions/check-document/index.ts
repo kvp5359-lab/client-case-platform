@@ -6,6 +6,7 @@ import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { resolveFileLocation } from "../_shared/storageHelpers.ts";
 import { isGeminiModel, callGeminiApi, geminiImagePart, geminiPdfPart, geminiTextPart } from "../_shared/gemini-client.ts";
 import { logAiUsage, anthropicUsage } from "../_shared/logAiUsage.ts";
+import { storageCreateSignedUrl, storageDownload } from "../_shared/storage.ts";
 
 interface CheckDocumentRequest {
   document_id: string;
@@ -331,9 +332,7 @@ Deno.serve(async (req: Request) => {
 
         if (useGemini) {
           // For Gemini: download file and send as inlineData (supports both images and PDF)
-          const { data: fileData, error: fileError } = await supabaseServiceRole.storage
-            .from(storageBucket)
-            .download(storagePath);
+          const { data: fileData, error: fileError } = await storageDownload(supabaseServiceRole, storageBucket, storagePath);
 
           if (fileError || !fileData) {
             console.error("[CHECK-DOCUMENT] Failed to download file:", fileError);
@@ -380,9 +379,7 @@ Deno.serve(async (req: Request) => {
           }
         } else {
           // Claude path: use signed URL
-          const { data: signedData, error: signedError } = await supabaseServiceRole.storage
-            .from(storageBucket)
-            .createSignedUrl(storagePath, 300); // 5 minutes
+          const { data: signedData, error: signedError } = await storageCreateSignedUrl(supabaseServiceRole, storageBucket, storagePath, 300); // 5 minutes
 
           if (signedError || !signedData?.signedUrl) {
             console.error("[CHECK-DOCUMENT] Failed to create signed URL:", signedError);

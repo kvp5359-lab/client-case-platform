@@ -5,6 +5,7 @@ import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { findInvalidUUID } from "../_shared/validation.ts";
 import { resolveFileLocation, uploadFile } from "../_shared/storageHelpers.ts";
 import { compressPdf, type CompressionQuality } from "../_shared/ilovepdfService.ts";
+import { STORAGE_BUCKETS, storageDownload, storageRemove } from "../_shared/storage.ts";
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -143,10 +144,7 @@ Deno.serve(async (req) => {
     }
 
     // Download file from Supabase Storage
-    const { data: fileData, error: downloadError } = await supabaseService
-      .storage
-      .from(sourceBucket)
-      .download(sourceStoragePath);
+    const { data: fileData, error: downloadError } = await storageDownload(supabaseService, sourceBucket, sourceStoragePath);
 
     if (downloadError || !fileData) {
       console.error('Failed to download from storage:', downloadError);
@@ -225,7 +223,7 @@ Deno.serve(async (req) => {
     if (fileRecordError || !newFileRecord) {
       console.error('Failed to create files record:', fileRecordError);
       // Clean up uploaded file from Storage
-      await supabaseService.storage.from('files').remove([filePath]);
+      await storageRemove(supabaseService, STORAGE_BUCKETS.files, [filePath]);
       return new Response(JSON.stringify({ error: 'Failed to create file record' }), {
         status: 500,
         headers: { ...corsHeadersFor(req), 'Content-Type': 'application/json' },
@@ -253,7 +251,7 @@ Deno.serve(async (req) => {
     if (versionError || !newVersionData) {
       console.error('Failed to create version record:', versionError);
       // Clean up uploaded file and files record
-      await supabaseService.storage.from('files').remove([filePath]);
+      await storageRemove(supabaseService, STORAGE_BUCKETS.files, [filePath]);
       await supabaseService.from('files').delete().eq('id', newFileRecord.id);
       return new Response(JSON.stringify({ error: 'Failed to create version record' }), {
         status: 500,

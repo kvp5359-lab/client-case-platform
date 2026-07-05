@@ -8,6 +8,7 @@ import {
 import { findMissingField, findInvalidUUID } from "../_shared/validation.ts";
 import Docxtemplater from "npm:docxtemplater@3";
 import PizZip from "npm:pizzip@3";
+import { STORAGE_BUCKETS, storageDownload } from "../_shared/storage.ts";
 
 interface Placeholder {
   name: string;
@@ -192,9 +193,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // 2. Download DOCX template from Storage
-    const { data: fileData, error: downloadError } = await supabaseAdmin.storage
-      .from("document-templates")
-      .download(template.file_path);
+    const { data: fileData, error: downloadError } = await storageDownload(supabaseAdmin, STORAGE_BUCKETS.documentTemplates, template.file_path);
 
     if (downloadError || !fileData) {
       return safeErrorResponse(req, corsHeadersFor, {

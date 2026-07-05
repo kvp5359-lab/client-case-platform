@@ -11,6 +11,7 @@ import {
   syncTelegramIncomingMessage,
   applyTelegramEdit,
 } from "../_shared/syncTelegramIncomingMessage.ts";
+import { STORAGE_BUCKETS, storageGetPublicUrl, storageUpload } from "../_shared/storage.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -454,9 +455,7 @@ async function downloadAndSaveTelegramAvatar(
   const blob = await downloadRes.blob();
 
   const storagePath = `${workspaceId}/${participantId}.jpg`;
-  const { error: uploadError } = await serviceClient.storage
-    .from("participant-avatars")
-    .upload(storagePath, blob, {
+  const { error: uploadError } = await storageUpload(serviceClient, STORAGE_BUCKETS.participantAvatars, storagePath, blob, {
       contentType: "image/jpeg",
       upsert: true,
     });
@@ -466,9 +465,7 @@ async function downloadAndSaveTelegramAvatar(
     return;
   }
 
-  const { data: urlData } = serviceClient.storage
-    .from("participant-avatars")
-    .getPublicUrl(storagePath);
+  const { data: urlData } = storageGetPublicUrl(serviceClient, STORAGE_BUCKETS.participantAvatars, storagePath);
 
   await serviceClient
     .from("participants")
@@ -733,9 +730,7 @@ async function handleAttachments(
       const fileBuffer = await fileRes.arrayBuffer();
 
       const storagePath = `${workspaceId}/${projectId}/${messageId}/${file.safeFileName}`;
-      const { error: uploadError } = await serviceClient.storage
-        .from("files")
-        .upload(storagePath, fileBuffer, {
+      const { error: uploadError } = await storageUpload(serviceClient, STORAGE_BUCKETS.files, storagePath, fileBuffer, {
           contentType: file.mimeType,
           upsert: false,
         });

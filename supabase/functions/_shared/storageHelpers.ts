@@ -4,6 +4,7 @@
  */
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { storageDownload, storageUpload } from "./storage.ts";
 
 export interface StorageFileInfo {
   bucket: string;
@@ -53,9 +54,7 @@ export async function downloadFile(
 ): Promise<Blob> {
   const { bucket, storagePath } = await resolveFileLocation(supabase, filePath, fileId);
 
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .download(storagePath);
+  const { data, error } = await storageDownload(supabase, bucket, storagePath);
 
   if (error || !data) {
     throw new Error(`Failed to download file: ${error?.message || "Unknown error"}`);
@@ -76,13 +75,11 @@ export async function uploadFile(
   data: ArrayBuffer | Blob,
   contentType: string,
 ): Promise<void> {
-  const { error } = await supabase.storage
-    .from(bucket)
-    .upload(path, data, {
-      cacheControl: "3600",
-      upsert: false,
-      contentType,
-    });
+  const { error } = await storageUpload(supabase, bucket, path, data, {
+    cacheControl: "3600",
+    upsert: false,
+    contentType,
+  });
 
   if (error) {
     throw new Error(`Failed to upload file: ${error.message}`);

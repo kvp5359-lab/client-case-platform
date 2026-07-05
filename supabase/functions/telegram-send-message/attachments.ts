@@ -11,6 +11,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { escapeHtmlEntities } from "../_shared/htmlFormatting.ts";
 import { resolveBotToken } from "../_shared/telegramBotToken.ts";
 import { isTelegramPhotoMime } from "./helpers.ts";
+import { storageCreateSignedUrl } from "../_shared/storage.ts";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -56,9 +57,7 @@ export async function resolveAttachment(
   // приводили к «1/N attachments failed to resolve» и потере части файлов в TG.
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const { data: urlData } = await supabaseClient.storage
-        .from(bucket)
-        .createSignedUrl(storagePath, 600);
+      const { data: urlData } = await storageCreateSignedUrl(supabaseClient, bucket, storagePath, 600);
 
       if (!urlData?.signedUrl) {
         console.error("resolveAttachment: no signedUrl for", att.file_name, "attempt", attempt + 1);
