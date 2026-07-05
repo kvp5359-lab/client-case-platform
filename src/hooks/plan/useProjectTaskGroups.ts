@@ -10,6 +10,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { planKeys, workspaceThreadKeys } from '@/hooks/queryKeys'
 import type { TaskGroupRow, TaskGroupUpdate } from '@/types/taskGroups'
 
 const TABLE = 'project_task_groups'
@@ -110,9 +111,12 @@ export function useProjectTaskGroups(projectId: string | undefined, workspaceId:
     },
     onSuccess: () => {
       invalidate()
-      // Задачи/блоки могли изменить group_id → освежаем план и треды.
-      qc.invalidateQueries({ queryKey: ['plan'] })
-      qc.invalidateQueries({ queryKey: ['project-threads'] })
+      // ON DELETE SET NULL сменил group_id у задач/блоков → освежаем карту
+      // «задача→группа» (иначе задачи удалённой группы исчезают из вида до
+      // истечения staleTime), план и кэши тредов.
+      qc.invalidateQueries({ queryKey: taskGroupKeys.membership(projectId ?? '') })
+      qc.invalidateQueries({ queryKey: planKeys.byProject(projectId ?? '') })
+      qc.invalidateQueries({ queryKey: workspaceThreadKeys.all })
     },
   })
 
