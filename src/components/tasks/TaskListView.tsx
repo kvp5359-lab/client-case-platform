@@ -62,6 +62,7 @@ import { useTaskFilters } from './useTaskFilters'
 import { useCreateTaskHandler } from './useCreateTaskMutation'
 import { TaskGroupList } from './TaskGroupList'
 import { ProjectFlatPlanList } from '@/components/plan/ProjectFlatPlanList'
+import { useProjectTaskGroups } from '@/hooks/plan/useProjectTaskGroups'
 import { usePlanBlockVisibility } from '@/hooks/plan/usePlanBlockVisibility'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 
@@ -338,6 +339,9 @@ export const TaskListView = memo(function TaskListView({
     filters.statusFilterIds === null &&
     filters.projectFilterIds.size === 0
 
+  // Создание группы задач из меню «Создать» (только в plan-режиме проекта).
+  const { addGroup: addTaskGroup } = useProjectTaskGroups(projectId, workspaceId)
+
   // ── Рендер ──
 
   return (
@@ -353,6 +357,7 @@ export const TaskListView = memo(function TaskListView({
           setCreateTemplate(template ?? null)
           setCreateOpen(true)
         }}
+        onCreateGroup={planMode ? () => addTaskGroup('Новая группа') : undefined}
         threadTemplates={threadTemplates}
         isProjectMode={isProjectMode}
         allAssignees={allAssignees}

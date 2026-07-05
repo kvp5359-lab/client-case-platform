@@ -26,6 +26,7 @@ type TaskListControlsProps = {
   presetPopoverOpen: boolean
   onPresetPopoverChange: (open: boolean) => void
   onCreate: (kind: ThreadKind, template?: ThreadTemplate) => void
+  onCreateGroup?: () => void
   threadTemplates: ThreadTemplate[]
   isProjectMode: boolean
   allAssignees: AvatarParticipant[]
@@ -44,6 +45,7 @@ export const TaskListControls = memo(function TaskListControls({
   presetPopoverOpen,
   onPresetPopoverChange,
   onCreate,
+  onCreateGroup,
   threadTemplates,
   isProjectMode,
   allAssignees,
@@ -115,6 +117,7 @@ export const TaskListControls = memo(function TaskListControls({
         <CreateThreadButtonGroup
           threadTemplates={threadTemplates}
           onCreate={onCreate}
+          onCreateGroup={onCreateGroup}
           primary="task"
         />
       </div>

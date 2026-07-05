@@ -27,7 +27,6 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
-import { FolderPlus } from 'lucide-react'
 import type { TaskItem } from '@/components/tasks/types'
 import type { TaskTimeValue } from '@/components/tasks/TaskTimePickerPopover'
 import type { TaskStatus } from '@/hooks/useStatuses'
@@ -143,7 +142,7 @@ export function ProjectFlatPlanList({
 
   // ── Группы задач ─────────────────────────────────────────
   const {
-    groups, addGroup, renameGroup, setGroupCollapsed, deleteGroup,
+    groups, renameGroup, setGroupCollapsed, deleteGroup,
     assignThreadToGroup, assignBlockToGroup, setGroupOrders,
   } = useProjectTaskGroups(projectId, workspaceId)
   const { data: threadGroupMap } = useProjectThreadGroupMap(projectId)
@@ -308,11 +307,6 @@ export function ProjectFlatPlanList({
     }
   }
 
-  const handleAddGroup = async () => {
-    const base = groups.length ? Math.max(...groups.map((g) => g.sort_order)) : maxSort
-    await addGroup('Новая группа', base + 10)
-  }
-
   // Переместить группу вверх/вниз — обмен sort_order с соседней группой.
   const moveGroup = (groupId: string, dir: 'up' | 'down') => {
     const sorted = [...groups].sort((a, b) => a.sort_order - b.sort_order)
@@ -450,16 +444,6 @@ export function ProjectFlatPlanList({
   const childrenOfGroup = (gid: string) => displayItems.filter((i) => groupIdOfItem(i) === gid)
   const sortedGroups = [...groups].sort((a, b) => a.sort_order - b.sort_order)
 
-  const addGroupButton = canEdit ? (
-    <button
-      type="button"
-      onClick={handleAddGroup}
-      className="mt-2 flex items-center gap-1.5 px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-    >
-      <FolderPlus className="h-4 w-4" /> Добавить группу
-    </button>
-  ) : null
-
   return (
     <PlanDocsProvider projectId={projectId} workspaceId={workspaceId} enabled={hasSlotBlocks}>
       <DndContext
@@ -502,8 +486,6 @@ export function ProjectFlatPlanList({
           )}
         </SortableContext>
       </DndContext>
-
-      {addGroupButton}
 
       {/* Быстрое добавление: задачи/заголовки/текст/документы, со вставкой в
           позицию quickAddAfterSort (после строки, под которой нажали «+»). */}

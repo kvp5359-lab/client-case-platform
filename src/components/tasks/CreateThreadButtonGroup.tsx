@@ -14,7 +14,7 @@
  */
 
 import { useState } from 'react'
-import { ChevronDown, MessageSquare, CheckSquare, Mail } from 'lucide-react'
+import { ChevronDown, MessageSquare, CheckSquare, Mail, FolderPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -26,6 +26,8 @@ export type ThreadKind = 'task' | 'chat' | 'email'
 type Props = {
   threadTemplates: ThreadTemplate[]
   onCreate: (kind: ThreadKind, template?: ThreadTemplate) => void
+  /** Создать группу задач в плане проекта (только в проекте). */
+  onCreateGroup?: () => void
   /** Тип action'а при клике на основную кнопку. По умолчанию 'task'. */
   primary?: ThreadKind
   className?: string
@@ -53,6 +55,7 @@ const ACCENT_TEXT: Record<string, string> = {
 export function CreateThreadButtonGroup({
   threadTemplates,
   onCreate,
+  onCreateGroup,
   primary = 'task',
   className,
 }: Props) {
@@ -87,6 +90,24 @@ export function CreateThreadButtonGroup({
           align="end"
           sideOffset={6}
         >
+          {/* Группа задач (плана проекта) — вверху списка */}
+          {onCreateGroup && (
+            <>
+              <button
+                type="button"
+                className="flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-muted text-left"
+                onClick={() => {
+                  setOpen(false)
+                  onCreateGroup()
+                }}
+              >
+                <FolderPlus className="w-4 h-4 text-muted-foreground shrink-0" />
+                Группа
+              </button>
+              <div className="border-t my-1" />
+            </>
+          )}
+
           {/* Типы тредов */}
           {(['task', 'chat', 'email'] as ThreadKind[]).map((k) => {
             const m = TYPE_LABELS[k]
