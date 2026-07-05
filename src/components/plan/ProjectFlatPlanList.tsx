@@ -319,6 +319,9 @@ export function ProjectFlatPlanList({
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
   const handleDragEnd = (e: DragEndEvent) => {
+    // В виде с группами DnD пока выключен (Фаза 4) — двухуровневый порядок
+    // требует отдельной логики; плоский arrayMove здесь некорректен.
+    if (hasGroups) return
     const { active, over } = e
     if (!over || active.id === over.id) return
     const ids = displayItems.map((i) => i.id)
@@ -384,20 +387,16 @@ export function ProjectFlatPlanList({
 
   return (
     <PlanDocsProvider projectId={projectId} workspaceId={workspaceId} enabled={hasSlotBlocks}>
-      {!hasGroups ? (
-        // ── Вид без групп: как раньше, полноценный DnD ──
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={displayItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={displayItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+          {!hasGroups ? (
+            // ── Вид без групп: как раньше, полноценный DnD ──
             <div className="flex flex-col [&>*:last-child]:border-b-0 [&>*:last-child_.border-b]:border-b-0">
               {displayItems.map((item) => renderRow(item))}
             </div>
-          </SortableContext>
-        </DndContext>
-      ) : (
-        // ── Вид с группами: контейнеры групп + верхний уровень.
-        //    Перетаскивание внутри/между группами — Фаза 4 (пока выключено).
-        <DndContext sensors={sensors} collisionDetection={closestCenter}>
-          <SortableContext items={displayItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+          ) : (
+            // ── Вид с группами: контейнеры групп + верхний уровень.
+            //    Перетаскивание внутри/между группами — Фаза 4 (пока выключено).
             <div className="group/planroot flex flex-col gap-1">
               {topLevelItems.length > 0 && (
                 <div className="flex flex-col [&>*:last-child]:border-b-0 [&>*:last-child_.border-b]:border-b-0">
@@ -419,9 +418,9 @@ export function ProjectFlatPlanList({
                 </PlanGroupContainer>
               ))}
             </div>
-          </SortableContext>
-        </DndContext>
-      )}
+          )}
+        </SortableContext>
+      </DndContext>
 
       {addGroupButton}
 
