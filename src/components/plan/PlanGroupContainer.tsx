@@ -70,7 +70,9 @@ export function PlanGroupContainer({
   return (
     <div
       ref={setSortableRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
+      // Translate, НЕ Transform: у группы (высокий блок) среди коротких строк
+      // dnd-kit добавлял scaleX/scaleY → визуальное сплющивание при drag'е.
+      style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn('mb-1 rounded-lg border border-border/70 bg-muted/20', isDragging && 'opacity-60 z-10 relative')}
     >
       {/* Заголовок группы */}

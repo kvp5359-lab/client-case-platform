@@ -87,7 +87,9 @@ export function SortableRow({
     id: item.id,
     disabled: !canEdit || !!sortableDisabled,
   })
-  const style = { transform: CSS.Transform.toString(transform), transition }
+  // Translate, НЕ Transform: строка и группа теперь в одном контексте с разной
+  // высотой — Transform добавлял бы scale и сплющивал перетаскиваемый элемент.
+  const style = { transform: CSS.Translate.toString(transform), transition }
   // Свёрнут ли текстовый блок до одной строки (состояние на блок, key=id).
   // По умолчанию текст свёрнут — чтобы длинная «Стратегия» не занимала
   // пол-экрана над списком задач; разворачивается по клику/шеврону.
