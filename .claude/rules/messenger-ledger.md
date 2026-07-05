@@ -46,6 +46,18 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-07-05 — Единый слой доступа к файлам (storage adapter, Фаза 1+2) — рефактор, карантин затронут ⭐ КОД ГОТОВ, ⏳ ЖДЁТ ДЕПЛОЯ+СМОК
+- **Задача (не баг):** подготовить лёгкий переезд файлового хранилища с Supabase Storage на R2/B2 — свести весь доступ к файлам в единые адаптеры, чтобы менять один модуль, а не искать `.storage.from(...)` по всему коду.
+- **Сделано (поведение НЕ меняется — фасады делегируют в тот же supabase.storage):**
+  - **Фронт (Фаза 1):** `src/lib/storage/` (`index.ts` фасад + client-free `buckets.ts` с `STORAGE_BUCKETS`). 11 браузерных файлов переведены. Прямого `supabase.storage` во фронте нет.
+  - **Edge (Фаза 2, КАРАНТИН):** новый `_shared/storage.ts` (клиент 1-м аргументом, т.к. в edge он зовётся `service`/`sc`/`supabaseService`/`supabaseAdmin`). ~20 функций + `storageHelpers.ts` + `storeAttachment.ts` переведены. Затронуты мессенджер-функции: `telegram-webhook-v2` (media/upload-slot), `telegram-send-message/attachments`, `wazzup-send`, `email-internal-send`, `gmail-webhook`, `gmail-send`, `fetch-telegram-avatar`, `telegram-webhook` v1, `telegram-register-webhook`.
+  - **mtproto:** `mtproto-service/src/storage.ts` (синглтон из `./db.js`), `incoming.ts`/`commands.ts` на нём.
+  - **resend Next-route** (`inboundProcessing.ts`): серверный ServiceClient оставлен (отдельный runtime, не тянет edge/браузер), но бакет через общую `STORAGE_BUCKETS.files`.
+- **Проверки:** фронт tsc+lint+**819 тестов**+build; edge deno-check — 0 storage-ошибок (счётчики совпали с baseline: send-msg 32, v2 3, wazzup 4, email 5 — пред-существующий strict-null шум); mtproto tsc 0.
+- **Грабли (новое):** storage-I/O теперь в 3 адаптерах — фронт `src/lib/storage/`, edge `_shared/storage.ts`, mtproto `mtproto-service/src/storage.ts`. Любой НОВЫЙ доступ к файлам — через них, не `supabase.storage.from(...)` напрямую. Бакеты — только `STORAGE_BUCKETS`. Единственное исключение прямого вызова — resend Next-route (серверный клиент, задокументировано). При переезде на R2 править внутренности этих трёх модулей.
+- **⏳ Деплой (карантин, строго со смоком):** edge всех затронутых функций (мессенджер — `--no-verify-jwt`) + mtproto rsync+rebuild + фронт push. Смок-матрица (`scripts/smoke-matrix.mjs`) по всем каналам.
+- **Файлы:** `src/lib/storage/{index,buckets}.ts`, `supabase/functions/_shared/storage.ts` + ~22 edge, `mtproto-service/src/storage.ts`+2, `inboundProcessing.ts`.
+
 ### 2026-07-05 — Самолечение привязки бота при kick/«chat not found» (карантин, edge) ⭐ ЗАДЕПЛОЕНО, ⏳ ЖДЁТ СМОК
 - **Закрывает бэклог-пункт из записи ниже (07-05, смок-матрица):** устаревшая привязка `project_telegram_chats.integration_id` «залипала» на выгнанном из группы боте-секретаре → отправка через него падала `chat not found`/`bot was kicked` БЕЗ самолечения. В проде незаметно (реальные сообщения идут через личный бот сотрудника), но фолбэк-путь секретаря был битый; смок-матрица это и вскрыла.
 - **Что было:** `resolveBotToken` самолечит только когда `integration_id` **NULL или интеграция мертва в БД** (деактивирована/удалена). Рантайм-случай «бот жив в БД (`is_active=true`), но кикнут из TG-группы» не покрывался: для секретаря (не employee) фолбэка нет → сразу `markMessageFailed`.
