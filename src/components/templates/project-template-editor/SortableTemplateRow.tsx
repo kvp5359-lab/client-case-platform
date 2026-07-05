@@ -30,6 +30,10 @@ export type SortableRowProps = {
   onEdit: (t: ThreadTemplate) => void
   onCopy: (t: ThreadTemplate) => void
   onDelete: (id: string) => void
+  /** Контрол «В группу» (дропдаун), рендерится слева от действий. Опционально. */
+  groupControl?: React.ReactNode
+  /** Выключить drag и скрыть грип (в grouped-виде членство меняется дропдауном). */
+  dragDisabled?: boolean
 }
 
 export function SortableTemplateRow({
@@ -39,9 +43,12 @@ export function SortableTemplateRow({
   onEdit,
   onCopy,
   onDelete,
+  groupControl,
+  dragDisabled,
 }: SortableRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: t.id,
+    disabled: dragDisabled,
   })
 
   const style: React.CSSProperties = {
@@ -58,16 +65,19 @@ export function SortableTemplateRow({
       style={style}
       className="flex items-center gap-2 px-2 rounded group hover:bg-muted/60 transition-colors py-1"
     >
-      {/* Drag handle — grip-иконка слева, видна только при hover. */}
-      <button
-        type="button"
-        className="cursor-grab active:cursor-grabbing touch-none p-0.5 -m-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0"
-        aria-label="Переупорядочить"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
-      </button>
+      {/* Drag handle — grip-иконка слева, видна только при hover. В grouped-виде
+          скрыт (drag выключен, членство меняется дропдауном). */}
+      {!dragDisabled && (
+        <button
+          type="button"
+          className="cursor-grab active:cursor-grabbing touch-none p-0.5 -m-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0"
+          aria-label="Переупорядочить"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
+        </button>
+      )}
 
       {/* Иконка шаблона без подложки — просто lucide-иконка соответствующего
           цвета (accent_color). Если цвет не знаем — fallback на text-blue-500. */}
@@ -146,6 +156,7 @@ export function SortableTemplateRow({
         </div>
       )}
       <div className="flex items-center gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0">
+        {groupControl}
         <Button
           variant="ghost"
           size="icon"

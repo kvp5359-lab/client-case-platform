@@ -17,13 +17,20 @@ export function SortableContentRow({
   block,
   onChangeContent,
   onDelete,
+  groupControl,
+  dragDisabled,
 }: {
   block: TemplatePlanBlockRow
   onChangeContent: (content: string) => void
   onDelete: () => void
+  /** Контрол «В группу» (дропдаун), рендерится слева от «Удалить». Опционально. */
+  groupControl?: React.ReactNode
+  /** Выключить drag и скрыть грип (в grouped-виде членство меняется дропдауном). */
+  dragDisabled?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: block.id,
+    disabled: dragDisabled,
   })
   const [editingText, setEditingText] = useState(false)
 
@@ -43,15 +50,17 @@ export function SortableContentRow({
       style={style}
       className="flex items-start gap-2 px-2 rounded group hover:bg-muted/60 transition-colors py-1"
     >
-      <button
-        type="button"
-        className="cursor-grab active:cursor-grabbing touch-none p-0.5 -m-0.5 mt-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0"
-        aria-label="Переупорядочить"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
-      </button>
+      {!dragDisabled && (
+        <button
+          type="button"
+          className="cursor-grab active:cursor-grabbing touch-none p-0.5 -m-0.5 mt-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0"
+          aria-label="Переупорядочить"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
+        </button>
+      )}
 
       <div className="min-w-0 flex-1">
         {block.block_type === 'heading' ? (
@@ -86,15 +95,18 @@ export function SortableContentRow({
         )}
       </div>
 
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 text-muted-foreground hover:text-destructive md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0"
-        onClick={onDelete}
-        title="Удалить"
-      >
-        <Trash2 className="w-3 h-3" />
-      </Button>
+      <div className="flex items-center gap-0.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex-shrink-0">
+        {groupControl}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 text-muted-foreground hover:text-destructive"
+          onClick={onDelete}
+          title="Удалить"
+        >
+          <Trash2 className="w-3 h-3" />
+        </Button>
+      </div>
     </div>
   )
 }

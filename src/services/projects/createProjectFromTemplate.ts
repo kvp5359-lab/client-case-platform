@@ -349,13 +349,23 @@ export async function seedProjectContent(
           if (t.source_template_id) threadByTemplate.set(t.source_template_id, t.id)
         }
 
-        // Назначаем задачам проекта группу по task-блоку шаблона (thread_template → group).
+        // Назначаем задачам проекта группу. Основной источник — шаблон задачи
+        // (thread_templates.task_group_id, задаётся в списке «Задачи»); плюс
+        // fallback по task-блоку плана (legacy-путь вкладки «План»).
         const threadGroupUpdates: { threadId: string; groupId: string }[] = []
+        const pushUpdate = (threadId: string | undefined, tmplGroupId: string | null) => {
+          if (!threadId || !tmplGroupId) return
+          const newGroup = groupMap.get(tmplGroupId)
+          if (newGroup && !threadGroupUpdates.some((u) => u.threadId === threadId)) {
+            threadGroupUpdates.push({ threadId, groupId: newGroup })
+          }
+        }
+        for (const tpl of selectedThreadTemplates) {
+          pushUpdate(threadByTemplate.get(tpl.id), tpl.task_group_id ?? null)
+        }
         for (const b of allBlocks) {
           if (b.block_type === 'task' && b.thread_template_id && b.group_id) {
-            const threadId = threadByTemplate.get(b.thread_template_id)
-            const newGroup = groupMap.get(b.group_id)
-            if (threadId && newGroup) threadGroupUpdates.push({ threadId, groupId: newGroup })
+            pushUpdate(threadByTemplate.get(b.thread_template_id), b.group_id)
           }
         }
         if (threadGroupUpdates.length > 0) {

@@ -50,6 +50,8 @@ export type ThreadTemplate = {
   email_subject_template: string | null
   initial_message_html: string | null
   sort_order: number
+  /** Группа задач шаблона (project_template_task_groups.id) или null = верхний уровень. */
+  task_group_id?: string | null
   created_by: string | null
   created_at: string
   updated_at: string

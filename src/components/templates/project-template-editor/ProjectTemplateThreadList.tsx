@@ -25,7 +25,10 @@ import {
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Plus, Heading, Type as TypeIcon, Search, FilePlus } from 'lucide-react'
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from '@/components/ui/dropdown-menu'
+import { Plus, Heading, Type as TypeIcon, Search, FilePlus, FolderPlus, FolderInput, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
@@ -36,6 +39,7 @@ import {
   useGlobalThreadTemplates,
 } from '@/hooks/messenger/useThreadTemplates'
 import { useTemplatePlan } from '@/hooks/plan/useTemplatePlan'
+import { useTemplateTaskGroups } from '@/hooks/plan/useTemplateTaskGroups'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { useTaskStatuses } from '@/hooks/useStatuses'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
@@ -81,6 +85,15 @@ export function ProjectTemplateThreadList({
   const showBlocks = !threadType
   const { blocks, addHeadingBlock, addTextBlock, updateBlock, deleteBlock, setBlockOrders } =
     useTemplatePlan(projectTemplateId, workspaceId)
+
+  // Группы задач шаблона — только в общем списке (без фильтра по типу).
+  const { groups, addGroup, renameGroup, deleteGroup, assignThreadToGroup, assignBlockToGroup } =
+    useTemplateTaskGroups(projectTemplateId, workspaceId)
+  const useGroups = showBlocks && groups.length > 0
+  const sortedGroups = useMemo(
+    () => [...groups].sort((a, b) => a.sort_order - b.sort_order),
+    [groups],
+  )
 
   const { data: participants = [] } = useWorkspaceParticipants(workspaceId)
   const participantById = useMemo(() => {
@@ -236,6 +249,56 @@ export function ProjectTemplateThreadList({
     )
   }
 
+  // Группа строки: у задачи — thread_templates.task_group_id, у блока — group_id.
+  const membershipOf = (m: MergedRow): string | null =>
+    m.kind === 'task' ? (m.template.task_group_id ?? null) : (m.block.group_id ?? null)
+
+  // Рендер одной строки. В grouped-виде drag выключен, добавлен дропдаун «В группу».
+  const renderRow = (m: MergedRow) => {
+    const groupControl = useGroups ? (
+      <GroupAssignMenu
+        currentGroupId={membershipOf(m)}
+        groups={sortedGroups}
+        onAssign={(gid) =>
+          m.kind === 'task' ? assignThreadToGroup(m.id, gid) : assignBlockToGroup(m.id, gid)
+        }
+      />
+    ) : undefined
+    if (m.kind === 'task') {
+      const t = m.template
+      const status = t.default_status_id ? statusById.get(t.default_status_id) : undefined
+      const assigneeRows = (t.thread_template_assignees ?? [])
+        .map((a) => participantById.get(a.participant_id))
+        .filter((p): p is NonNullable<typeof p> => !!p)
+      return (
+        <SortableTemplateRow
+          key={t.id}
+          template={t}
+          status={status ? { name: status.name, color: status.color ?? '' } : undefined}
+          assigneeRows={assigneeRows}
+          onEdit={handleEdit}
+          onCopy={(tpl) => copyMutation.mutate(tpl)}
+          onDelete={handleDelete}
+          groupControl={groupControl}
+          dragDisabled={useGroups}
+        />
+      )
+    }
+    return (
+      <SortableContentRow
+        key={m.id}
+        block={m.block}
+        onChangeContent={(content) => updateBlock(m.block.id, { content })}
+        onDelete={() => deleteBlock(m.block.id)}
+        groupControl={groupControl}
+        dragDisabled={useGroups}
+      />
+    )
+  }
+
+  const ungroupedRows = merged.filter((m) => membershipOf(m) === null)
+  const rowsOfGroup = (gid: string) => merged.filter((m) => membershipOf(m) === gid)
+
   return (
     <div className="bg-background px-4 py-2 border-t">
       <div className="space-y-0.5">
@@ -250,44 +313,56 @@ export function ProjectTemplateThreadList({
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
+          onDragEnd={useGroups ? undefined : handleDragEnd}
         >
           <SortableContext
             items={merged.map((m) => m.id)}
             strategy={verticalListSortingStrategy}
           >
-            {merged.map((m) => {
-              if (m.kind === 'task') {
-                const t = m.template
-                const status = t.default_status_id
-                  ? statusById.get(t.default_status_id)
-                  : undefined
-                const assigneeRows = (t.thread_template_assignees ?? [])
-                  .map((a) => participantById.get(a.participant_id))
-                  .filter((p): p is NonNullable<typeof p> => !!p)
-                return (
-                  <SortableTemplateRow
-                    key={t.id}
-                    template={t}
-                    status={
-                      status ? { name: status.name, color: status.color ?? '' } : undefined
-                    }
-                    assigneeRows={assigneeRows}
-                    onEdit={handleEdit}
-                    onCopy={(tpl) => copyMutation.mutate(tpl)}
-                    onDelete={handleDelete}
-                  />
-                )
-              }
-              return (
-                <SortableContentRow
-                  key={m.id}
-                  block={m.block}
-                  onChangeContent={(content) => updateBlock(m.block.id, { content })}
-                  onDelete={() => deleteBlock(m.block.id)}
-                />
-              )
-            })}
+            {!useGroups ? (
+              // ── Плоский список: полноценный drag-реордер ──
+              merged.map((m) => renderRow(m))
+            ) : (
+              // ── Вид с группами: верхний уровень + секции групп. Членство —
+              //    дропдауном «В группу» (drag в grouped-виде выключен). ──
+              <div className="space-y-2">
+                {ungroupedRows.length > 0 && <div>{ungroupedRows.map((m) => renderRow(m))}</div>}
+                {sortedGroups.map((g) => (
+                  <div key={g.id} className="rounded-md border">
+                    <div className="flex items-center gap-1.5 border-b bg-muted/30 px-2 py-1.5">
+                      <input
+                        defaultValue={g.name}
+                        key={g.name}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim()
+                          if (v && v !== g.name) renameGroup(g.id, v)
+                        }}
+                        className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
+                        placeholder="Название группы"
+                      />
+                      <span className="text-xs text-muted-foreground">{rowsOfGroup(g.id).length}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-6 text-muted-foreground hover:text-destructive"
+                        onClick={() => deleteGroup(g.id)}
+                        title="Удалить группу"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                    {rowsOfGroup(g.id).length === 0 ? (
+                      <p className="px-3 py-2 text-xs text-muted-foreground">
+                        Пусто — назначьте задачи в группу через «В группу».
+                      </p>
+                    ) : (
+                      <div className="py-0.5">{rowsOfGroup(g.id).map((m) => renderRow(m))}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </SortableContext>
         </DndContext>
         <div className="pt-1 flex flex-wrap items-center gap-1">
@@ -376,6 +451,15 @@ export function ProjectTemplateThreadList({
                 <TypeIcon className="w-3 h-3 mr-1" />
                 Текст
               </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => addGroup()}
+                className="h-7 px-2 text-xs text-muted-foreground"
+              >
+                <FolderPlus className="w-3 h-3 mr-1" />
+                Группа
+              </Button>
             </>
           )}
         </div>
@@ -396,5 +480,40 @@ export function ProjectTemplateThreadList({
 
       <ConfirmDialog state={confirmState} onConfirm={handleConfirm} onCancel={handleCancel} />
     </div>
+  )
+}
+
+// Дропдаун «В группу» у строки (задача/блок). Назначает/снимает группу.
+function GroupAssignMenu({
+  currentGroupId,
+  groups,
+  onAssign,
+}: {
+  currentGroupId: string | null
+  groups: { id: string; name: string }[]
+  onAssign: (groupId: string | null) => void
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" title="В группу">
+          <FolderInput className="w-3 h-3" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem disabled={!currentGroupId} onClick={() => onAssign(null)}>
+          Без группы
+        </DropdownMenuItem>
+        {groups.map((g) => (
+          <DropdownMenuItem
+            key={g.id}
+            disabled={currentGroupId === g.id}
+            onClick={() => onAssign(g.id)}
+          >
+            {g.name || 'Без названия'}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

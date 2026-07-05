@@ -8,7 +8,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { planKeys } from '@/hooks/queryKeys'
+import { planKeys, threadTemplateKeys } from '@/hooks/queryKeys'
 import type { TemplateTaskGroupRow } from '@/types/taskGroups'
 
 const TABLE = 'project_template_task_groups'
@@ -101,7 +101,7 @@ export function useTemplateTaskGroups(templateId: string | undefined, workspaceI
     onSuccess: invalidate,
   })
 
-  // Назначить/снять группу у блока шаблона.
+  // Назначить/снять группу у блока шаблона (заголовок/текст).
   const assignBlock = useMutation({
     mutationFn: async ({ blockId, groupId }: { blockId: string; groupId: string | null }) => {
       const { error } = await supabase
@@ -113,6 +113,21 @@ export function useTemplateTaskGroups(templateId: string | undefined, workspaceI
     onSuccess: () => qc.invalidateQueries({ queryKey: planKeys.templateByTemplate(templateId ?? '') }),
   })
 
+  // Назначить/снять группу у ЗАДАЧИ шаблона (thread_templates.task_group_id).
+  // В списке «Задачи» задачи — это thread_templates (не task-блоки плана),
+  // поэтому членство хранится тут. Сидинг читает это поле.
+  const assignThread = useMutation({
+    mutationFn: async ({ threadTemplateId, groupId }: { threadTemplateId: string; groupId: string | null }) => {
+      const { error } = await supabase
+        .from('thread_templates' as never)
+        .update({ task_group_id: groupId } as never)
+        .eq('id' as never, threadTemplateId as never)
+      if (error) throw error
+    },
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: threadTemplateKeys.byProjectTemplate(templateId ?? '') }),
+  })
+
   return {
     groups: groupsQuery.data ?? [],
     isLoading: groupsQuery.isLoading,
@@ -122,8 +137,10 @@ export function useTemplateTaskGroups(templateId: string | undefined, workspaceI
     setGroupOrders: (updates: { id: string; sort_order: number }[]) => setGroupOrders.mutateAsync(updates),
     assignBlockToGroup: (blockId: string, groupId: string | null) =>
       assignBlock.mutateAsync({ blockId, groupId }),
+    assignThreadToGroup: (threadTemplateId: string, groupId: string | null) =>
+      assignThread.mutateAsync({ threadTemplateId, groupId }),
     isMutating:
       addGroup.isPending || renameGroup.isPending || deleteGroup.isPending ||
-      setGroupOrders.isPending || assignBlock.isPending,
+      setGroupOrders.isPending || assignBlock.isPending || assignThread.isPending,
   }
 }
