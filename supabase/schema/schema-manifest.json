@@ -4550,6 +4550,11 @@
       "body_md5": "8716dc6e46f4f384d06e98c6372d3935"
     },
     {
+      "args": "p_workspace_id uuid",
+      "name": "get_workspace_stats",
+      "body_md5": "be03a840b3ca85bfc892b7889bf8563e"
+    },
+    {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_workspace_threads",
       "body_md5": "254a6d93b1edd965f53e370372afa8d5"
