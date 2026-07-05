@@ -1,0 +1,40 @@
+name: Smoke Channels
+
+# Смок-матрица каналов мессенджера: по каждому треду из allowlist (smoke_test_threads)
+# прогоняет комбинации исходящих (текст/reply/файл/файл+текст/альбом/реакция/edit/delete)
+# и проверяет доставку (send_status='sent').
+#
+# ⚠️ Отправляет РЕАЛЬНЫЕ сообщения в тест-чаты → НЕ на каждый push.
+# Только по расписанию (раз в сутки) + вручную (workflow_dispatch).
+#
+# Секреты: SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_ANON_KEY,
+#          NEXT_PUBLIC_SUPABASE_URL, SMOKE_BOT_PASSWORD.
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # каждый день в 06:00 UTC
+  workflow_dispatch: {}
+
+concurrency:
+  group: smoke-channels
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install @supabase/supabase-js
+        run: npm install --no-save @supabase/supabase-js@2
+      - name: Run smoke matrix
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SMOKE_BOT_EMAIL: smoke-bot@clientcase.internal
+          SMOKE_BOT_PASSWORD: ${{ secrets.SMOKE_BOT_PASSWORD }}
+        run: node scripts/smoke-matrix.mjs --confirm
