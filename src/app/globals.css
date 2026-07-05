@@ -648,6 +648,32 @@ body[data-panel-open][data-panel-mode="push"] main {
   }
 }
 
+/* Вкладки модулей проекта: адаптируются под РЕАЛЬНУЮ ширину ряда (container
+   query — учитывает открытую боковую панель в push-режиме, а не только ширину
+   окна). Механика двухступенчатая:
+   1) Плавно: сам ряд (TabsList, max-w-full) при нехватке места ужимает вкладки,
+      подписи обрезаются многоточием (min-w-0 + truncate на подписи).
+   2) Порог: когда ряду совсем тесно, у НЕактивных вкладок подпись скрывается
+      совсем (остаётся иконка). Активная вкладка всегда с подписью. */
+.project-tabs-cq {
+  container: proj-tabs / inline-size;
+}
+/* На вкладках-ОВЕРЛЕЯХ (панель накрывает контент, main НЕ сужается — Материалы,
+   Анкеты, Подбор ВНЖ, История, Дневник) резервируем ширину панели для ряда
+   вкладок, иначе он «видит» полную ширину, ничего не сворачивает и правый край
+   уезжает под панель. В push-режиме (Задачи/Документы/Финансы) main уже сужен
+   правилом body[data-panel-open][data-panel-mode="push"] main — там не трогаем. */
+@media (min-width: 768px) {
+  body[data-panel-open]:not([data-panel-mode='push']) .project-tabs-cq {
+    margin-right: var(--panel-width, 600px);
+  }
+}
+@container proj-tabs (max-width: 560px) {
+  .proj-tab-label--secondary {
+    display: none;
+  }
+}
+
 /* AI-ассистент: запрет горизонтального скролла в Radix ScrollArea viewport */
 .side-panel [data-radix-scroll-area-viewport] {
   overflow-x: hidden !important;

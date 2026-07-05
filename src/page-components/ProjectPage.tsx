@@ -371,8 +371,8 @@ export default function ProjectPage() {
             {/* Вкладки модулей — теперь и для клиента (сайдбара у него нет) */}
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               {availableModules.length > 0 && (
-                <div className="pb-3">
-                  <TabsList>
+                <div className="pb-3 project-tabs-cq">
+                  <TabsList className="max-w-full">
                     {availableModules
                       .filter((m) => m.showTab !== false)
                       .map((m) => {
@@ -381,15 +381,30 @@ export default function ProjectPage() {
                           <TabsTrigger
                             key={m.id}
                             value={m.id}
-                            className="flex items-center gap-1 md:gap-2"
+                            className={cn(
+                              'flex items-center gap-1 md:gap-2',
+                              // Активная вкладка никогда не сжимается — подпись
+                              // всегда видна целиком. Неактивные отдают ширину
+                              // (min-w-0 разрешает ужиматься ниже контента).
+                              activeTab === m.id ? 'shrink-0' : 'min-w-0',
+                            )}
                             title={m.label}
                           >
-                            <Icon className="w-4 h-4" />
-                            {/* Подпись: у активной вкладки видна всегда (в т.ч. на
-                                мобиле — «у текущей показывать название»), у
-                                остальных на мобиле скрыта, на десктопе видна. */}
+                            <Icon className="w-4 h-4 shrink-0" />
+                            {/* Подпись адаптируется под ширину ряда (container query
+                                .project-tabs-cq): у НЕактивных вкладок при нехватке
+                                места обрезается многоточием (truncate + min-w-0), а
+                                при сильной тесноте скрывается совсем
+                                (.proj-tab-label--secondary → display:none по порогу
+                                в globals.css). Активная вкладка — всегда целиком. */}
                             {!m.iconOnly && (
-                              <span className={cn(activeTab === m.id ? 'inline' : 'hidden md:inline')}>
+                              <span
+                                className={cn(
+                                  activeTab === m.id
+                                    ? 'whitespace-nowrap'
+                                    : 'truncate min-w-0 proj-tab-label--secondary',
+                                )}
+                              >
                                 {m.label}
                               </span>
                             )}
@@ -401,7 +416,7 @@ export default function ProjectPage() {
                                     tabIndex={0}
                                     onClick={(e) => e.stopPropagation()}
                                     onKeyDown={(e) => e.stopPropagation()}
-                                    className="ml-0.5 p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                                    className="ml-0.5 p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0"
                                   >
                                     <MoreVertical className="h-3.5 w-3.5" />
                                   </span>
@@ -422,7 +437,7 @@ export default function ProjectPage() {
                                     tabIndex={0}
                                     onClick={(e) => e.stopPropagation()}
                                     onKeyDown={(e) => e.stopPropagation()}
-                                    className="ml-0.5 p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                                    className="ml-0.5 p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0"
                                   >
                                     <MoreVertical className="h-3.5 w-3.5" />
                                   </span>
