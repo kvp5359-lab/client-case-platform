@@ -137,6 +137,18 @@ export function ProjectTemplateThreadList({
     return rows
   }, [templates, contentBlocks])
 
+  // Порядок строк для DnD = порядок в DOM. Без групп — плоский merged; с
+  // группами — секциями (верхний уровень, затем строки каждой группы по
+  // порядку групп), чтобы индексы dnd-kit совпадали с версткой.
+  const orderedRows = useMemo<MergedRow[]>(() => {
+    if (!useGroups) return merged
+    const memberOf = (m: MergedRow): string | null =>
+      m.kind === 'task' ? (m.template.task_group_id ?? null) : (m.block.group_id ?? null)
+    const ungrouped = merged.filter((m) => memberOf(m) === null)
+    const grouped = sortedGroups.flatMap((g) => merged.filter((m) => memberOf(m) === g.id))
+    return [...ungrouped, ...grouped]
+  }, [merged, useGroups, sortedGroups])
+
   const maxSort = merged.length ? Math.max(...merged.map((m) => m.sort)) : -1
 
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -176,12 +188,12 @@ export function ProjectTemplateThreadList({
       const { active, over } = event
       if (!over || active.id === over.id) return
 
-      const ids = merged.map((m) => m.id)
+      const ids = orderedRows.map((m) => m.id)
       const oldIndex = ids.indexOf(active.id as string)
       const newIndex = ids.indexOf(over.id as string)
       if (oldIndex === -1 || newIndex === -1) return
 
-      const reordered = arrayMove(merged, oldIndex, newIndex)
+      const reordered = arrayMove(orderedRows, oldIndex, newIndex)
       const taskOrders: { id: string; sort_order: number }[] = []
       const blockOrders: { id: string; sort_order: number }[] = []
       reordered.forEach((m, i) => {
@@ -213,7 +225,7 @@ export function ProjectTemplateThreadList({
 
       reorderMutation.mutate({ taskOrders, blockOrders })
     },
-    [merged, queryClient, projectTemplateId, reorderMutation],
+    [orderedRows, queryClient, projectTemplateId, reorderMutation],
   )
 
   const handleCreate = () => {
@@ -253,7 +265,8 @@ export function ProjectTemplateThreadList({
   const membershipOf = (m: MergedRow): string | null =>
     m.kind === 'task' ? (m.template.task_group_id ?? null) : (m.block.group_id ?? null)
 
-  // Рендер одной строки. В grouped-виде drag выключен, добавлен дропдаун «В группу».
+  // Рендер одной строки. Drag работает и с группами (сортировка в порядке
+  // секций через orderedRows); дропдаун «В группу» — для смены членства.
   const renderRow = (m: MergedRow) => {
     const groupControl = useGroups ? (
       <GroupAssignMenu
@@ -280,7 +293,6 @@ export function ProjectTemplateThreadList({
           onCopy={(tpl) => copyMutation.mutate(tpl)}
           onDelete={handleDelete}
           groupControl={groupControl}
-          dragDisabled={useGroups}
         />
       )
     }
@@ -291,7 +303,6 @@ export function ProjectTemplateThreadList({
         onChangeContent={(content) => updateBlock(m.block.id, { content })}
         onDelete={() => deleteBlock(m.block.id)}
         groupControl={groupControl}
-        dragDisabled={useGroups}
       />
     )
   }
@@ -313,18 +324,18 @@ export function ProjectTemplateThreadList({
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
-          onDragEnd={useGroups ? undefined : handleDragEnd}
+          onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={merged.map((m) => m.id)}
+            items={orderedRows.map((m) => m.id)}
             strategy={verticalListSortingStrategy}
           >
             {!useGroups ? (
               // ── Плоский список: полноценный drag-реордер ──
               merged.map((m) => renderRow(m))
             ) : (
-              // ── Вид с группами: верхний уровень + секции групп. Членство —
-              //    дропдауном «В группу» (drag в grouped-виде выключен). ──
+              // ── Вид с группами: верхний уровень + секции групп. Drag работает
+              //    (порядок секций через orderedRows); членство — дропдауном. ──
               <div className="space-y-2">
                 {ungroupedRows.length > 0 && <div>{ungroupedRows.map((m) => renderRow(m))}</div>}
                 {sortedGroups.map((g) => (
