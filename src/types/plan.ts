@@ -24,6 +24,8 @@ export type PlanBlockRow = {
   thread_id: string | null
   /** Ссылка на слот документа (folder_slots) — только для block_type='slot' */
   folder_slot_id: string | null
+  /** Группа, в которой лежит блок (project_task_groups.id). NULL = верхний уровень. */
+  group_id: string | null
   created_at: string
   updated_at: string
 }
@@ -32,6 +34,7 @@ export type PlanBlockUpdate = {
   sort_order?: number
   visible_to_client?: boolean
   content?: string | null
+  group_id?: string | null
 }
 
 /** Строка project_template_plan_blocks («рыба» плана в шаблоне). */

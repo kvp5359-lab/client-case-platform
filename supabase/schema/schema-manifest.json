@@ -2319,6 +2319,46 @@
       "name": "Authenticated users can view workspaces",
       "def_md5": "a56527180561248474cf6e5853e0a2eb",
       "table_name": "workspaces"
+    },
+    {
+      "name": "project_task_groups_delete",
+      "def_md5": "0047ebace74619a90bf4051a7b1123b4",
+      "table_name": "project_task_groups"
+    },
+    {
+      "name": "project_task_groups_insert",
+      "def_md5": "7f9e9098e962f66113db69cbea65d71e",
+      "table_name": "project_task_groups"
+    },
+    {
+      "name": "project_task_groups_select",
+      "def_md5": "9c13694fe7307dc5d4cfffeb6ec17833",
+      "table_name": "project_task_groups"
+    },
+    {
+      "name": "project_task_groups_update",
+      "def_md5": "d7d9ec2e16d4e42d082a8ae8b6504de4",
+      "table_name": "project_task_groups"
+    },
+    {
+      "name": "template_task_groups_delete",
+      "def_md5": "087c05605de3b103879910af3598b2b8",
+      "table_name": "project_template_task_groups"
+    },
+    {
+      "name": "template_task_groups_insert",
+      "def_md5": "95ce07dcc7d43e5842768b7fccefe37a",
+      "table_name": "project_template_task_groups"
+    },
+    {
+      "name": "template_task_groups_select",
+      "def_md5": "95c5b411be0d4e3baf2e5e29a98db8a5",
+      "table_name": "project_template_task_groups"
+    },
+    {
+      "name": "template_task_groups_update",
+      "def_md5": "ff305fdab3ded0c256f155c124ae8c3f",
+      "table_name": "project_template_task_groups"
     }
   ],
   "triggers": [
