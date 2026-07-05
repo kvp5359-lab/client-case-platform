@@ -8,7 +8,6 @@
 
 import { useState, useCallback } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Layers, Plus, Trash2, FileText, FolderOpen, BookOpen, Folder } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -151,11 +150,6 @@ export function ModulesSection({
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">{module.label}</span>
                 {CONTENT_MODULES.has(module.id) && isEnabled && count > 0 && (
                   <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{count}</span>
-                )}
-                {isEnabled && (
-                  <Badge className="shrink-0 bg-amber-400 px-1.5 py-0 text-[11px] text-black hover:bg-amber-400">
-                    Вкл
-                  </Badge>
                 )}
               </div>
             )
