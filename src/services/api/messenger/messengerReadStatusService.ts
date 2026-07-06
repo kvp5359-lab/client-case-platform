@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { ConversationError } from '@/services/errors/AppError'
+import { dismissThreadToasts } from '@/lib/messenger/toastRegistry'
 import type { MessageChannel } from './messengerService.types'
 
 /**
@@ -26,6 +27,11 @@ export async function markAsRead(
   )
 
   if (error) throw new ConversationError(`Ошибка пометки прочитанного: ${error.message}`)
+
+  // Единая точка: тред прочитан → его всплывающие уведомления больше не нужны.
+  // Покрывает все пути пометки (открытие треда, кнопка «Прочитано», реакция,
+  // инбокс, завершение задачи через финальный статус).
+  dismissThreadToasts(threadId)
 }
 
 /**

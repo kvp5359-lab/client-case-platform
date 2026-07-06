@@ -1,9 +1,19 @@
 /**
  * Utilities for parsing and grouping new message toast payloads.
  */
-import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { stripHtmlIgnoreQuotes } from '@/utils/format/messengerHtml'
+
+// Реестр тостов вынесен в leaf-слой (`lib/messenger/toastRegistry`), чтобы его
+// мог дёргать и сервис `markAsRead` без нарушения слоёв. Здесь — ре-экспорт для
+// существующих импортёров (useNewMessageToast и др.).
+export {
+  groupedLines,
+  makeGroupKey,
+  dismissProjectToasts,
+  dismissThreadToasts,
+} from '@/lib/messenger/toastRegistry'
+export type { GroupKey } from '@/lib/messenger/toastRegistry'
 
 export type RealtimeMessagePayload = {
   project_id: string
@@ -19,46 +29,9 @@ export type RealtimeMessagePayload = {
   created_at?: string | null
 }
 
-export type GroupKey = string
-
-/** Message lines for each group (projectId + sender + thread) */
-export const groupedLines = new Map<GroupKey, string[]>()
-
 /** Avatar URL cache by participant_id */
 const MAX_AVATAR_CACHE = 200
 const avatarCache = new Map<string, string | null>()
-
-export function makeGroupKey(
-  projectId: string,
-  senderParticipantId: string | null,
-  threadId: string | null,
-): GroupKey {
-  return `${projectId}:${senderParticipantId ?? 'unknown'}:${threadId ?? 'no-thread'}`
-}
-
-/** Dismiss all message toasts for a given project */
-export function dismissProjectToasts(projectId: string) {
-  for (const key of groupedLines.keys()) {
-    if (key.startsWith(`${projectId}:`)) {
-      groupedLines.delete(key)
-      toast.dismiss(key)
-    }
-  }
-}
-
-/** Dismiss all message toasts for a given thread (по суффиксу groupKey).
- *  Используется при завершении треда (выставлении финального статуса) —
- *  тред помечается прочитанным, тосты по нему уже не нужны. Работает и
- *  для проектных тредов, и для личных диалогов (project_id=null). */
-export function dismissThreadToasts(threadId: string) {
-  const suffix = `:${threadId}`
-  for (const key of groupedLines.keys()) {
-    if (key.endsWith(suffix)) {
-      groupedLines.delete(key)
-      toast.dismiss(key)
-    }
-  }
-}
 
 function truncateLine(text: string, max = 80): string {
   return text.length > max ? text.slice(0, max) + '…' : text

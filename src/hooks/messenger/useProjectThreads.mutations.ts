@@ -18,6 +18,7 @@ import {
   workspaceThreadKeys,
 } from '@/hooks/queryKeys'
 import { removeThreadFromInboxCaches } from '@/hooks/shared/threadCacheSync'
+import { dismissThreadToasts } from '@/lib/messenger/toastRegistry'
 import { logAuditAction } from '@/services/auditService'
 import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import type { ProjectThread, ThreadAccentColor } from './useProjectThreads.types'
@@ -259,6 +260,9 @@ export function useDeleteThread(workspaceId?: string) {
       toast.error('Не удалось удалить')
     },
     onSuccess: (thread) => {
+      // Тред удалён — его всплывающие уведомления больше не актуальны.
+      // (Удаление не помечает прочитанным, поэтому гасим явно.)
+      dismissThreadToasts(thread.id)
       queryClient.invalidateQueries({ queryKey: messengerKeys.projectThreads(thread.project_id ?? '') })
       if (workspaceId) {
         // workspaceThreadKeys — реальный источник «Мои задачи» / task-колонок
