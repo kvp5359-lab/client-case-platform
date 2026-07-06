@@ -299,6 +299,17 @@
 }
 
 /* Messenger: HTML content inside message bubbles */
+/* Картинки письма. `height: auto` перебивает HTML-атрибут `height="136"` (у
+   писем AliExpress/магазинов картинки товаров с фиксированным размером) → если
+   картинка не загрузилась (внешние часто режутся CSP, и событие `error` при
+   этом стреляет не всегда) она схлопывается в 0, а не держит пустой бокс своего
+   размера. `display: block` убирает baseline-зазор строки под инлайн-картинкой.
+   `max-width: 100%` — загруженные не вылезают за узкий бабл. */
+.messenger-content img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
 .messenger-content p {
   margin: 0;
 }

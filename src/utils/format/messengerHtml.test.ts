@@ -121,6 +121,38 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
     expect(out).toContain('$12.14')
   })
 
+  it('убирает спейсер-ячейки font-size:0 с точкой (AliExpress) и не показывает «.»', () => {
+    // Письма держат вертикаль невидимыми ячейками `<td style="font-size:0;
+    // color:#FFF">.</td>`. Мы срезаем font-size/color → точка всплыла бы. Чистим
+    // текст таких спейсеров ДО фильтрации стилей → ячейка пустеет и удаляется.
+    const dirty =
+      '<table><tbody>' +
+      '<tr><td colspan="4" style="font-size: 0; line-height: 0; color: #FFFFFF; padding-top: 12px;">.</td></tr>' +
+      '<tr><td>Cable Baseus</td></tr>' +
+      '</tbody></table>'
+    const out = sanitizeMessengerHtml(dirty)
+    expect(out).not.toContain('>.<')
+    expect(out).toContain('Cable Baseus')
+  })
+
+  it('снимает атрибут height у ячейки-кнопки письма (пустой бокс при незагрузке)', () => {
+    // AliExpress/магазины держат кнопки-баннеры ячейкой `<td height="50">` с
+    // `<img height="50">` внутри. Атрибут height резервировал пустой бокс, когда
+    // картинка не грузилась. Снимаем height → бокс сжимается по контенту.
+    const dirty =
+      '<table><tbody><tr>' +
+      '<td height="50" style="height:50px;font-size:0px"><a href="#"><img height="50" src="https://x/y.png" style="height:50px"></a></td>' +
+      '</tr></tbody></table>'
+    const out = sanitizeMessengerHtml(dirty)
+    expect(out).not.toMatch(/height=/i)
+  })
+
+  it('не трогает реальный текст в блоке без font-size:0', () => {
+    const dirty = '<div style="color: #333">Обычный . текст</div>'
+    const out = sanitizeMessengerHtml(dirty)
+    expect(out).toContain('Обычный . текст')
+  })
+
   it('вычищает preheader-распорки (soft hyphen / zero-width) и сворачивает блок', () => {
     // preheader письма: невидимые символы между пробелами создают высокий
     // пустой бокс + артефакт «-» (soft hyphen). После чистки блок пуст.

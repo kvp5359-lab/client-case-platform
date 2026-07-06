@@ -233,6 +233,43 @@ function stripInvisibleChars(root: Element): void {
   }
 }
 
+/**
+ * Спейсер-ячейки писем. Маркетинговые письма (AliExpress и др.) держат вертикаль
+ * невидимыми ячейками-распорками: `<td style="font-size:0;line-height:0;
+ * color:#FFF">.</td>` — точка, спрятанная нулевым размером шрифта и белым
+ * цветом. Наш `restrictInlineStyles` срезает `font-size`/`color` (их нет в белом
+ * списке) → точка всплывает обычным размером, а ячейка перестаёт быть «пустой»
+ * (в ней есть «.») и не сворачивается. Поэтому ДО фильтрации стилей чистим
+ * прямой текст у элементов с `font-size:0` — они невидимы по замыслу письма.
+ * Чистим только прямые текст-узлы (не потомков с собственным размером шрифта),
+ * чтобы не задеть реальный контент внутри font-size:0-обёртки.
+ */
+function stripZeroFontSpacers(root: Element): void {
+  root.querySelectorAll('[style]').forEach((el) => {
+    const style = (el.getAttribute('style') ?? '').toLowerCase()
+    if (!/font-size\s*:\s*0(px|em|rem|%)?\s*(;|$)/.test(style)) return
+    el.childNodes.forEach((node) => {
+      if (node.nodeType === 3) node.textContent = ''
+    })
+  })
+}
+
+/**
+ * Снимает презентационный атрибут `height` у элементов письма. Маркетинговые
+ * письма держат вертикаль (кнопки-баннеры, распорки) ячейками `<td height="50">`
+ * и картинками `<img height="136">`. Inline `height:…px` мы срезаем в
+ * restrictInlineStyles, но HTML-АТРИБУТ `height` остаётся и резервирует пустой
+ * бокс своей высоты, когда картинка не загрузилась (внешние картинки писем
+ * часто режутся) — а ячейка не считается «пустой» (внутри есть `<img>`), поэтому
+ * collapseEmptyLines её не сворачивает. Убираем `height` → элемент сжимается по
+ * контенту (0 у незагруженной картинки, см. также CSS `.messenger-content img
+ * { height: auto }`). Ширину НЕ трогаем: вертикальных гэпов она не создаёт, а у
+ * таблиц данных держит выравнивание колонок.
+ */
+function stripFixedHeights(root: Element): void {
+  root.querySelectorAll('[height]').forEach((el) => el.removeAttribute('height'))
+}
+
 function collapseEmptyLines(html: string): string {
   if (typeof document === 'undefined') return collapseEmptyLinesRegex(html)
 
@@ -240,6 +277,8 @@ function collapseEmptyLines(html: string): string {
   root.innerHTML = html
 
   stripInvisibleChars(root)
+  stripZeroFontSpacers(root)
+  stripFixedHeights(root)
   restrictInlineStyles(root)
 
   const BLOCK_TAGS = new Set(['DIV', 'P', 'BLOCKQUOTE', 'OL', 'UL', 'LI'])

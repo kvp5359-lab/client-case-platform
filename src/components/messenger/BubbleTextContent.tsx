@@ -88,6 +88,34 @@ export function BubbleTextContent({
     return () => node.removeEventListener('contextmenu', handler, true)
   }, [message.content])
 
+  // Скрываем изображения письма, которые не загрузились. Внешние картинки писем
+  // (AliExpress, магазины и т.п.) часто недоступны/режутся браузером — на их
+  // месте остаётся пустой бокс размером с картинку (у `<img alt="">` битая
+  // картинка рисуется как чистый пустой прямоугольник). Определить «не
+  // загрузилась» можно только в рантайме: `complete && naturalWidth === 0` для
+  // уже завершившихся, иначе слушаем событие `error`. На этапе чистки HTML этого
+  // не знаем, поэтому чистим тут, а не в sanitizeMessengerHtml.
+  useEffect(() => {
+    const node = contentContainerRef.current
+    if (!node) return
+    const imgs = Array.from(node.querySelectorAll('img'))
+    if (imgs.length === 0) return
+    const hide = (img: HTMLImageElement) => {
+      img.style.display = 'none'
+    }
+    const cleanups: Array<() => void> = []
+    for (const img of imgs) {
+      if (img.complete) {
+        if (img.naturalWidth === 0) hide(img)
+      } else {
+        const onError = () => hide(img)
+        img.addEventListener('error', onError, { once: true })
+        cleanups.push(() => img.removeEventListener('error', onError))
+      }
+    }
+    return () => cleanups.forEach((c) => c())
+  }, [message.content])
+
   return (
     <div>
       <div className="flex items-start gap-1">
