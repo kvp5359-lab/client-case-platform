@@ -15,7 +15,9 @@
 
 ## Открытые
 
-_Нет открытых багов._
+| ID | Severity | Область | Название | Замечен |
+|---|---|---|---|---|
+| [2026-07-06-project-load-fail-after-create](open/2026-07-06-project-load-fail-after-create.md) | low | ProjectContext, create-project, race | «Не удалось загрузить проект» сразу после создания (разовая гонка, Sentry) | 2026-07-06 |
 
 ## Решённые
 
