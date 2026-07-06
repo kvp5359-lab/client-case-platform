@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from 'react'
-import { Mail, Phone, Send, FolderInput, MessagesSquare, X, Search, Pencil, Check, Settings2 } from 'lucide-react'
+import { Mail, Phone, Send, FolderInput, MessagesSquare, X, Search, Pencil, Check, Settings2, Eye } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -11,12 +11,16 @@ import {
 import {
   useContactParticipant,
   useContactThreads,
+  useDirectChatThreads,
   useMergeParticipants,
   useRenameParticipant,
 } from '@/hooks/useContactCard'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { useParticipantsMutations } from '@/hooks/permissions/useParticipantsMutations'
+import { useWorkspacePermissions } from '@/hooks/permissions'
 import { EditParticipantDialog } from '@/components/participants/EditParticipantDialog'
+import { StartImpersonationDialog } from '@/components/impersonation/StartImpersonationDialog'
+import { openThreadById } from '@/components/tasks/openThreadById'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { Participant } from '@/types/entities'
@@ -48,12 +52,23 @@ export function ContactCardDialog({
 }: ContactCardDialogProps) {
   const { data: contact } = useContactParticipant(participantId)
   const { data: threads = [] } = useContactThreads(participantId)
+  const { data: directChats = [] } = useDirectChatThreads(contact)
   const [mergeMode, setMergeMode] = useState(false)
   // initialFullEdit разворачивает форму полного редактирования сразу при
   // открытии. Корректность держится на key={participantId} в
   // GlobalContactCardDialog — диалог пересоздаётся на каждый новый контакт.
   const [fullEditOpen, setFullEditOpen] = useState(initialFullEdit)
+  const [impersonateOpen, setImpersonateOpen] = useState(false)
   const { editMutation } = useParticipantsMutations(contact?.workspace_id)
+
+  // «Войти под пользователем» — только Владельцу, у участника есть привязанный
+  // аккаунт (user_id) и он не другой Владелец. Зеркалит условия из меню
+  // участника (ParticipantMenu → StartImpersonationDialog).
+  const { isOwner } = useWorkspacePermissions({ workspaceId: contact?.workspace_id })
+  const canImpersonate =
+    isOwner &&
+    !!contact?.user_id &&
+    !contact.workspace_roles?.includes('Владелец')
 
   const handleSaveFull = (data: Partial<Participant>) => {
     if (!contact) return
@@ -139,7 +154,10 @@ export function ContactCardDialog({
                       key={t.id}
                       type="button"
                       onClick={() => {
-                        onOpenThread?.(t.id)
+                        // В глобальном режиме (карточка из чата) onOpenThread не
+                        // прокинут — открываем тред напрямую по id.
+                        if (onOpenThread) onOpenThread(t.id)
+                        else void openThreadById(t.id)
                         onOpenChange(false)
                       }}
                       className="w-full text-left px-2 py-1.5 rounded hover:bg-gray-50 flex items-center gap-2"
@@ -165,7 +183,45 @@ export function ContactCardDialog({
               </div>
             </div>
 
+            {directChats.length > 0 && (
+              <div className="border-t pt-3">
+                <div className="text-xs font-medium text-gray-500 mb-2">
+                  Прямой чат в Telegram
+                </div>
+                <div className="space-y-1">
+                  {directChats.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        if (onOpenThread) onOpenThread(t.id)
+                        else void openThreadById(t.id)
+                        onOpenChange(false)
+                      }}
+                      className="w-full text-left px-2 py-1.5 rounded hover:bg-sky-50 flex items-center gap-2"
+                    >
+                      <Send className="h-3.5 w-3.5 text-sky-500 shrink-0" />
+                      <span className="text-sm flex-1 truncate">{t.name}</span>
+                      <span className="text-[10px] uppercase text-gray-400">
+                        {t.channel === 'telegram_business' ? 'Business' : 'MTProto'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="border-t pt-3 flex items-center gap-2 flex-wrap">
+              {canImpersonate && (
+                <button
+                  type="button"
+                  onClick={() => setImpersonateOpen(true)}
+                  className="text-xs px-2 py-1 rounded border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 inline-flex items-center gap-1.5"
+                >
+                  <Eye className="h-3 w-3" />
+                  Войти под пользователем
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setFullEditOpen(true)}
@@ -195,6 +251,15 @@ export function ContactCardDialog({
           onOpenChange={setFullEditOpen}
           onSave={handleSaveFull}
           isLoading={editMutation.isPending}
+        />
+      )}
+      {canImpersonate && contact?.user_id && (
+        <StartImpersonationDialog
+          open={impersonateOpen}
+          onOpenChange={setImpersonateOpen}
+          workspaceId={contact.workspace_id}
+          targetUserId={contact.user_id}
+          targetName={`${contact.name}${contact.last_name ? ' ' + contact.last_name : ''}`}
         />
       )}
     </Dialog>

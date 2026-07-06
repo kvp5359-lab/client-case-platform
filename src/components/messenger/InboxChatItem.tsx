@@ -295,21 +295,15 @@ export const InboxChatItem = memo(function InboxChatItem({
             50%. Так при длинном треде проект не исчезает, а при двух длинных
             делят строку ~50/50. */}
         <div className="flex items-center justify-between mb-0.5 gap-2">
-          {/* Тред + проект-плашка. Контейнер content-sized (ужимается лишь при
-              переполнении). Колонки: тред `minmax(0,1fr)` — забирает свободное
-              место (короткий проект → тред шире); проект `fit-content(50%)` —
-              своя ширина, но не больше 50%. Итог: коротко → жмутся влево без
-              пустоты; тред длинный, проект короткий → тред забирает слак; оба
-              длинные → проект упирается в 50%, тред получает остаток ≈ 50/50. */}
-          <span
-            className="grid items-center gap-1 min-w-0 text-sm"
-            style={{
-              gridTemplateColumns:
-                !hideProjectName && chat.project_name
-                  ? 'minmax(0, max-content) fit-content(50%)'
-                  : 'minmax(0, 1fr)',
-            }}
-          >
+          {/* Тред + проект-плашка. Flex. Приоритет отдан проекту: плашка
+              `shrink-0` — не ужимается ниже своего контента, но ограничена
+              `max-w-[50%]` + `truncate` (если проект длиннее половины — режется
+              многоточием, не длиннее). Ужимается/обрезается ТРЕД (`min-w-0`,
+              flex-shrink). Итог: короткий проект виден целиком, длинный тред
+              усыхает; оба длинных — проект до 50%, тред остаток. (grid +
+              fit-content(50%) не годился: у плашки `truncate`=nowrap → min-content
+              = вся строка, колонка не ужималась ниже неё → проект вылезал за край.) */}
+          <span className="flex items-center gap-1 min-w-0 text-sm">
             <span
               className={cn(
                 'truncate min-w-0',
@@ -319,7 +313,7 @@ export const InboxChatItem = memo(function InboxChatItem({
               {chat.thread_name}
             </span>
             {!hideProjectName && chat.project_name && (
-              <span className="truncate min-w-0 justify-self-start rounded bg-[#eceef1] px-1.5 py-0 text-[12px] leading-[18px] font-medium text-gray-700">
+              <span className="truncate shrink-0 max-w-[50%] rounded bg-[#eceef1] px-1.5 py-0 text-[12px] leading-[18px] font-medium text-gray-700">
                 {chat.project_name}
               </span>
             )}

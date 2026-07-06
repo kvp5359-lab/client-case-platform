@@ -444,6 +444,17 @@ export function MessageList({
     return items
   }, [messages, auditEvents, suppressUnread, isLastReadAtLoaded, currentUserId, lastReadAtMs])
 
+  // Дата элемента ленты (сообщение / событие / группа событий) — для разделителя
+  // даты. Разделитель считается по ВСЕЙ ленте, а не только по сообщениям, иначе
+  // тред из одних событий (напр. только «создал(а)», без сообщений) остаётся без
+  // даты — видно лишь время.
+  const timelineItemDate = (it: TimelineItem): string =>
+    it.kind === 'message'
+      ? it.msg.created_at
+      : it.kind === 'event'
+        ? it.event.created_at
+        : it.events[0].created_at
+
   if (isLoading) {
     return (
       <div className="flex-1 p-4 space-y-4">
@@ -535,6 +546,14 @@ export function MessageList({
         )}
 
         {timeline.map((item, _ti) => {
+          // Разделитель даты — по ВСЕЙ ленте: рисуем перед первым элементом
+          // каждого нового дня (сообщение ИЛИ событие). Так одиночное «создал(а)»
+          // без сообщений тоже получает заголовок даты («Сегодня» / «3 июля 2026»).
+          const prevItem = _ti > 0 ? timeline[_ti - 1] : null
+          const itemDate = timelineItemDate(item)
+          const showDay = !prevItem || !isSameDay(timelineItemDate(prevItem), itemDate)
+          const daySep = showDay ? <DateSeparator date={itemDate} /> : null
+
           if (item.kind === 'event') {
             // Если last_read_at отсутствует — тред никогда не открывался, все чужие события непрочитанные.
             // Пока lastReadAt ещё грузится (isLastReadAtLoaded=false) — не подсвечиваем, чтобы не мигало.
@@ -545,32 +564,35 @@ export function MessageList({
               item.event.user_id !== currentUserId &&
               (lastReadAtMs === null || Date.parse(item.event.created_at) > lastReadAtMs)
             return (
-              <ServiceMessage
-                key={`event-${item.event.id}`}
-                event={item.event}
-                isUnread={eventIsUnread}
-                unreadTone={unreadTone}
-              />
+              <Fragment key={`event-${item.event.id}`}>
+                {daySep}
+                <ServiceMessage
+                  event={item.event}
+                  isUnread={eventIsUnread}
+                  unreadTone={unreadTone}
+                />
+              </Fragment>
             )
           }
 
           if (item.kind === 'event-group') {
             // Группа из 1-2 событий — не сворачиваем (нет смысла), рисуем поштучно.
             // 3+ — одна свёрнутая строка-сводка с разворотом (все события прочитаны).
-            if (item.events.length < 3) {
-              return (
-                <Fragment key={`event-${item.events[0].id}`}>
-                  {item.events.map((ev) => (
+            return (
+              <Fragment key={`event-${item.events[0].id}`}>
+                {daySep}
+                {item.events.length < 3 ? (
+                  item.events.map((ev) => (
                     <ServiceMessage key={`event-${ev.id}`} event={ev} isUnread={false} />
-                  ))}
-                </Fragment>
-              )
-            }
-            return <ServiceEventGroup key={`event-group-${item.events[0].id}`} events={item.events} />
+                  ))
+                ) : (
+                  <ServiceEventGroup events={item.events} />
+                )}
+              </Fragment>
+            )
           }
 
           const { msg, idx: i } = item
-          const showDate = i === 0 || !isSameDay(messages[i - 1].created_at, msg.created_at)
           // Оптимистичная заглушка (id `optimistic-…`) — это сообщение, которое мы
           // сами только что отправили, поэтому оно всегда «наше». Без этого
           // правила pending-письмо рисуется слева: его sender_participant_id ещё
@@ -604,7 +626,7 @@ export function MessageList({
 
           return (
             <div key={msg.id}>
-              {showDate && <DateSeparator date={msg.created_at} />}
+              {daySep}
               {showUnreadSeparator && <UnreadSeparator tone={unreadTone} />}
               {msg.source === 'telegram_service' || msg.source === 'bot_event' ? (
                 <ServiceMessage

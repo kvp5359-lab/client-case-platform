@@ -111,6 +111,82 @@ export function useContactThreads(participantId: string | null | undefined) {
   })
 }
 
+export type DirectChatThread = {
+  id: string
+  name: string
+  channel: 'telegram_mtproto' | 'telegram_business'
+}
+
+/**
+ * Прямой личный чат (MTProto / Telegram Business) с этим участником.
+ *
+ * Связка идёт по ЧИСЛОВОМУ telegram_user_id (его хранят треды —
+ * `mtproto_client_tg_user_id` / `business_client_tg_user_id`). Если у карточки
+ * числовой id пуст — best-effort по нику: ищем участника-контакта с таким же
+ * `telegram_username` (он несёт числовой id) и матчим тред по нему. Username на
+ * самих тредах не хранится, поэтому без числового id матч возможен только когда
+ * ник совпал с сохранённым ником контакта. RLS сам ограничит выдачу личных
+ * диалогов (владелец + менеджеры) — «мой чат» подтянется, чужой приватный нет.
+ */
+export function useDirectChatThreads(contact: ContactParticipant | null | undefined) {
+  return useQuery<DirectChatThread[]>({
+    queryKey: [
+      'contact-direct-chat',
+      contact?.id ?? '',
+      contact?.telegram_user_id ?? null,
+      contact?.telegram_username ?? null,
+    ],
+    queryFn: async () => {
+      if (!contact) return []
+      const ids = new Set<number>()
+      if (contact.telegram_user_id) {
+        // Приоритет — числовой id.
+        ids.add(contact.telegram_user_id)
+      } else if (contact.telegram_username) {
+        // Fallback — ник: резолвим в числовой id через участника-контакта.
+        const uname = contact.telegram_username.replace(/^@/, '')
+        const { data, error } = await supabase
+          .from('participants')
+          .select('telegram_user_id')
+          .eq('workspace_id', contact.workspace_id)
+          .ilike('telegram_username', uname)
+          .not('telegram_user_id', 'is', null)
+        if (error) throw error
+        for (const r of (data ?? []) as { telegram_user_id: number | null }[]) {
+          if (r.telegram_user_id) ids.add(r.telegram_user_id)
+        }
+      }
+      if (ids.size === 0) return []
+      const list = [...ids].join(',')
+      const { data: threads, error } = await supabase
+        .from('project_threads')
+        .select('id, name, mtproto_client_tg_user_id, business_client_tg_user_id')
+        .eq('workspace_id', contact.workspace_id)
+        .eq('is_deleted', false)
+        .or(`mtproto_client_tg_user_id.in.(${list}),business_client_tg_user_id.in.(${list})`)
+        .order('updated_at', { ascending: false })
+      if (error) throw error
+      return (threads ?? []).map((t) => {
+        const tt = t as unknown as {
+          id: string
+          name: string
+          mtproto_client_tg_user_id: number | null
+          business_client_tg_user_id: number | null
+        }
+        return {
+          id: tt.id,
+          name: tt.name,
+          channel: tt.business_client_tg_user_id
+            ? ('telegram_business' as const)
+            : ('telegram_mtproto' as const),
+        }
+      })
+    },
+    enabled: !!contact && (!!contact?.telegram_user_id || !!contact?.telegram_username),
+    staleTime: STALE_TIME.SHORT,
+  })
+}
+
 export function useRenameParticipant() {
   const qc = useQueryClient()
   return useMutation({
