@@ -8,7 +8,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeadersFor } from "../_shared/edge.ts";
 import { safeJsonParse, findMissingField } from "../_shared/validation.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
-import { resolveBotToken, resolveTokenByIntegrationId } from "../_shared/telegramBotToken.ts";
+import { resolveBotToken } from "../_shared/telegramBotToken.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -115,128 +115,96 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Telegram setMessageReaction: реакция всегда «именная» — привязана к
-    // конкретному боту, который её отправил. В групповом чате с несколькими
-    // ботами это означает: реакция от реагирующего сотрудника должна идти
-    // через ЕГО личный бот, иначе все участники видят «Иванов отреагировал»,
-    // хотя на самом деле — Петров.
-    //
-    // Приоритет цепочки кандидатов:
-    //   1) Личный бот реагирующего пользователя (telegram_employee_bot c
-    //      owner_user_id = user.id) — корректная атрибуция реакции в TG.
-    //   2) Бот, отправивший оригинал (telegram_bot_integration_id).
-    //   3) Бот-секретарь группы (resolveBotToken по chat_id).
-    //
-    // Шлём по очереди. Если бот не в группе ("chat not found" / "member not
-    // found"), пробуем следующего. На других ошибках TG (например невалидный
-    // emoji) — прерываем цепочку, fallback не поможет. Это закрывает кейс
-    // владельца с личным ботом, но в группе только секретарь — раньше функция
-    // выбирала первого кандидата и 502'ила, теперь fallback'нёт на секретаря.
-    const candidates: { token: string; label: string }[] = [];
-
+    // Telegram setMessageReaction: реакция всегда «именная» — привязана к боту,
+    // который её отправил. В multi-bot группе у каждого бота свой message_id для
+    // одного сообщения. Поэтому ставим реакцию ботом РЕАГИРУЮЩЕГО и его СОБСТВЕННЫМ
+    // message_id этого сообщения (из карты telegram_bot_msg_ids, копится при приёме
+    // в _shared/syncTelegramIncomingMessage.ts). Если своего id нет — реакцию в TG
+    // не ставим (чужим ботом = ложная подпись), она остаётся в сервисе.
+    // Бот реагирующего: его личный employee-бот (owner_user_id = user.id), иначе
+    // бот-секретарь группы (если он есть). Реакцию ставим ИМЕННО им — тогда в TG
+    // корректная подпись.
     const { data: empBots } = await supabaseAdmin
       .from("workspace_integrations")
-      .select("id, is_active, config, secrets")
+      .select("id, config, secrets")
       .eq("workspace_id", convWorkspaceId)
       .eq("type", "telegram_employee_bot")
       .eq("is_active", true);
     const myBot = (empBots ?? []).find(
       (r) => (r.config as { owner_user_id?: string } | null)?.owner_user_id === user.id,
     );
-    const myBotToken = (myBot?.secrets as { token?: string } | null)?.token ?? null;
-    if (myBotToken) candidates.push({ token: myBotToken, label: "personal_bot" });
+    let reactorToken: string | null =
+      (myBot?.secrets as { token?: string } | null)?.token ?? null;
+    // Ключ бота в карте telegram_bot_msg_ids: employee — его integration id
+    // (= workspace_integrations.id, тот же, что asPersonalBot.integrationId при
+    // приёме), секретарь — литерал 'secretary'.
+    let reactorBotKey: string | null = myBot ? (myBot.id as string) : null;
+    if (!reactorToken) {
+      try {
+        const sec = await resolveBotToken(supabaseAdmin, body.chat_id);
+        reactorToken = sec.token;
+        reactorBotKey = "secretary";
+      } catch (e) {
+        console.warn(
+          "[telegram-set-reaction] no reactor bot (no personal, no secretary):",
+          e instanceof Error ? e.message : String(e),
+        );
+      }
+    }
 
+    // message_id ЭТОГО сообщения ДЛЯ бота реагирующего (в multi-bot группе у
+    // каждого бота свой message_id — берём из карты telegram_bot_msg_ids).
     const { data: msgRow } = await supabaseAdmin
       .from("project_messages")
-      .select("telegram_bot_integration_id")
+      .select("telegram_bot_msg_ids")
       .eq("telegram_chat_id", body.chat_id)
       .eq("telegram_message_id", body.message_id)
       .maybeSingle();
-    const savedIntegrationId =
-      (msgRow?.telegram_bot_integration_id as string | null) ?? null;
-    if (savedIntegrationId) {
-      const fromIntegration = await resolveTokenByIntegrationId(
-        supabaseAdmin,
-        savedIntegrationId,
-      );
-      if (fromIntegration && !candidates.some((c) => c.token === fromIntegration.token)) {
-        candidates.push({ token: fromIntegration.token, label: "original_sender_bot" });
-      }
-    }
+    const botMsgIds =
+      (msgRow?.telegram_bot_msg_ids as Record<string, number> | null) ?? {};
+    const msgIdForReactor =
+      reactorBotKey != null ? botMsgIds[reactorBotKey] : undefined;
 
-    // Секретарь — ОПЦИОНАЛЬНЫЙ кандидат. resolveBotToken БРОСАЕТ
-    // ERR_NO_SECRETARY_IN_GROUP, если секретаря в группе нет. Раньше это роняло
-    // всю функцию в 500 ДО цикла — и реакция не ставилась, даже когда личный
-    // бот реагирующего (админ в группе) мог её поставить. Ловим и пропускаем.
-    try {
-      const fallback = await resolveBotToken(supabaseAdmin, body.chat_id);
-      if (!candidates.some((c) => c.token === fallback.token)) {
-        candidates.push({ token: fallback.token, label: "secretary_bot" });
-      }
-    } catch (e) {
-      console.warn(
-        "[telegram-set-reaction] secretary fallback unavailable:",
-        e instanceof Error ? e.message : String(e),
+    if (!reactorToken || msgIdForReactor == null) {
+      // Нет способа поставить реакцию ПРАВИЛЬНЫМ ботом: у бота реагирующего нет
+      // своего message_id для этого сообщения (старое сообщение до карты, либо
+      // его бот не видел сообщение). НЕ ставим чужим ботом (ложная подпись) —
+      // реакция остаётся в сервисе. 200, чтобы фронт не показывал ошибку.
+      console.warn("[telegram-set-reaction] no own message_id for reactor bot", {
+        reactor_bot_key: reactorBotKey,
+        has_token: !!reactorToken,
+      });
+      return new Response(
+        JSON.stringify({ ok: false, skipped: true, reason: "no_own_message_id" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // «Бот не в группе» — единственный ретраябельный класс ошибок.
-    // Остальные ошибки (REACTION_INVALID, MESSAGE_NOT_MODIFIED и т.п.)
-    // вернутся одинаково на любом боте — нет смысла спамить TG API.
-    // Ретраябельно ТОЛЬКО «бот не в группе» — тогда пробуем следующего кандидата.
-    // ВАЖНО: «message not found»/«message_id_invalid» НЕ ретраить. В multi-bot
-    // группе у каждого бота свой message_id: если бот реагирующего не нашёл
-    // сообщение — это НЕ повод ставить реакцию ЧУЖИМ ботом (иначе в TG реакция
-    // отобразится «от коллеги», хотя реагировал другой человек). Лучше реакцию
-    // в TG не поставить (она останется в сервисе), чем подписать неверно.
-    const isNotMemberError = (description: string | undefined): boolean => {
-      if (!description) return false;
-      return /chat not found|not a member|member not found|user_not_participant/i.test(
-        description,
+    const tgResponse = await fetch(
+      `https://api.telegram.org/bot${reactorToken}/setMessageReaction`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: body.chat_id,
+          message_id: msgIdForReactor,
+          reaction: body.reaction ?? [],
+        }),
+      },
+    );
+    const tgData = await tgResponse.json();
+    if (tgData.ok) {
+      return new Response(
+        JSON.stringify({ ok: true }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
-    };
-
-    let lastDescription: string | undefined;
-    let lastErrorCode: number | undefined;
-    for (const { token, label } of candidates) {
-      const tgResponse = await fetch(
-        `https://api.telegram.org/bot${token}/setMessageReaction`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: body.chat_id,
-            message_id: body.message_id,
-            reaction: body.reaction ?? [],
-          }),
-        },
-      );
-      const tgData = await tgResponse.json();
-      if (tgData.ok) {
-        return new Response(
-          JSON.stringify({ ok: true, sent_by: label }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      lastDescription = tgData.description;
-      lastErrorCode = tgData.error_code;
-      console.warn(
-        `Telegram setMessageReaction failed via ${label}:`,
-        JSON.stringify({ error_code: tgData.error_code, description: tgData.description }),
-      );
-      if (!isNotMemberError(tgData.description)) {
-        // Не «бот не в группе» — fallback не поможет.
-        break;
-      }
     }
-
-    console.error("Telegram setMessageReaction exhausted candidates:", {
-      candidates_tried: candidates.length,
-      last_error_code: lastErrorCode,
-      last_description: lastDescription,
+    console.error("Telegram setMessageReaction failed:", {
+      error_code: tgData.error_code,
+      description: tgData.description,
     });
     return new Response(
-      JSON.stringify({ error: "Telegram API error", description: lastDescription }),
+      JSON.stringify({ error: "Telegram API error", description: tgData.description }),
       { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {

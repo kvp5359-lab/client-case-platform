@@ -205,6 +205,29 @@ Deno.serve(async (req: Request) => {
       employeeBot ?? (await resolveBotToken(serviceClient, body.telegram_chat_id));
     const TELEGRAM_BOT_TOKEN = resolved.token;
     const isEmployeeBot = resolved.senderType === "employee_bot";
+
+    // Reply в multi-bot группе: message_id цели ДЛЯ ОТПРАВЛЯЮЩЕГО бота (у каждого
+    // бота свой) — из карты telegram_bot_msg_ids цели. Нет своего id (сообщение
+    // до карты) → сохранённый id (может не совпасть → fallback «висячего» reply у
+    // текста; у вложений reply просто не прикрепится). Общий хелпер для текста и
+    // вложений.
+    const resolveReplyIdForSendingBot = async (
+      storedReplyMsgId: number,
+      chatId: number,
+    ): Promise<number> => {
+      const sendingBotKey = isEmployeeBot ? (resolved.integrationId ?? null) : "secretary";
+      if (!sendingBotKey) return storedReplyMsgId;
+      const { data: targetRow } = await serviceClient
+        .from("project_messages")
+        .select("telegram_bot_msg_ids")
+        .eq("telegram_chat_id", chatId)
+        .eq("telegram_message_id", storedReplyMsgId)
+        .maybeSingle();
+      const botMsgIds =
+        (targetRow?.telegram_bot_msg_ids as Record<string, number> | null) ?? {};
+      return botMsgIds[sendingBotKey] ?? storedReplyMsgId;
+    };
+
     trace("bot.resolved", {
       sender_type: resolved.senderType,
       bot_version: resolved.botVersion,
@@ -353,8 +376,13 @@ Deno.serve(async (req: Request) => {
         text: opts.formattedText,
         parse_mode: "HTML",
       };
-      if (body.reply_to_telegram_message_id) {
-        payload.reply_parameters = { message_id: body.reply_to_telegram_message_id };
+      // Reply: message_id цели для отправляющего бота (см. resolveReplyIdForSendingBot).
+      if (body.reply_to_telegram_message_id != null) {
+        const replyId = await resolveReplyIdForSendingBot(
+          body.reply_to_telegram_message_id,
+          activeChatId,
+        );
+        payload.reply_parameters = { message_id: replyId };
       }
 
       let tgResponse = await fetch(
@@ -641,6 +669,15 @@ Deno.serve(async (req: Request) => {
     if (body.attachments_only && body.message_id) {
       const hasText = body.content && body.content !== "\ud83d\udcce";
       let attachmentsOk = false;
+      // Reply \u0441 \u0444\u0430\u0439\u043b\u043e\u043c: message_id \u0446\u0435\u043b\u0438 \u0434\u043b\u044f \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u044f\u044e\u0449\u0435\u0433\u043e \u0431\u043e\u0442\u0430 (\u0442\u0430 \u0436\u0435 \u043a\u0430\u0440\u0442\u0430, \u0447\u0442\u043e
+      // \u0443 \u0442\u0435\u043a\u0441\u0442\u0430). \u041d\u0435\u0442 \u0441\u0432\u043e\u0435\u0433\u043e id \u2192 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0439 (reply \u043f\u0440\u043e\u0441\u0442\u043e \u043d\u0435 \u043f\u0440\u0438\u043a\u0440\u0435\u043f\u0438\u0442\u0441\u044f).
+      const attachmentReplyTo =
+        body.reply_to_telegram_message_id != null
+          ? await resolveReplyIdForSendingBot(
+              body.reply_to_telegram_message_id,
+              body.telegram_chat_id,
+            )
+          : undefined;
 
       if (hasText) {
         const contentForTelegram = isHtmlContent(body.content)
@@ -673,7 +710,7 @@ Deno.serve(async (req: Request) => {
             supabaseClient: serviceClient,
             primaryToken: TELEGRAM_BOT_TOKEN,
             caption: formattedCaption,
-            replyTo: body.reply_to_telegram_message_id ?? undefined,
+            replyTo: attachmentReplyTo,
             isEmployeeBot,
             senderName: body.sender_name,
           });
@@ -748,7 +785,7 @@ Deno.serve(async (req: Request) => {
           chatId: body.telegram_chat_id,
           supabaseClient: serviceClient,
           primaryToken: TELEGRAM_BOT_TOKEN,
-          replyTo: body.reply_to_telegram_message_id ?? undefined,
+          replyTo: attachmentReplyTo,
           isEmployeeBot,
           senderName: body.sender_name,
         });

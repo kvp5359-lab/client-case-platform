@@ -153,6 +153,24 @@ export async function syncTelegramIncomingMessage(
     : null;
   const fileUniqueId = extractFileUniqueId(message);
 
+  // (C) Ключ бота текущего webhook'а и запись ЕГО message_id в карту
+  // project_messages.telegram_bot_msg_ids. В multi-bot группе у каждого бота свой
+  // message_id — карта нужна, чтобы реакция ставилась ботом реагирующего с ВЕРНЫМ
+  // для него id. Fire-and-forget: не роняем приём сообщения.
+  const botKey = asPersonalBot?.integrationId ?? "secretary";
+  const recordBotMsgId = async (rowId: string | null | undefined) => {
+    if (!rowId || telegramMessageId == null) return;
+    try {
+      await service.rpc("record_telegram_bot_msg_id", {
+        p_row_id: rowId,
+        p_bot_key: botKey,
+        p_msg_id: telegramMessageId,
+      });
+    } catch (_) {
+      /* fire-and-forget */
+    }
+  };
+
   // Lookup исходника реплая в counter того же бота.
   let replyToDbId: string | null = null;
   if (replyToTgMsgId) {
@@ -231,7 +249,9 @@ export async function syncTelegramIncomingMessage(
     .single();
 
   if (insertResult.data) {
-    return { rowId: insertResult.data.id as string, outcome: "inserted" };
+    const insertedId = insertResult.data.id as string;
+    await recordBotMsgId(insertedId);
+    return { rowId: insertedId, outcome: "inserted" };
   }
 
   // 23505 = unique violation на одном из дедуп-индексов: msg_id-based
@@ -316,12 +336,29 @@ export async function syncTelegramIncomingMessage(
       : upd.is("telegram_file_unique_id", null);
     await upd;
 
+    await recordBotMsgId(existing?.id);
     return { rowId: existing?.id ?? null, outcome: "enriched" };
   }
 
   if (isUniqueViolation) {
     // Секретарь увидел сообщение, которое личный бот уже вставил с
     // integration_id. Просто пропускаем — данные у личного бота полнее.
+    // (C) Но СВОЙ message_id этого бота всё равно записываем в карту — иначе
+    // реакция от него не сможет найти сообщение. Находим строку тем же
+    // content-lookup'ом, что и enrich выше.
+    if (telegramUserId != null && messageDateISO) {
+      let dupLookup = service
+        .from("project_messages")
+        .select("id")
+        .eq("telegram_chat_id", chatId)
+        .eq("telegram_sender_user_id", telegramUserId)
+        .eq("telegram_message_date", messageDateISO);
+      dupLookup = fileUniqueId
+        ? dupLookup.eq("telegram_file_unique_id", fileUniqueId)
+        : dupLookup.is("telegram_file_unique_id", null);
+      const { data: dupRow } = await dupLookup.limit(1).maybeSingle();
+      await recordBotMsgId(dupRow?.id);
+    }
     return { rowId: null, outcome: "duplicate" };
   }
 
