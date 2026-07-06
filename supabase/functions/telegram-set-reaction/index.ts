@@ -164,14 +164,31 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const fallback = await resolveBotToken(supabaseAdmin, body.chat_id);
-    if (!candidates.some((c) => c.token === fallback.token)) {
-      candidates.push({ token: fallback.token, label: "secretary_bot" });
+    // Секретарь — ОПЦИОНАЛЬНЫЙ кандидат. resolveBotToken БРОСАЕТ
+    // ERR_NO_SECRETARY_IN_GROUP, если секретаря в группе нет. Раньше это роняло
+    // всю функцию в 500 ДО цикла — и реакция не ставилась, даже когда личный
+    // бот реагирующего (админ в группе) мог её поставить. Ловим и пропускаем.
+    try {
+      const fallback = await resolveBotToken(supabaseAdmin, body.chat_id);
+      if (!candidates.some((c) => c.token === fallback.token)) {
+        candidates.push({ token: fallback.token, label: "secretary_bot" });
+      }
+    } catch (e) {
+      console.warn(
+        "[telegram-set-reaction] secretary fallback unavailable:",
+        e instanceof Error ? e.message : String(e),
+      );
     }
 
     // «Бот не в группе» — единственный ретраябельный класс ошибок.
     // Остальные ошибки (REACTION_INVALID, MESSAGE_NOT_MODIFIED и т.п.)
     // вернутся одинаково на любом боте — нет смысла спамить TG API.
+    // Ретраябельно ТОЛЬКО «бот не в группе» — тогда пробуем следующего кандидата.
+    // ВАЖНО: «message not found»/«message_id_invalid» НЕ ретраить. В multi-bot
+    // группе у каждого бота свой message_id: если бот реагирующего не нашёл
+    // сообщение — это НЕ повод ставить реакцию ЧУЖИМ ботом (иначе в TG реакция
+    // отобразится «от коллеги», хотя реагировал другой человек). Лучше реакцию
+    // в TG не поставить (она останется в сервисе), чем подписать неверно.
     const isNotMemberError = (description: string | undefined): boolean => {
       if (!description) return false;
       return /chat not found|not a member|member not found|user_not_participant/i.test(
