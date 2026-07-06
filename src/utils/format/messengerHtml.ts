@@ -270,6 +270,28 @@ function stripFixedHeights(root: Element): void {
   root.querySelectorAll('[height]').forEach((el) => el.removeAttribute('height'))
 }
 
+/**
+ * Убирает ведущие/замыкающие `<br>` ВНУТРИ блоков. Санитайзер вырезает `<img>`
+ * (нет в ALLOWED_TAGS), и блоки-контейнеры картинок пустеют → collapseEmptyLines
+ * превращает их в `<br>`. Получаются «висячие» пустые строки в начале ячеек
+ * (реально измерено: `<td><div><br><br><a>Товар…</a>`) — 2-3 `<br>` дают
+ * вертикальный гэп 40-67px перед каждым товаром/блоком. Такие `<br>` на КРАЯХ
+ * блока — мусор: осмысленный пустой абзац стоит МЕЖДУ блоками, а не первым/
+ * последним ребёнком. Чистим только края (leading/trailing), `<br>` между двумя
+ * строками текста не трогаем. Замер на живом письме AliExpress: высота бабла
+ * 1034px → 827px, число `<br>` 12 → 2.
+ */
+function trimInnerEdgeBreaks(root: Element): void {
+  const isBlankEdge = (n: ChildNode | null): boolean =>
+    !!n &&
+    ((n.nodeType === 1 && (n as Element).tagName === 'BR') ||
+      (n.nodeType === 3 && (n.textContent ?? '').replace(/\s/g, '') === ''))
+  root.querySelectorAll('div, td, th, p, li, blockquote, a').forEach((el) => {
+    while (el.firstChild && isBlankEdge(el.firstChild)) el.firstChild.remove()
+    while (el.lastChild && isBlankEdge(el.lastChild)) el.lastChild.remove()
+  })
+}
+
 function collapseEmptyLines(html: string): string {
   if (typeof document === 'undefined') return collapseEmptyLinesRegex(html)
 
@@ -316,6 +338,7 @@ function collapseEmptyLines(html: string): string {
   Array.from(root.children).forEach(walk)
 
   unwrapLayoutTables(root)
+  trimInnerEdgeBreaks(root)
 
   let result = root.innerHTML
   // 3+ подряд <br> → 2 (= одна пустая строка).

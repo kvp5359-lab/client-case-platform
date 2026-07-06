@@ -147,6 +147,24 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
     expect(out).not.toMatch(/height=/i)
   })
 
+  it('убирает ведущие <br> внутри блока (остаток от вырезанной картинки)', () => {
+    // Санитайзер режет <img>, блок-контейнер картинки пустеет → collapseEmptyLines
+    // делает из него <br>. Такие «висячие» <br> в начале ячейки давали гэп перед
+    // товаром (реально измерено на письме AliExpress). Чистим края блока.
+    const dirty = '<table><tbody><tr><td><div><br><br><a href="#">Товар</a></div></td></tr></tbody></table>'
+    const out = sanitizeMessengerHtml(dirty)
+    expect(out).toContain('Товар')
+    expect(out).not.toMatch(/<div>\s*<br/i)
+  })
+
+  it('сохраняет <br> между строками текста (не край блока)', () => {
+    const dirty = '<div>Первая<br><br>Вторая</div>'
+    const out = sanitizeMessengerHtml(dirty)
+    expect(out).toContain('Первая')
+    expect(out).toContain('Вторая')
+    expect(out).toMatch(/<br/i)
+  })
+
   it('не трогает реальный текст в блоке без font-size:0', () => {
     const dirty = '<div style="color: #333">Обычный . текст</div>'
     const out = sanitizeMessengerHtml(dirty)
