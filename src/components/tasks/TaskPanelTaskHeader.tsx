@@ -16,6 +16,7 @@ import { ChatIconColorGrid } from '@/components/messenger/ChatSettingsIconColorP
 import { ChatSettingsProjectSelector } from '@/components/messenger/ChatSettingsProjectSelector'
 import { useWorkspaceProjects } from '@/components/messenger/hooks/useChatSettingsData'
 import { useMoveThreadToProject } from '@/hooks/messenger/useMoveThreadToProject'
+import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { useThreadSubscription } from '@/hooks/messenger/useThreadSubscription'
 import { toast } from 'sonner'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -109,18 +110,36 @@ export function TaskPanelTaskHeader({
 
   const handleSelectProject = (projectId: string | null) => {
     if (!projectId || projectId === attachedProjectId) return
+    // Standalone-тред (без проекта И без контакта) держит верхнюю строку панели
+    // в React-state Shell'а — инвалидацией кэша её не сбросить. После привязки
+    // переоткрываем тред в project-scope: openThreadTab сам выйдет из standalone
+    // и перестроит шапку. Contact-scope перестраивается через инвалидацию
+    // threadScope в useMoveThreadToProject — там переоткрытие не нужно.
+    const wasStandalone = !task.project_id && !task.contact_participant_id
     setAttachedProjectId(projectId)
     moveThreadToProject.mutate(
       { threadId: task.id, projectId },
       {
         onSuccess: () => {
+          if (wasStandalone) {
+            globalOpenThread({ ...task, project_id: projectId, contact_participant_id: null })
+          }
           const name = workspaceProjects.find((p) => p.id === projectId)?.name ?? 'проект'
           toast.success(`Чат добавлен в «${name}»`, {
             action: {
               label: 'Отменить',
               onClick: () => {
                 setAttachedProjectId(null)
-                moveThreadToProject.mutate({ threadId: task.id, projectId: null })
+                moveThreadToProject.mutate(
+                  { threadId: task.id, projectId: null },
+                  {
+                    onSuccess: () => {
+                      if (wasStandalone) {
+                        globalOpenThread({ ...task, project_id: null, contact_participant_id: null })
+                      }
+                    },
+                  },
+                )
               },
             },
           })

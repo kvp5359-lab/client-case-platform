@@ -17,7 +17,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import { invalidateAfterThreadMove, chatSettingsKeys } from '@/hooks/queryKeys'
+import { invalidateAfterThreadMove, chatSettingsKeys, threadScopeKeys } from '@/hooks/queryKeys'
 
 export function useMoveThreadToProject(workspaceId: string | undefined) {
   const queryClient = useQueryClient()
@@ -36,11 +36,15 @@ export function useMoveThreadToProject(workspaceId: string | undefined) {
       })
       if (error) throw error
     },
-    onSuccess: () => {
+    onSuccess: (_data, { threadId }) => {
       invalidateAfterThreadMove(queryClient, workspaceId)
       // Список проектов в селекторе (picker) — чтобы свежесозданный через «+»
       // проект сразу появился в списке и его имя показалось в чипе.
       queryClient.invalidateQueries({ queryKey: chatSettingsKeys.workspaceProjects(workspaceId) })
+      // Scope-кэш треда (project_id/contact_participant_id) держит верхнюю строку
+      // боковой панели (карточка контакта vs проекта). Без сброса строка не
+      // перестраивается до F5 — рендерер продолжает видеть старый project_id=null.
+      queryClient.invalidateQueries({ queryKey: threadScopeKeys.byThread(threadId) })
     },
     onError: () => toast.error('Не удалось сменить проект'),
   })
