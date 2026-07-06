@@ -302,8 +302,11 @@ export const InboxChatItem = memo(function InboxChatItem({
               flex-shrink). Итог: короткий проект виден целиком, длинный тред
               усыхает; оба длинных — проект до 50%, тред остаток. (grid +
               fit-content(50%) не годился: у плашки `truncate`=nowrap → min-content
-              = вся строка, колонка не ужималась ниже неё → проект вылезал за край.) */}
-          <span className="flex items-center gap-1 min-w-0 text-sm">
+              = вся строка, колонка не ужималась ниже неё → проект вылезал за край.)
+              `flex-1` обязателен: без него span content-sized, и `max-w-[50%]`
+              плашки считался бы от «тред+проект», а не от доступной ширины ряда —
+              короткий проект резался бы даже при свободном месте справа. */}
+          <span className="flex flex-1 items-center gap-1 min-w-0 text-sm">
             <span
               className={cn(
                 'truncate min-w-0',
