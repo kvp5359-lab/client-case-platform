@@ -196,6 +196,36 @@ export function useDriveFoldersWizard(params: {
         return
       }
 
+      // Сохраняем созданные папки Drive обратно в сервис: id целевой папки —
+      // в набор документов, id подпапок — в соответствующие папки (по имени).
+      // Так ссылки не теряются и попадают в шеринг клиенту. Ошибки сохранения
+      // не мешают успеху (папки на Drive уже созданы).
+      const targetId = data?.targetFolderId as string | undefined
+      const created = (data?.created ?? []) as Array<{ name: string; id: string }>
+      if (kit && targetId) {
+        try {
+          const saves: Promise<unknown>[] = [
+            Promise.resolve(
+              supabase.from('document_kits').update({ drive_folder_id: targetId }).eq('id', kit.id),
+            ),
+          ]
+          const idByName = new Map(created.map((c) => [c.name, c.id]))
+          for (const it of subItems) {
+            const folderDriveId = idByName.get(it.name.trim())
+            if (folderDriveId) {
+              saves.push(
+                Promise.resolve(
+                  supabase.from('folders').update({ drive_folder_id: folderDriveId }).eq('id', it.id),
+                ),
+              )
+            }
+          }
+          await Promise.allSettled(saves)
+        } catch (saveErr) {
+          logger.error('Failed to save drive folder links:', saveErr)
+        }
+      }
+
       toast.success(`Создано ${data?.created?.length || 0} подпапок`)
       onOpenChange(false)
     } catch (error) {

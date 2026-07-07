@@ -5,13 +5,15 @@
  */
 
 import { useState, useMemo, useCallback, useEffect, useRef, useLayoutEffect } from 'react'
-import { Zap, FolderOpen, Search, FileText, Pencil } from 'lucide-react'
+import { Zap, FolderOpen, Search, FileText, Pencil, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useQuickRepliesForPicker, useUpdateQuickReply } from '@/hooks/quick-replies/useQuickReplies'
 import { QuickReplyFormDialog } from '@/components/directories/QuickReplyFormDialog'
+import { ShareLinksTab } from '@/components/share/ShareLinksTab'
 import { projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { QuickReply } from '@/hooks/quick-replies/useQuickReplies'
 import type { Editor } from '@tiptap/react'
@@ -34,6 +36,9 @@ export function QuickReplyPicker({
 }: QuickReplyPickerProps) {
   const [open, setOpenState] = useState(false)
   const [search, setSearchState] = useState('')
+  const [activeTab, setActiveTab] = useState<
+    'replies' | 'articles' | 'descriptions' | 'external'
+  >('replies')
   const [activeIndex, setActiveIndex] = useState(-1)
   const openRef = useRef(false)
   const [editingReply, setEditingReply] = useState<QuickReply | null>(null)
@@ -153,6 +158,12 @@ export function QuickReplyPicker({
   )
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setOpen(false)
+      return
+    }
+    // Навигация стрелками/Enter — только для вкладки быстрых ответов.
+    if (activeTab !== 'replies') return
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setActiveIndex((i) => Math.min(i + 1, flatItems.length - 1))
@@ -178,6 +189,8 @@ export function QuickReplyPicker({
 
   const hasReplies = replies.length > 0
   const hasResults = grouped.noGroup.length > 0 || grouped.groups.length > 0
+  // Вкладка «Ссылки» имеет смысл только для тредов с проектом.
+  const showTabs = !!projectId
 
   return (
     <>
@@ -194,7 +207,7 @@ export function QuickReplyPicker({
         </Button>
 
         {open && (
-          <div className="absolute bottom-full left-0 mb-2 w-[440px] max-w-[calc(100vw-56px)] md:max-w-[calc(100vw-32px)] rounded-md border bg-popover text-popover-foreground shadow-[0_4px_24px_-2px_rgba(0,0,0,0.18),0_0_0_1px_rgba(0,0,0,0.07)] overflow-hidden z-50">
+          <div className="absolute bottom-full left-0 mb-2 w-[520px] max-w-[calc(100vw-56px)] md:max-w-[calc(100vw-32px)] rounded-md border bg-popover text-popover-foreground shadow-[0_4px_24px_-2px_rgba(0,0,0,0.18),0_0_0_1px_rgba(0,0,0,0.07)] overflow-hidden z-50">
             {/* Поиск */}
             <div className="p-2 border-b">
               <div className="relative">
@@ -204,13 +217,77 @@ export function QuickReplyPicker({
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={handleSearchKeyDown}
-                  placeholder="Поиск шаблонов..."
-                  className="h-8 pl-7 text-sm"
+                  placeholder="Поиск..."
+                  className="h-8 pl-7 pr-7 text-sm"
                 />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearch('')
+                      searchInputRef.current?.focus()
+                    }}
+                    aria-label="Очистить"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
             </div>
 
-            <div className="max-h-[450px] overflow-y-auto overflow-x-hidden">
+            {/* Вкладки — единый поиск сверху остаётся на месте, скачков нет. */}
+            {showTabs && (
+              <div className="flex items-center gap-1 border-b px-2 py-1">
+                {(
+                  [
+                    ['replies', 'Быстрые ответы'],
+                    ['articles', 'Статьи'],
+                    ['descriptions', 'Описания документов'],
+                    ['external', 'Внешние'],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setActiveTab(id)}
+                    className={cn(
+                      'rounded px-2.5 py-1 text-xs font-medium transition-colors',
+                      activeTab === id
+                        ? 'bg-accent text-foreground'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {showTabs && (
+              <div className={cn(activeTab === 'replies' && 'hidden')}>
+                <ShareLinksTab
+                  editor={editor}
+                  projectId={projectId}
+                  search={search}
+                  enabled={open}
+                  view={activeTab === 'replies' ? 'articles' : activeTab}
+                  onInserted={() => {
+                    setOpen(false)
+                    setSearch('')
+                  }}
+                />
+              </div>
+            )}
+
+            <div
+              className={cn(
+                'overflow-y-auto overflow-x-hidden',
+                // С вкладками — фиксированная высота (не скачет при смене вкладки/фильтре).
+                showTabs ? 'h-[400px]' : 'max-h-[450px]',
+                showTabs && activeTab !== 'replies' && 'hidden',
+              )}
+            >
               {isLoading ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">Загрузка...</div>
               ) : !hasReplies ? (

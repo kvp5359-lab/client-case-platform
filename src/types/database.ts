@@ -1783,6 +1783,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          drive_folder_id: string | null
           export_folder_id: string | null
           id: string
           name: string
@@ -1796,6 +1797,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          drive_folder_id?: string | null
           export_folder_id?: string | null
           id?: string
           name: string
@@ -1809,6 +1811,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          drive_folder_id?: string | null
           export_folder_id?: string | null
           id?: string
           name?: string
@@ -2932,6 +2935,7 @@ export type Database = {
           deadline: string | null
           description: string | null
           document_kit_id: string
+          drive_folder_id: string | null
           folder_template_id: string | null
           id: string
           kit_template_folder_id: string | null
@@ -2951,6 +2955,7 @@ export type Database = {
           deadline?: string | null
           description?: string | null
           document_kit_id: string
+          drive_folder_id?: string | null
           folder_template_id?: string | null
           id?: string
           kit_template_folder_id?: string | null
@@ -2970,6 +2975,7 @@ export type Database = {
           deadline?: string | null
           description?: string | null
           document_kit_id?: string
+          drive_folder_id?: string | null
           folder_template_id?: string | null
           id?: string
           kit_template_folder_id?: string | null
@@ -3840,6 +3846,53 @@ export type Database = {
           },
           {
             foreignKeyName: "knowledge_article_versions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_article_views: {
+        Row: {
+          created_at: string
+          created_by: string
+          filter_config: Json
+          id: string
+          name: string
+          owner_user_id: string | null
+          sort_order: number
+          updated_at: string
+          view_mode: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          filter_config?: Json
+          id?: string
+          name: string
+          owner_user_id?: string | null
+          sort_order?: number
+          updated_at?: string
+          view_mode?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          filter_config?: Json
+          id?: string
+          name?: string
+          owner_user_id?: string | null
+          sort_order?: number
+          updated_at?: string
+          view_mode?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_article_views_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -10403,6 +10456,25 @@ export type Database = {
           thread_type: string
           title: string
         }[]
+      }
+      ensure_article_share_link: {
+        Args: { p_article_id: string; p_project_id: string }
+        Returns: string
+      }
+      regenerate_article_share_link: {
+        Args: { p_article_id: string; p_project_id: string }
+        Returns: string
+      }
+      get_shared_article: {
+        Args: { p_token: string }
+        Returns: {
+          title: string
+          content: string
+        }[]
+      }
+      get_project_shareable_resources: {
+        Args: { p_project_id: string }
+        Returns: Json
       }
       get_short_id_by_uuid: {
         Args: { p_entity_type: string; p_uuid: string }

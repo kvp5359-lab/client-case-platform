@@ -104,6 +104,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Публичные ссылки на статьи (шеринг клиентам): /a/<token>.
+  // Работают на ЛЮБОМ host'е (поддомен / портал / custom / legacy), без
+  // авторизации и БЕЗ rewrite в /workspaces/<id> — токен глобально уникален,
+  // страница сама резолвит его через anon-RPC get_shared_article.
+  if (pathname === '/a' || pathname.startsWith('/a/')) {
+    return NextResponse.next()
+  }
+
   // ---- ROOT ----
   // clientcase.app → редирект на my.clientcase.app
   if (hostType.type === 'root') {
