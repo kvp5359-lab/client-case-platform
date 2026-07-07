@@ -31,7 +31,7 @@ import {
   removeInboxAggregateFromCache,
   type InboxInfiniteData,
 } from '@/hooks/messenger/useInbox'
-import type { InboxThreadAggregate } from '@/services/api/inboxService'
+import type { InboxThreadAggregate, InboxThreadEntry } from '@/services/api/inboxService'
 
 /**
  * Тред переведён в финальный статус → погасить его unread-показатели в обоих
@@ -70,34 +70,62 @@ export function markThreadReadInInboxCaches(
   )
 }
 
-/** Снимок обоих инбокс-кэшей для отката optimistic-удаления. */
+/** Снимок инбокс-кэшей для отката optimistic-удаления. */
 type InboxSnapshot = {
   threads: InboxInfiniteData | undefined
   aggregates: InboxThreadAggregate[] | undefined
+  segments: Array<[readonly unknown[], InboxThreadEntry[] | undefined]>
 }
 
 /**
- * Тред удалён (is_deleted) → убрать строку из обоих инбокс-кэшей сразу.
+ * Тред удалён (is_deleted) → убрать строку из инбокс-кэшей сразу.
  * Возвращает функцию отката: вызвать в onError мутации, чтобы восстановить
  * снимок при сбое запроса.
+ *
+ * Помимо базового `threads` (вкладка «Все») и агрегатов — чистим и сегментные
+ * кэши вкладок «Непрочитанные / Нужно ответить / Ждём клиента / Заглушённые»
+ * (плоские массивы, отдельные RPC). Без этого при удалении с сегментной вкладки
+ * строка висела до следующего refetch (realtime debounce ~1.5с) — та самая
+ * «задержка в пару секунд», хотя вкладка «Все» пропадала мгновенно.
  */
 export function removeThreadFromInboxCaches(
   queryClient: QueryClient,
   workspaceId: string,
   threadId: string,
 ): () => void {
+  const segmentKeys: readonly (readonly unknown[])[] = [
+    inboxKeys.unread(workspaceId),
+    inboxKeys.needsReply(workspaceId),
+    inboxKeys.awaitingReply(workspaceId),
+    inboxKeys.muted(workspaceId),
+  ]
+
   const snapshot: InboxSnapshot = {
     threads: queryClient.getQueryData<InboxInfiniteData>(inboxKeys.threads(workspaceId)),
     aggregates: queryClient.getQueryData<InboxThreadAggregate[]>(
       inboxKeys.aggregates(workspaceId),
     ),
+    segments: segmentKeys.map(
+      (k) => [k, queryClient.getQueryData<InboxThreadEntry[]>(k)] as [
+        readonly unknown[],
+        InboxThreadEntry[] | undefined,
+      ],
+    ),
   }
 
   removeInboxThreadFromCache(queryClient, workspaceId, threadId)
   removeInboxAggregateFromCache(queryClient, workspaceId, threadId)
+  for (const key of segmentKeys) {
+    queryClient.setQueryData<InboxThreadEntry[]>(key, (old) =>
+      old ? old.filter((t) => t.thread_id !== threadId) : old,
+    )
+  }
 
   return () => {
     queryClient.setQueryData(inboxKeys.threads(workspaceId), snapshot.threads)
     queryClient.setQueryData(inboxKeys.aggregates(workspaceId), snapshot.aggregates)
+    for (const [key, value] of snapshot.segments) {
+      queryClient.setQueryData(key, value)
+    }
   }
 }

@@ -13,12 +13,14 @@
  */
 
 import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProjectThreadById, useProjectThreads } from '@/hooks/messenger/useProjectThreads'
 import { getCurrentProjectParticipant } from '@/services/api/messenger/messengerService'
 import { messengerKeys } from '@/hooks/queryKeys'
+import { removeThreadFromInboxCaches } from '@/hooks/shared/threadCacheSync'
 import type { TaskItem, PanelStackItem } from './types'
 
 type Params = {
@@ -150,7 +152,21 @@ export function useTaskPanelInternal({
   // Полный ProjectThread: используем и для диалога настроек, и для live-синхронизации
   // шапки панели с кешем (статус, дедлайн, имя, иконка, цвет могут меняться
   // из списка задач или через realtime — снимок в стеке это не ловит).
-  const { data: fullThread } = useProjectThreadById(task?.id, !!task)
+  const { data: fullThread, isLoading: threadLoading, isFetched: threadFetched } =
+    useProjectThreadById(task?.id, !!task)
+
+  // Тред удалён / нет доступа: запрос отработал и вернул пусто (RPC фильтрует
+  // is_deleted=false + RLS). Не крутим спиннер бесконечно — показываем подсказку,
+  // убираем застрявшую строку из инбокс-кэшей (в т.ч. из спящей вкладки, где
+  // realtime-удаление не долетело) и закрываем панель.
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (!task || !threadFetched || threadLoading) return
+    if (fullThread !== null) return
+    toast.error('Тред удалён или недоступен')
+    if (task.workspace_id) removeThreadFromInboxCaches(queryClient, task.workspace_id, task.id)
+    onClose()
+  }, [task, threadFetched, threadLoading, fullThread, queryClient, onClose])
 
   const liveTask: TaskItem | null = task
     ? fullThread && fullThread.id === task.id

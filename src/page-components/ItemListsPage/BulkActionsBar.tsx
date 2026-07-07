@@ -35,6 +35,7 @@ import { workspaceThreadKeys, accessibleProjectKeys, invalidateMessengerCaches }
 import { assigneeKeys } from '@/components/tasks/useTaskAssignees'
 import { useMarkThreadReadIfFinal } from '@/hooks/messenger/useMarkThreadReadIfFinal'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
+import { useAuth } from '@/contexts/AuthContext'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import type { PickerParticipant } from '@/components/participants/ParticipantsPicker'
@@ -73,6 +74,7 @@ export function BulkActionsBar({
   projectStatuses = [],
 }: BulkActionsBarProps) {
   const qc = useQueryClient()
+  const { user } = useAuth()
   const markReadIfFinal = useMarkThreadReadIfFinal()
   const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
   const [pending, setPending] = useState(false)
@@ -237,7 +239,11 @@ export function BulkActionsBar({
       // Динамическое имя таблицы ломает вывод типа .update() (supabase-js даёт
       // never на union-таблице). Ветвим на литералы — обе таблицы имеют
       // is_deleted/deleted_at, проверка колонок сохраняется.
-      const patch = { is_deleted: true, deleted_at: new Date().toISOString() }
+      const patch = {
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+        deleted_by: user?.id ?? null,
+      }
       const { error } = entityType === 'thread'
         ? await supabase.from('project_threads').update(patch).in('id', ids)
         : await supabase.from('projects').update(patch).in('id', ids)
