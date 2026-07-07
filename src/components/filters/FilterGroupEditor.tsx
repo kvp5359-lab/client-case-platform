@@ -23,12 +23,12 @@ import { InnerFilterGroupEditor } from './InnerFilterGroupEditor'
 import { FilterDragOverlay } from './FilterDragOverlay'
 import { FilterRootGroupContext } from './FilterRootContext'
 import { useFilterDnD } from './useFilterDnD'
-import type { FilterGroup } from '@/lib/filters/types'
+import type { FilterGroup, FilterEntityType } from '@/lib/filters/types'
 
 type FilterGroupEditorProps = {
   group: FilterGroup
   onChange: (group: FilterGroup) => void
-  entityType: 'thread' | 'project'
+  entityType: FilterEntityType
   depth: number
   onRemove?: () => void
   workspaceId: string
@@ -76,7 +76,7 @@ function FilterGroupEditorRoot({
 }: {
   group: FilterGroup
   onChange: (group: FilterGroup) => void
-  entityType: 'thread' | 'project'
+  entityType: FilterEntityType
   workspaceId: string
 }) {
   const instanceId = useId()

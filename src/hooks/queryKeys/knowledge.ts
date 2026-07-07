@@ -29,6 +29,8 @@ export const knowledgeBaseKeys = {
   tags: (workspaceId: string) => ['knowledge-base', 'tags', workspaceId] as const,
   // Q&A
   qa: (workspaceId: string) => ['knowledge-base', 'qa', workspaceId] as const,
+  // Сохранённые представления (наборы фильтров)
+  views: (workspaceId: string) => ['knowledge-base', 'views', workspaceId] as const,
 }
 
 /**

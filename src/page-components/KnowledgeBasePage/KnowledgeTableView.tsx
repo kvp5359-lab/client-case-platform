@@ -5,11 +5,18 @@
  * Фильтрация: Notion-style (кнопка «Фильтр» → строка чипов → попап с чекбоксами).
  */
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
-import { Dialog, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   NativeTable,
   NativeTableHead,
@@ -19,9 +26,9 @@ import {
   NativeTableHeadCell,
 } from '@/components/ui/native-table'
 import { StatusDropdown } from '@/components/common/status-dropdown'
-import { Plus, Search, FolderPlus, Tags, BookOpen, Trash2, Filter } from 'lucide-react'
+import { Plus, Search, FolderPlus, Tags, BookOpen, Trash2, Filter, ArrowUp, ArrowDown, ArrowUpDown, MoreHorizontal } from 'lucide-react'
 import { formatSmartDate } from '@/utils/format/dateFormat'
-import { NotionFilterRow } from './components/NotionFilterRow'
+import { KnowledgeFilterBar } from './components/KnowledgeFilterBar'
 import { InlineGroupsCell, InlineTagsCell } from './components/InlineCells'
 import { ManageGroupsDialog } from './components/ManageGroupsDialog'
 import { ManageTagsDialog } from './components/ManageTagsDialog'
@@ -46,12 +53,48 @@ const COLUMNS = [
 
 export function KnowledgeTableView({ page }: { page: PageReturn }) {
   const isLoading = page.articlesQuery.isLoading || page.groupsQuery.isLoading
-  const [showFilters, setShowFilters] = useState(false)
 
   const hasActiveFilters =
     page.filterTagIds.length > 0 ||
     page.filterGroupIds.length > 0 ||
-    page.filterStatusIds.length > 0
+    page.filterStatusIds.length > 0 ||
+    page.advancedFilter.rules.length > 0
+
+  // Сортировка таблицы (локальная): null = порядок по умолчанию (title из запроса).
+  const [sortField, setSortField] = useState<'title' | 'created_at' | 'updated_at' | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [groupsOpen, setGroupsOpen] = useState(false)
+  const [tagsOpen, setTagsOpen] = useState(false)
+
+  const toggleSort = (field: 'title' | 'created_at' | 'updated_at') => {
+    if (sortField === field) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+  }
+
+  const sortedArticles = useMemo(() => {
+    const arr = page.filteredArticles
+    if (!sortField) return arr
+    const mult = sortDir === 'asc' ? 1 : -1
+    return [...arr].sort((a, b) => {
+      const cmp =
+        sortField === 'title'
+          ? a.title.localeCompare(b.title)
+          : new Date(a[sortField]).getTime() - new Date(b[sortField]).getTime()
+      return cmp * mult
+    })
+  }, [page.filteredArticles, sortField, sortDir])
+
+  const SORT_FIELDS: { key: 'title' | 'created_at' | 'updated_at'; label: string }[] = [
+    { key: 'title', label: 'Название' },
+    { key: 'created_at', label: 'Дата создания' },
+    { key: 'updated_at', label: 'Дата изменения' },
+  ]
+  const activeSortLabel =
+    (sortField && SORT_FIELDS.find((f) => f.key === sortField)?.label) || 'Сортировка'
 
   return (
     <div className="space-y-3">
@@ -68,31 +111,65 @@ export function KnowledgeTableView({ page }: { page: PageReturn }) {
         </div>
         <Button
           size="sm"
-          variant={showFilters || hasActiveFilters ? 'secondary' : 'outline'}
+          variant={page.showFilters || hasActiveFilters ? 'secondary' : 'outline'}
           className="w-8 h-8 p-0"
-          onClick={() => setShowFilters((v) => !v)}
+          onClick={() => page.setShowFilters((v) => !v)}
           title="Фильтр"
         >
           <Filter className="w-4 h-4" />
         </Button>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button size="sm" variant="outline">
-              <FolderPlus className="w-4 h-4 mr-1.5" />
-              Группы
+        {/* Селектор сортировки */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant={sortField ? 'secondary' : 'outline'}>
+              <ArrowUpDown className="w-4 h-4 mr-1.5" />
+              {activeSortLabel}
+              {sortField &&
+                (sortDir === 'asc' ? (
+                  <ArrowUp className="w-3 h-3 ml-1" />
+                ) : (
+                  <ArrowDown className="w-3 h-3 ml-1" />
+                ))}
             </Button>
-          </DialogTrigger>
-          <ManageGroupsDialog page={page} />
-        </Dialog>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button size="sm" variant="outline">
-              <Tags className="w-4 h-4 mr-1.5" />
-              Теги
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {SORT_FIELDS.map((f) => (
+              <DropdownMenuItem key={f.key} onClick={() => toggleSort(f.key)} className="gap-4">
+                <span className="flex-1">{f.label}</span>
+                {sortField === f.key &&
+                  (sortDir === 'asc' ? (
+                    <ArrowUp className="w-3.5 h-3.5" />
+                  ) : (
+                    <ArrowDown className="w-3.5 h-3.5" />
+                  ))}
+              </DropdownMenuItem>
+            ))}
+            {sortField && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setSortField(null)}>Без сортировки</DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {/* Управление справочниками — свёрнуто в меню «⋯» */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline" className="w-8 h-8 p-0" title="Ещё">
+              <MoreHorizontal className="w-4 h-4" />
             </Button>
-          </DialogTrigger>
-          <ManageTagsDialog page={page} />
-        </Dialog>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => setGroupsOpen(true)} className="gap-2">
+              <FolderPlus className="w-4 h-4" />
+              Управление группами
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setTagsOpen(true)} className="gap-2">
+              <Tags className="w-4 h-4" />
+              Управление тегами
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           size="sm"
           onClick={() => page.createArticleMutation.mutate(undefined)}
@@ -103,39 +180,16 @@ export function KnowledgeTableView({ page }: { page: PageReturn }) {
         </Button>
       </div>
 
-      {/* Notion-style filter bar */}
-      {showFilters && (
-        <NotionFilterRow
-          status={{
-            selectedIds: page.filterStatusIds,
-            onToggle: (id) =>
-              page.setFilterStatusIds((prev: string[]) =>
-                prev.includes(id) ? prev.filter((x: string) => x !== id) : [...prev, id],
-              ),
-            onClear: () => page.setFilterStatusIds([]),
-            options: page.statuses.map((s) => ({ id: s.id, name: s.name, color: s.color })),
-          }}
-          group={{
-            selectedIds: page.filterGroupIds,
-            onToggle: (id) =>
-              page.setFilterGroupIds((prev: string[]) =>
-                prev.includes(id) ? prev.filter((x: string) => x !== id) : [...prev, id],
-              ),
-            onClear: () => page.setFilterGroupIds([]),
-            options: page.groups.map((g) => ({ id: g.id, name: g.name })),
-            treeGroups: page.groups,
-          }}
-          tag={{
-            selectedIds: page.filterTagIds,
-            onToggle: (id) =>
-              page.setFilterTagIds((prev: string[]) =>
-                prev.includes(id) ? prev.filter((x: string) => x !== id) : [...prev, id],
-              ),
-            onClear: () => page.setFilterTagIds([]),
-            options: page.tags.map((t) => ({ id: t.id, name: t.name, color: t.color })),
-          }}
-        />
-      )}
+      {/* Диалоги управления справочниками (открываются из «⋯») */}
+      <Dialog open={groupsOpen} onOpenChange={setGroupsOpen}>
+        <ManageGroupsDialog page={page} />
+      </Dialog>
+      <Dialog open={tagsOpen} onOpenChange={setTagsOpen}>
+        <ManageTagsDialog page={page} />
+      </Dialog>
+
+      {/* Строка фильтров (чипы статус/группа/тег + доп. поля + «+ Фильтр») */}
+      {page.showFilters && <KnowledgeFilterBar page={page} />}
 
       {/* Table */}
       {isLoading ? (
@@ -167,13 +221,13 @@ export function KnowledgeTableView({ page }: { page: PageReturn }) {
               </NativeTableRow>
             </NativeTableHead>
             <NativeTableBody>
-              {page.filteredArticles.map((article) => (
+              {sortedArticles.map((article) => (
                 <NativeTableRow
                   key={article.id}
                   className="cursor-pointer group"
                   onClick={() =>
                     page.navigate(
-                      `/workspaces/${page.workspaceId}/settings/knowledge-base/${article.id}`,
+                      `/workspaces/${page.workspaceId}/knowledge-base/${article.id}`,
                     )
                   }
                 >
@@ -240,7 +294,7 @@ export function KnowledgeTableView({ page }: { page: PageReturn }) {
                 </NativeTableRow>
               ))}
 
-              {page.filteredArticles.length === 0 && (
+              {sortedArticles.length === 0 && (
                 <NativeTableRow>
                   <NativeTableCell
                     colSpan={7}

@@ -182,6 +182,27 @@ export function GroupTreeFilterContent({
 
       {/* Tree */}
       <div className="max-h-[300px] overflow-y-auto overscroll-contain p-1">
+        {/* «Без группы» — статьи, не привязанные ни к одной группе */}
+        {!searchLower && (
+          <div
+            className={cn(
+              'flex items-center gap-1.5 w-full px-2 py-1.5 text-sm rounded-sm cursor-pointer hover:bg-accent',
+              selectedIds.includes('__none__') && 'bg-accent',
+            )}
+            style={{ paddingLeft: '8px' }}
+            onClick={() => onToggle('__none__')}
+          >
+            <span className="w-3.5 flex-shrink-0" />
+            <Checkbox
+              checked={selectedIds.includes('__none__')}
+              onCheckedChange={() => onToggle('__none__')}
+              onClick={(e) => e.stopPropagation()}
+              className="flex-shrink-0"
+            />
+            <FolderOpen className="h-3.5 w-3.5 flex-shrink-0 opacity-40" />
+            <span className="truncate text-muted-foreground">Без группы</span>
+          </div>
+        )}
         {rootGroups.map((group) => renderGroup(group, 0))}
 
         {hasNoResults && (

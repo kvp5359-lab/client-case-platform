@@ -19,12 +19,12 @@ import { getApplicableThreadTypes, filterFieldsByThreadTypes } from '@/lib/filte
 import { useFilterRootGroup } from './FilterRootContext'
 import { type RulePath, pathToId } from '@/lib/filters/filterPathUtils'
 import { DraggableFilterRule, type DropIndicatorState } from './DraggableFilterRule'
-import type { FilterGroup, FilterRule, FilterCondition } from '@/lib/filters/types'
+import type { FilterGroup, FilterRule, FilterCondition, FilterEntityType } from '@/lib/filters/types'
 
 type InnerFilterGroupEditorProps = {
   group: FilterGroup
   onChange: (group: FilterGroup) => void
-  entityType: 'thread' | 'project'
+  entityType: FilterEntityType
   depth: number
   onRemove?: () => void
   workspaceId: string

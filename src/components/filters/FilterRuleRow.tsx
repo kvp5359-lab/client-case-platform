@@ -15,18 +15,18 @@ import { getFieldsForEntity, getFieldDef } from '@/lib/filters/filterDefinitions
 import { FilterValueSelect } from './FilterValueSelect'
 import { FilterDateValue } from './FilterDateValue'
 import { OPERATOR_LABELS } from '@/lib/filters/types'
-import type { FilterCondition } from '@/lib/filters/types'
+import type { FilterCondition, FilterEntityType } from '@/lib/filters/types'
 import { getApplicableThreadTypes, filterFieldsByThreadTypes } from '@/lib/filters/fieldVisibility'
 import { useFilterRootGroup } from './FilterRootContext'
 
 /** Поля, для которых доступен мультиселект с опциями */
-const SELECTABLE_FIELDS = new Set(['status_id', 'status', 'type', 'channel', 'template_id', 'created_by', 'assignees', 'participants'])
+const SELECTABLE_FIELDS = new Set(['status_id', 'status', 'type', 'channel', 'template_id', 'created_by', 'assignees', 'participants', 'groups', 'tags', 'access_mode', 'indexing_status'])
 
 type FilterRuleRowProps = {
   condition: FilterCondition
   onChange: (updated: FilterCondition) => void
   onRemove: () => void
-  entityType: 'thread' | 'project'
+  entityType: FilterEntityType
   workspaceId: string
 }
 

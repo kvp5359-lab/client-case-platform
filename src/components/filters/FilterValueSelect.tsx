@@ -17,7 +17,12 @@ import {
 import { useTaskStatuses, useAllProjectStatuses } from '@/hooks/useStatuses'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { useProjectTemplatesQuery } from '@/hooks/useProjectTemplates'
-import type { FilterFieldDef } from '@/lib/filters/types'
+import {
+  useKnowledgeGroupsList,
+  useKnowledgeTagsList,
+  useKnowledgeArticleStatusesList,
+} from '@/hooks/knowledge/useKnowledgeTaxonomy'
+import type { FilterFieldDef, FilterEntityType } from '@/lib/filters/types'
 
 export type FilterValueOption = {
   id: string
@@ -30,7 +35,7 @@ type FilterValueSelectProps = {
   value: unknown
   onChange: (value: string[]) => void
   workspaceId: string
-  entityType: 'thread' | 'project'
+  entityType: FilterEntityType
 }
 
 /** Хук: возвращает опции в зависимости от поля фильтра.
@@ -39,25 +44,55 @@ type FilterValueSelectProps = {
 function useFieldOptions(
   fieldKey: string,
   workspaceId: string,
-  entityType: 'thread' | 'project',
+  entityType: FilterEntityType,
 ): FilterValueOption[] {
+  const isKnowledge = entityType === 'knowledge_article'
   const { data: taskStatuses } = useTaskStatuses(workspaceId)
   const { data: projectStatuses } = useAllProjectStatuses(workspaceId)
   const { data: participants } = useWorkspaceParticipants(workspaceId)
   const { data: projectTemplates } = useProjectTemplatesQuery(workspaceId)
+  // База знаний — грузим лениво, только когда фильтруем статьи.
+  const { data: kbStatuses } = useKnowledgeArticleStatusesList(workspaceId, isKnowledge)
+  const { data: kbGroups } = useKnowledgeGroupsList(workspaceId, isKnowledge)
+  const { data: kbTags } = useKnowledgeTagsList(workspaceId, isKnowledge)
 
   return useMemo(() => {
     switch (fieldKey) {
       case 'status_id': {
-        const source = entityType === 'project' ? (projectStatuses ?? []) : (taskStatuses ?? [])
+        const source = isKnowledge
+          ? (kbStatuses ?? [])
+          : entityType === 'project'
+            ? (projectStatuses ?? [])
+            : (taskStatuses ?? [])
         const items: FilterValueOption[] = source.map((s) => ({
           id: s.id,
           label: s.name,
-          color: s.color,
+          color: s.color ?? undefined,
         }))
         items.push({ id: '__no_status__', label: 'Без статуса', color: '#9CA3AF' })
         return items
       }
+
+      // ── База знаний ──────────────────────────────────────
+      case 'groups':
+        return (kbGroups ?? []).map((g) => ({ id: g.id, label: g.name, color: g.color ?? undefined }))
+
+      case 'tags':
+        return (kbTags ?? []).map((t) => ({ id: t.id, label: t.name, color: t.color ?? undefined }))
+
+      case 'access_mode':
+        return [
+          { id: 'read_only', label: 'Только чтение' },
+          { id: 'read_copy', label: 'Чтение и копирование' },
+        ]
+
+      case 'indexing_status':
+        return [
+          { id: 'pending', label: 'В очереди' },
+          { id: 'processing', label: 'Индексируется' },
+          { id: 'completed', label: 'Проиндексирована' },
+          { id: 'error', label: 'Ошибка' },
+        ]
 
       case 'type': {
         return [
@@ -120,7 +155,7 @@ function useFieldOptions(
       default:
         return []
     }
-  }, [fieldKey, entityType, taskStatuses, projectStatuses, participants, projectTemplates])
+  }, [fieldKey, entityType, isKnowledge, taskStatuses, projectStatuses, participants, projectTemplates, kbStatuses, kbGroups, kbTags])
 }
 
 /** Нормализует value в массив строк */

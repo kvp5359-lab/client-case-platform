@@ -19,7 +19,7 @@ import { reindexAllArticles } from '@/services/api/knowledge/knowledgeSearchServ
 import { toast } from 'sonner'
 import { GroupTreeItem, ArticleRow } from './components/GroupTreeItem'
 import { EditGroupDialog } from './components/EditGroupDialog'
-import { NotionFilterRow } from './components/NotionFilterRow'
+import { KnowledgeFilterBar } from './components/KnowledgeFilterBar'
 import { StatusDot } from './components/ArticleStatusIndicators'
 import { KnowledgeTreeToolbar } from './components/KnowledgeTreeToolbar'
 import { UngroupedDropZone } from './components/UngroupedDropZone'
@@ -32,7 +32,6 @@ type PageReturn = ReturnType<typeof useKnowledgeBasePage>
 
 export function KnowledgeTreeView({ page }: { page: PageReturn }) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
-  const [showFilters, setShowFilters] = useState(false)
   const [isReindexing, setIsReindexing] = useState(false)
   const layoutPanel = useLayoutTaskPanel()
   // Открытие статьи KB в боковой панели через knowledge-scope (вариант A).
@@ -92,7 +91,8 @@ export function KnowledgeTreeView({ page }: { page: PageReturn }) {
     !!page.searchQuery ||
     page.filterTagIds.length > 0 ||
     page.filterGroupIds.length > 0 ||
-    page.filterStatusIds.length > 0
+    page.filterStatusIds.length > 0 ||
+    page.advancedFilter.rules.length > 0
 
   /** Рекурсивно проверяет, есть ли в группе (или её потомках) хотя бы одна отфильтрованная статья */
   function groupHasMatches(groupId: string): boolean {
@@ -106,53 +106,23 @@ export function KnowledgeTreeView({ page }: { page: PageReturn }) {
   const hasActiveFilters =
     page.filterTagIds.length > 0 ||
     page.filterGroupIds.length > 0 ||
-    page.filterStatusIds.length > 0
+    page.filterStatusIds.length > 0 ||
+    page.advancedFilter.rules.length > 0
 
   return (
     <div className="space-y-4">
       {/* Toolbar */}
       <KnowledgeTreeToolbar
         page={page}
-        showFilters={showFilters}
-        onToggleFilters={() => setShowFilters((v) => !v)}
+        showFilters={page.showFilters}
+        onToggleFilters={() => page.setShowFilters((v) => !v)}
         hasActiveFilters={hasActiveFilters}
         isReindexing={isReindexing}
         onReindex={handleReindex}
       />
 
-      {/* Notion-style filter bar */}
-      {showFilters && (
-        <NotionFilterRow
-          status={{
-            selectedIds: page.filterStatusIds,
-            onToggle: (id) =>
-              page.setFilterStatusIds((prev: string[]) =>
-                prev.includes(id) ? prev.filter((x: string) => x !== id) : [...prev, id],
-              ),
-            onClear: () => page.setFilterStatusIds([]),
-            options: page.statuses.map((s) => ({ id: s.id, name: s.name, color: s.color })),
-          }}
-          group={{
-            selectedIds: page.filterGroupIds,
-            onToggle: (id) =>
-              page.setFilterGroupIds((prev: string[]) =>
-                prev.includes(id) ? prev.filter((x: string) => x !== id) : [...prev, id],
-              ),
-            onClear: () => page.setFilterGroupIds([]),
-            options: page.groups.map((g) => ({ id: g.id, name: g.name })),
-            treeGroups: page.groups,
-          }}
-          tag={{
-            selectedIds: page.filterTagIds,
-            onToggle: (id) =>
-              page.setFilterTagIds((prev: string[]) =>
-                prev.includes(id) ? prev.filter((x: string) => x !== id) : [...prev, id],
-              ),
-            onClear: () => page.setFilterTagIds([]),
-            options: page.tags.map((t) => ({ id: t.id, name: t.name, color: t.color })),
-          }}
-        />
-      )}
+      {/* Строка фильтров (чипы статус/группа/тег + доп. поля + «+ Фильтр») */}
+      {page.showFilters && <KnowledgeFilterBar page={page} />}
 
       {/* Tree */}
       {isLoading ? (

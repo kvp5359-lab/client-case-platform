@@ -9,7 +9,7 @@
  * на этапе сравнения (status_id у чата всегда null → не пройдёт equals).
  */
 
-import type { FilterFieldDef } from './types'
+import type { FilterFieldDef, FilterEntityType } from './types'
 
 export const THREAD_FILTER_FIELDS: FilterFieldDef[] = [
   {
@@ -183,12 +183,90 @@ export const PROJECT_FILTER_FIELDS: FilterFieldDef[] = [
   },
 ]
 
-export function getFieldsForEntity(entityType: 'thread' | 'project'): FilterFieldDef[] {
-  return entityType === 'thread' ? THREAD_FILTER_FIELDS : PROJECT_FILTER_FIELDS
+/**
+ * Поля фильтрации статей базы знаний. Группы и теги — junction (M:M через
+ * knowledge_article_groups / knowledge_article_tags), остальное — колонки
+ * самой статьи. `created_by` подписан как «Автор» (в БЗ это создатель статьи).
+ */
+export const KNOWLEDGE_ARTICLE_FILTER_FIELDS: FilterFieldDef[] = [
+  {
+    key: 'title',
+    label: 'Название',
+    type: 'text',
+    operators: ['contains', 'equals'],
+  },
+  {
+    key: 'status_id',
+    label: 'Статус',
+    type: 'uuid',
+    operators: ['equals', 'in', 'not_in', 'is_null'],
+  },
+  {
+    key: 'groups',
+    label: 'Группы',
+    type: 'junction',
+    operators: ['in', 'not_in', 'is_null', 'is_not_null'],
+    junctionTable: 'knowledge_article_groups',
+  },
+  {
+    key: 'tags',
+    label: 'Теги',
+    type: 'junction',
+    operators: ['in', 'not_in', 'is_null', 'is_not_null'],
+    junctionTable: 'knowledge_article_tags',
+  },
+  {
+    key: 'created_by',
+    label: 'Автор',
+    type: 'uuid',
+    operators: ['equals', 'in', 'not_in'],
+    supportsMe: true,
+  },
+  {
+    key: 'is_published',
+    label: 'Опубликовано',
+    type: 'boolean',
+    operators: ['equals'],
+  },
+  {
+    key: 'access_mode',
+    label: 'Режим доступа',
+    type: 'text',
+    operators: ['equals', 'in'],
+  },
+  {
+    key: 'indexing_status',
+    label: 'Статус индексации',
+    type: 'text',
+    operators: ['equals', 'in', 'is_null'],
+  },
+  {
+    key: 'created_at',
+    label: 'Дата создания',
+    type: 'date',
+    operators: ['before', 'before_eq', 'after', 'after_eq', 'date_eq', 'between'],
+  },
+  {
+    key: 'updated_at',
+    label: 'Дата обновления',
+    type: 'date',
+    operators: ['before', 'before_eq', 'after', 'after_eq', 'date_eq', 'between'],
+  },
+]
+
+export function getFieldsForEntity(entityType: FilterEntityType): FilterFieldDef[] {
+  switch (entityType) {
+    case 'thread':
+      return THREAD_FILTER_FIELDS
+    case 'project':
+      return PROJECT_FILTER_FIELDS
+    case 'knowledge_article':
+      return KNOWLEDGE_ARTICLE_FILTER_FIELDS
+  }
 }
 
 export function getFieldDef(
-  entityType: 'thread' | 'project',
+  entityType: FilterEntityType,
   fieldKey: string,
 ): FilterFieldDef | undefined {
   return getFieldsForEntity(entityType).find((f) => f.key === fieldKey)

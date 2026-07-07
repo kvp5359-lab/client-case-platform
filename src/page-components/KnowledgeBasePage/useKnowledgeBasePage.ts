@@ -7,12 +7,40 @@
  *   useKnowledgeArticleMutations — CRUD мутации статей
  */
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { knowledgeBaseKeys, statusKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
+import { useAuth } from '@/contexts/AuthContext'
+import { applyFilters } from '@/lib/filters/filterEngine'
+import { EMPTY_FILTER_GROUP } from '@/lib/filters/types'
+import type { FilterGroup, FilterContext } from '@/lib/filters/types'
+import { useKnowledgeArticleViews } from '@/hooks/knowledge/useKnowledgeArticleViews'
+import {
+  knowledgeFieldAccessors,
+  buildKnowledgeJunctionAccessors,
+  buildCombinedFilter,
+  parseFilterToChips,
+} from './knowledgeArticleFilters'
+import type { FilterCondition } from '@/lib/filters/types'
+
+/** Каноническая сериализация (ключи по алфавиту) — стабильное сравнение
+ *  фильтра с сохранённым в jsonb (Postgres не гарантирует порядок ключей). */
+function stableStringify(v: unknown): string {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v)
+  if (Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']'
+  const obj = v as Record<string, unknown>
+  return (
+    '{' +
+    Object.keys(obj)
+      .sort()
+      .map((k) => JSON.stringify(k) + ':' + stableStringify(obj[k]))
+      .join(',') +
+    '}'
+  )
+}
 import { useKnowledgeGroups } from './useKnowledgeGroups'
 import { useKnowledgeTags } from './useKnowledgeTags'
 import { useKnowledgeArticleMutations } from './useKnowledgeArticleMutations'
@@ -40,11 +68,72 @@ export function useKnowledgeBasePage() {
   // Confirm dialog (for delete confirmations)
   const { state: confirmState, confirm, handleConfirm, handleCancel } = useConfirmDialog()
 
+  const { user } = useAuth()
+  const currentUserId = user?.id ?? null
+
   // Search & filters
   const [searchQuery, setSearchQuery] = useState('')
   const [filterTagIds, setFilterTagIds] = useState<string[]>([])
   const [filterGroupIds, setFilterGroupIds] = useState<string[]>([])
   const [filterStatusIds, setFilterStatusIds] = useState<string[]>([])
+  // Видимость строки фильтров — общая (открывается кнопкой в тулбаре или
+  // пунктом меню представления), поэтому живёт в хуке, а не в Tree/Table.
+  const [showFilters, setShowFilters] = useState(false)
+
+  // Расширенный фильтр (движок src/lib/filters) + активное представление.
+  const [advancedFilter, setAdvancedFilter] = useState<FilterGroup>(EMPTY_FILTER_GROUP)
+  const [activeViewId, setActiveViewId] = useState<string | null>(null)
+  const viewsHook = useKnowledgeArticleViews(workspaceId)
+
+  // Захват всего текущего состояния фильтрации (быстрые чипы + расширенный)
+  // в единый FilterGroup — для сохранения нового представления через «+».
+  const captureCurrentFilter = useCallback(
+    () => buildCombinedFilter(filterStatusIds, filterGroupIds, filterTagIds, advancedFilter),
+    [filterStatusIds, filterGroupIds, filterTagIds, advancedFilter],
+  )
+
+  const clearQuickFilters = useCallback(() => {
+    setFilterStatusIds([])
+    setFilterGroupIds([])
+    setFilterTagIds([])
+  }, [])
+
+  // Применить фильтр представления: раскладываем единый FilterGroup обратно
+  // на быстрые чипы + расширенный остаток (обратно к buildCombinedFilter).
+  const applyViewFilter = useCallback((fc: FilterGroup) => {
+    const p = parseFilterToChips(fc)
+    setFilterStatusIds(p.statusIds)
+    setFilterGroupIds(p.groupIds)
+    setFilterTagIds(p.tagIds)
+    setAdvancedFilter(p.advanced)
+  }, [])
+
+  // Доп. условия (поля кроме статус/группа/тег) — управление чипами «+ Фильтр».
+  // Адресуем по индексу в advancedFilter.rules (стабильнее reference при правке).
+  const addAdvancedCondition = useCallback((cond: FilterCondition) => {
+    setAdvancedFilter((f) => ({ ...f, rules: [...f.rules, cond] }))
+  }, [])
+  const updateAdvancedCondition = useCallback((index: number, next: FilterCondition) => {
+    setAdvancedFilter((f) => ({ ...f, rules: f.rules.map((r, i) => (i === index ? next : r)) }))
+  }, [])
+  const removeAdvancedCondition = useCallback((index: number) => {
+    setAdvancedFilter((f) => ({ ...f, rules: f.rules.filter((_, i) => i !== index) }))
+  }, [])
+
+  // Автосохранение активного представления: любые правки фильтра (чипы +
+  // доп. условия) пишутся в него с задержкой (как в Notion).
+  const { views: viewsList, updateView } = viewsHook
+  useEffect(() => {
+    if (!activeViewId) return
+    const view = viewsList.find((v) => v.id === activeViewId)
+    if (!view) return
+    const combined = buildCombinedFilter(filterStatusIds, filterGroupIds, filterTagIds, advancedFilter)
+    if (stableStringify(combined) === stableStringify(view.filter_config)) return
+    const t = setTimeout(() => {
+      updateView.mutate({ id: activeViewId, filterConfig: combined })
+    }, 700)
+    return () => clearTimeout(t)
+  }, [activeViewId, filterStatusIds, filterGroupIds, filterTagIds, advancedFilter, viewsList, updateView])
 
   // Backward compat: single-value setters for tree view
   const setFilterTagId = (id: string | null) => setFilterTagIds(id ? [id] : [])
@@ -159,23 +248,54 @@ export function useKnowledgeBasePage() {
   // не изменились. searchQuery.toLowerCase() теперь вычисляется один раз, а не на
   // каждую статью. filterTagIds/filterGroupIds/filterStatusIds конвертируем в Set
   // для O(1) поиска вместо O(n) includes.
+  // Контекст и junction-аксессоры для расширенного фильтра (движок).
+  const filterContext = useMemo<FilterContext>(
+    () => ({ currentUserId, currentParticipantId: null, now: new Date() }),
+    [currentUserId],
+  )
+  const junctionAccessors = useMemo(
+    () => buildKnowledgeJunctionAccessors(articles),
+    [articles],
+  )
+
   const filteredArticles = useMemo(() => {
     const searchLower = searchQuery.trim().toLowerCase()
     const tagSet = filterTagIds.length > 0 ? new Set(filterTagIds) : null
     const groupSet = filterGroupIds.length > 0 ? new Set(filterGroupIds) : null
     const statusSet = filterStatusIds.length > 0 ? new Set(filterStatusIds) : null
 
-    return articles.filter((article) => {
+    // Быстрые чипы (поиск/статус/группа/тег) — дешёвая предфильтрация.
+    // Сентинел '__none__' в наборе = «без статуса/группы/тега» (пусто).
+    const quick = articles.filter((article) => {
       if (searchLower && !article.title.toLowerCase().includes(searchLower)) return false
-      if (tagSet && !article.knowledge_article_tags?.some((at) => tagSet.has(at.tag_id)))
-        return false
-      if (groupSet && !article.knowledge_article_groups.some((ag) => groupSet.has(ag.group_id)))
-        return false
-      if (statusSet && (article.status_id == null || !statusSet.has(article.status_id)))
-        return false
+
+      if (tagSet) {
+        const wantNone = tagSet.has('__none__')
+        const isEmpty = (article.knowledge_article_tags?.length ?? 0) === 0
+        const hasReal = article.knowledge_article_tags?.some((at) => tagSet.has(at.tag_id)) ?? false
+        if (!(hasReal || (wantNone && isEmpty))) return false
+      }
+
+      if (groupSet) {
+        const wantNone = groupSet.has('__none__')
+        const isEmpty = article.knowledge_article_groups.length === 0
+        const hasReal = article.knowledge_article_groups.some((ag) => groupSet.has(ag.group_id))
+        if (!(hasReal || (wantNone && isEmpty))) return false
+      }
+
+      if (statusSet) {
+        const wantNone = statusSet.has('__none__')
+        const hasReal = article.status_id != null && statusSet.has(article.status_id)
+        if (!(hasReal || (wantNone && article.status_id == null))) return false
+      }
+
       return true
     })
-  }, [articles, searchQuery, filterTagIds, filterGroupIds, filterStatusIds])
+
+    // Расширенный фильтр (представления) — через общий движок поверх быстрых.
+    if (advancedFilter.rules.length === 0) return quick
+    return applyFilters(quick, advancedFilter, filterContext, knowledgeFieldAccessors, junctionAccessors)
+  }, [articles, searchQuery, filterTagIds, filterGroupIds, filterStatusIds, advancedFilter, filterContext, junctionAccessors])
 
   const getArticlesForGroup = (groupId: string) =>
     filteredArticles
@@ -214,6 +334,20 @@ export function useKnowledgeBasePage() {
     setFilterGroupId,
     filterStatusId: filterStatusIds[0] ?? null,
     setFilterStatusId,
+    // Расширенный фильтр + сохранённые представления
+    advancedFilter,
+    setAdvancedFilter,
+    activeViewId,
+    setActiveViewId,
+    showFilters,
+    setShowFilters,
+    captureCurrentFilter,
+    clearQuickFilters,
+    applyViewFilter,
+    addAdvancedCondition,
+    updateAdvancedCondition,
+    removeAdvancedCondition,
+    ...viewsHook,
     // Articles
     articlesQuery,
     articles,

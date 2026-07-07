@@ -91,6 +91,13 @@ export type FilterFieldDef = {
 /** Тип треда — для фильтра по полю `type` и для applicableTypes в FilterFieldDef. */
 export type ThreadType = 'task' | 'chat' | 'email'
 
+/**
+ * Сущность, к которой применяется фильтр. Определяет набор доступных полей
+ * (`getFieldsForEntity`) и источники значений в UI. `thread`/`project` —
+ * доски и списки; `knowledge_article` — база знаний.
+ */
+export type FilterEntityType = 'thread' | 'project' | 'knowledge_article'
+
 // ── Контекст фильтрации ─────────────────────────────────────
 
 export type FilterContext = {
