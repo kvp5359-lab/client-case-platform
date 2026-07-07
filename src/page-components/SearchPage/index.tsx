@@ -96,7 +96,7 @@ export default function SearchPage() {
           router.push(`${wsPrefix}/projects/${it.entity_id}`)
           break
         case 'knowledge_article':
-          router.push(`${wsPrefix}/settings/knowledge-base/${it.entity_id}`)
+          router.push(`${wsPrefix}/knowledge-base/${it.entity_id}`)
           break
         case 'participant':
           router.push(`${wsPrefix}/settings/participants`)

@@ -1,6 +1,6 @@
 /**
  * KnowledgeQADetailPage — страница просмотра одной Q&A записи.
- * URL: /workspaces/:workspaceId/settings/knowledge-base/qa/:qaId
+ * URL: /workspaces/:workspaceId/knowledge-base/qa/:qaId
  */
 
 import { useState } from 'react'
@@ -119,7 +119,7 @@ export default function KnowledgeQADetailPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push(`/workspaces/${workspaceId}/settings/knowledge-base?tab=qa`)}
+              onClick={() => router.push(`/workspaces/${workspaceId}/knowledge-base?tab=qa`)}
             >
               <ArrowLeft className="w-4 h-4 mr-1" />
               Назад

@@ -25,7 +25,7 @@ export function useKnowledgeArticleMutations(workspaceId: string | undefined) {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: knowledgeBaseKeys.articles(workspaceId!) })
-      router.push(`/workspaces/${workspaceId}/settings/knowledge-base/${data.id}`)
+      router.push(`/workspaces/${workspaceId}/knowledge-base/${data.id}`)
     },
     onError: () => {
       toast.error('Не удалось создать статью')

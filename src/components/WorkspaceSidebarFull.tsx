@@ -327,8 +327,7 @@ export function WorkspaceSidebarFull({
       return (
         isNavActive('settings') &&
         !isNavActive('settings/participants') &&
-        !isNavActive('settings/templates') &&
-        !isNavActive('settings/knowledge-base')
+        !isNavActive('settings/templates')
       )
     }
     if (key === 'boards') {

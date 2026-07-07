@@ -87,7 +87,7 @@ function hrefForRow(row: DisplayRow, workspaceId: string): string | null {
     case 'project':
       return `${ws}/projects/${row.entity_id}`
     case 'knowledge_article':
-      return `${ws}/settings/knowledge-base/${row.entity_id}`
+      return `${ws}/knowledge-base/${row.entity_id}`
     case 'participant':
       return `${ws}/settings/participants`
   }
@@ -158,7 +158,7 @@ export function SidebarGlobalSearch({
           router.push(`${wsPrefix}/projects/${row.entity_id}`)
           break
         case 'knowledge_article':
-          router.push(`${wsPrefix}/settings/knowledge-base/${row.entity_id}`)
+          router.push(`${wsPrefix}/knowledge-base/${row.entity_id}`)
           break
         case 'participant':
           router.push(`${wsPrefix}/settings/participants`)

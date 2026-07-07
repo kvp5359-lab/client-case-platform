@@ -111,7 +111,7 @@ export function KnowledgeQAView({ workspaceId }: KnowledgeQAViewProps) {
   // --- Handlers ---
 
   const handleRowClick = (qa: KnowledgeQA) => {
-    router.push(`/workspaces/${workspaceId}/settings/knowledge-base/qa/${qa.id}`)
+    router.push(`/workspaces/${workspaceId}/knowledge-base/qa/${qa.id}`)
   }
 
   const handleCreateClick = () => {

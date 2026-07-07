@@ -99,7 +99,7 @@ export function SortableArticleRow({
             title="Редактировать"
             onClick={(e) => {
               e.stopPropagation()
-              page.navigate(`/workspaces/${page.workspaceId}/settings/knowledge-base/${article.id}`)
+              page.navigate(`/workspaces/${page.workspaceId}/knowledge-base/${article.id}`)
             }}
           >
             <Pencil className="w-3 h-3" />
@@ -182,7 +182,7 @@ export function ArticleRow({
             title="Редактировать"
             onClick={(e) => {
               e.stopPropagation()
-              page.navigate(`/workspaces/${page.workspaceId}/settings/knowledge-base/${article.id}`)
+              page.navigate(`/workspaces/${page.workspaceId}/knowledge-base/${article.id}`)
             }}
           >
             <Pencil className="w-3 h-3" />

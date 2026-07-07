@@ -288,7 +288,7 @@ export function useArticleEditor() {
   }
 
   const handleBack = () => {
-    router.push(`/workspaces/${workspaceId}/settings/knowledge-base`)
+    router.push(`/workspaces/${workspaceId}/knowledge-base`)
   }
 
   // --- Derived ---

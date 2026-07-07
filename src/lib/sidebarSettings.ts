@@ -168,7 +168,7 @@ export const SIDEBAR_NAV_ITEMS: Record<SidebarNavKey, SidebarItemMeta> = {
     key: 'knowledge_base',
     label: 'База знаний',
     icon: BookOpen,
-    path: 'settings/knowledge-base',
+    path: 'knowledge-base',
     hasAccess: ({ isClientOnly, hasPermission }) =>
       !isClientOnly &&
       (hasPermission('view_knowledge_base') ||

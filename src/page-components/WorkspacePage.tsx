@@ -24,7 +24,7 @@ const ONBOARDING_STEPS: Step[] = [
   { href: 'settings/participants', icon: Users, title: 'Пригласите команду', description: 'Добавьте сотрудников и настройте, кто что видит.' },
   { href: 'inbox', icon: Inbox, title: 'Входящие', description: 'Все сообщения клиентов в одном месте — ничего не потеряется.' },
   { href: 'boards', icon: LayoutList, title: 'Доски и списки', description: 'Свой вид на задачи: канбан, таблица, календарь.' },
-  { href: 'settings/knowledge-base', icon: BookOpen, title: 'База знаний', description: 'Шаблоны ответов и статьи для команды и клиентов.' },
+  { href: 'knowledge-base', icon: BookOpen, title: 'База знаний', description: 'Шаблоны ответов и статьи для команды и клиентов.' },
 ]
 
 export function WorkspacePage() {
