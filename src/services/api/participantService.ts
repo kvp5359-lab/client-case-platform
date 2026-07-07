@@ -33,8 +33,16 @@ export async function getParticipantsByWorkspace(
  * Получение имени участника по user_id
  */
 export async function getParticipantName(userId: string): Promise<string | null> {
+  // Один user_id может иметь несколько записей participants (юзер в нескольких
+  // воркспейсах) — берём первую живую, иначе .maybeSingle() падает на 2+ строках.
   const data = await safeFetchOrThrow(
-    supabase.from('participants').select('name').eq('user_id', userId).maybeSingle(),
+    supabase
+      .from('participants')
+      .select('name')
+      .eq('user_id', userId)
+      .eq('is_deleted', false)
+      .limit(1)
+      .maybeSingle(),
     'Не удалось получить имя участника',
     ParticipantError,
   )

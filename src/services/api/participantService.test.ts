@@ -109,17 +109,19 @@ describe('participantService', () => {
   // ============================================================
 
   describe('getParticipantName', () => {
+    // Хелпер: мок цепочки select → eq(user_id) → eq(is_deleted) → limit → maybeSingle
+    const mockNameChain = (result: { data: unknown; error: unknown }) => {
+      const maybeSingle = vi.fn().mockResolvedValue(result)
+      const limit = vi.fn().mockReturnValue({ maybeSingle })
+      const eqDeleted = vi.fn().mockReturnValue({ limit })
+      const eqUser = vi.fn().mockReturnValue({ eq: eqDeleted })
+      const select = vi.fn().mockReturnValue({ eq: eqUser })
+      vi.mocked(supabase.from).mockReturnValue({ select } as unknown as SupabaseFrom)
+      return { select, eqUser, eqDeleted, limit, maybeSingle }
+    }
+
     it('должен вернуть имя участника по user_id', async () => {
-      vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({
-              data: { name: 'Иван Петров' },
-              error: null,
-            }),
-          }),
-        }),
-      } as unknown as SupabaseFrom)
+      mockNameChain({ data: { name: 'Иван Петров' }, error: null })
 
       const result = await getParticipantName('user-1')
 
@@ -128,16 +130,7 @@ describe('participantService', () => {
     })
 
     it('должен вернуть null если участник не найден', async () => {
-      vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({
-              data: null,
-              error: null,
-            }),
-          }),
-        }),
-      } as unknown as SupabaseFrom)
+      mockNameChain({ data: null, error: null })
 
       const result = await getParticipantName('unknown-user')
 
@@ -145,16 +138,7 @@ describe('participantService', () => {
     })
 
     it('должен вернуть null если имя не задано (name = null)', async () => {
-      vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({
-              data: { name: null },
-              error: null,
-            }),
-          }),
-        }),
-      } as unknown as SupabaseFrom)
+      mockNameChain({ data: { name: null }, error: null })
 
       const result = await getParticipantName('user-no-name')
 
@@ -162,16 +146,7 @@ describe('participantService', () => {
     })
 
     it('должен выбросить ParticipantError при ошибке запроса', async () => {
-      vi.mocked(supabase.from).mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({
-              data: null,
-              error: { message: 'Query failed' },
-            }),
-          }),
-        }),
-      } as unknown as SupabaseFrom)
+      mockNameChain({ data: null, error: { message: 'Query failed' } })
 
       await expect(getParticipantName('user-1')).rejects.toThrow(ParticipantError)
     })
@@ -221,11 +196,12 @@ describe('participantService', () => {
   })
 
   describe('фильтры запроса getParticipantName', () => {
-    it('фильтрует по user_id и использует maybeSingle', async () => {
-      const eq = vi.fn().mockReturnValue({
-        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-      })
-      const select = vi.fn().mockReturnValue({ eq })
+    it('фильтрует по user_id, исключает удалённых и берёт одну запись', async () => {
+      const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null })
+      const limit = vi.fn().mockReturnValue({ maybeSingle })
+      const eqDeleted = vi.fn().mockReturnValue({ limit })
+      const eqUser = vi.fn().mockReturnValue({ eq: eqDeleted })
+      const select = vi.fn().mockReturnValue({ eq: eqUser })
       vi.mocked(supabase.from).mockReturnValue({ select } as unknown as SupabaseFrom)
 
       await getParticipantName('user-42')
@@ -234,7 +210,11 @@ describe('participantService', () => {
       // Запрос только колонки name
       expect(select).toHaveBeenCalledWith('name')
       // Фильтр по user_id
-      expect(eq).toHaveBeenCalledWith('user_id', 'user-42')
+      expect(eqUser).toHaveBeenCalledWith('user_id', 'user-42')
+      // Исключаем удалённых
+      expect(eqDeleted).toHaveBeenCalledWith('is_deleted', false)
+      // Берём одну запись — юзер может быть в нескольких воркспейсах
+      expect(limit).toHaveBeenCalledWith(1)
     })
   })
 })
