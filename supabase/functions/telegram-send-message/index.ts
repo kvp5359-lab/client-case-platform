@@ -671,12 +671,32 @@ Deno.serve(async (req: Request) => {
       let attachmentsOk = false;
       // Reply \u0441 \u0444\u0430\u0439\u043b\u043e\u043c: message_id \u0446\u0435\u043b\u0438 \u0434\u043b\u044f \u043e\u0442\u043f\u0440\u0430\u0432\u043b\u044f\u044e\u0449\u0435\u0433\u043e \u0431\u043e\u0442\u0430 (\u0442\u0430 \u0436\u0435 \u043a\u0430\u0440\u0442\u0430, \u0447\u0442\u043e
       // \u0443 \u0442\u0435\u043a\u0441\u0442\u0430). \u041d\u0435\u0442 \u0441\u0432\u043e\u0435\u0433\u043e id \u2192 \u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0439 (reply \u043f\u0440\u043e\u0441\u0442\u043e \u043d\u0435 \u043f\u0440\u0438\u043a\u0440\u0435\u043f\u0438\u0442\u0441\u044f).
+      // Фронт-invoke вложений НЕ передаёт reply_to_telegram_message_id (в отличие
+      // от текста, который идёт триггером с уже разрешённой целью). Поэтому цель
+      // reply резолвим здесь из самого сообщения: его reply_to_message_id →
+      // telegram_message_id оригинала. Затем — id цели для отправляющего бота (карта).
+      let storedReplyTelegramId: number | null = body.reply_to_telegram_message_id ?? null;
+      if (storedReplyTelegramId == null) {
+        const { data: selfRow } = await serviceClient
+          .from("project_messages")
+          .select("reply_to_message_id")
+          .eq("id", body.message_id)
+          .maybeSingle();
+        const replyToDbId = selfRow?.reply_to_message_id as string | null | undefined;
+        if (replyToDbId) {
+          const { data: targetRow } = await serviceClient
+            .from("project_messages")
+            .select("telegram_message_id")
+            .eq("id", replyToDbId)
+            .eq("telegram_chat_id", body.telegram_chat_id)
+            .maybeSingle();
+          storedReplyTelegramId =
+            (targetRow?.telegram_message_id as number | null | undefined) ?? null;
+        }
+      }
       const attachmentReplyTo =
-        body.reply_to_telegram_message_id != null
-          ? await resolveReplyIdForSendingBot(
-              body.reply_to_telegram_message_id,
-              body.telegram_chat_id,
-            )
+        storedReplyTelegramId != null
+          ? await resolveReplyIdForSendingBot(storedReplyTelegramId, body.telegram_chat_id)
           : undefined;
 
       if (hasText) {
