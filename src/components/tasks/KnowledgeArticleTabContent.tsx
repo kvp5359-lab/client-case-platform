@@ -9,7 +9,7 @@
  * меню (поведение идентично модальной версии).
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Download, X } from 'lucide-react'
 import { PageLoader } from '@/components/ui/loaders'
@@ -38,6 +38,11 @@ type KnowledgeArticleRow = {
   content: string | null
   access_mode: string | null
 }
+
+// Раскрытые спойлеры (accordion) по статье — вне компонента, чтобы состояние
+// переживало перемонтаж вкладки (при возврате на вкладку браузера React может
+// заново вставить innerHTML, сбросив нативный <details open>).
+const openAccordionsByArticle = new Map<string, Set<number>>()
 
 export function KnowledgeArticleTabContent({ articleId, onClose }: Props) {
   const contentRef = useRef<HTMLDivElement>(null)
@@ -79,6 +84,50 @@ export function KnowledgeArticleTabContent({ articleId, onClose }: Props) {
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
   }, [isReadOnly])
+
+  // Санитайз мемоизируем — стабильный __html, DOMPurify не гоняется на каждый
+  // рендер, и React меняет innerHTML только при реальной смене контента.
+  const sanitized = useMemo(() => sanitizeHtml(article?.content ?? ''), [article?.content])
+
+  // Сохраняем/восстанавливаем раскрытые спойлеры (accordion). После вставки
+  // innerHTML (перемонтаж вкладки / смена контента) нативный <details open>
+  // сбрасывается — возвращаем состояние из карты openAccordionsByArticle.
+  useEffect(() => {
+    const root = contentRef.current
+    if (!root) return
+    const restore = () => {
+      const saved = openAccordionsByArticle.get(articleId)
+      root.querySelectorAll<HTMLDetailsElement>('details[data-type="accordion"]').forEach((d, i) => {
+        if (saved?.has(i)) d.open = true
+      })
+    }
+    restore()
+    // MutationObserver ловит любую замену innerHTML (React вставляет заново) —
+    // сразу восстанавливаем раскрытые спойлеры.
+    const observer = new MutationObserver(restore)
+    observer.observe(root, { childList: true, subtree: true })
+    // toggle не всплывает — слушаем в capture-фазе на контейнере, чтобы поймать
+    // клики по любому <details> без привязки к моменту его создания.
+    const onToggle = (e: Event) => {
+      const d = e.target
+      if (!(d instanceof HTMLDetailsElement) || d.dataset.type !== 'accordion') return
+      const items = [...root.querySelectorAll<HTMLDetailsElement>('details[data-type="accordion"]')]
+      const i = items.indexOf(d)
+      if (i < 0) return
+      let set = openAccordionsByArticle.get(articleId)
+      if (!set) {
+        set = new Set()
+        openAccordionsByArticle.set(articleId, set)
+      }
+      if (d.open) set.add(i)
+      else set.delete(i)
+    }
+    root.addEventListener('toggle', onToggle, true)
+    return () => {
+      observer.disconnect()
+      root.removeEventListener('toggle', onToggle, true)
+    }
+  }, [articleId, sanitized])
 
   if (isLoading) {
     return <PageLoader />
@@ -161,7 +210,7 @@ export function KnowledgeArticleTabContent({ articleId, onClose }: Props) {
           '[&_hr]:my-6 [&_hr]:border-border',
           isReadOnly && 'select-none',
         )}
-        dangerouslySetInnerHTML={{ __html: sanitizeHtml(article.content ?? '') }}
+        dangerouslySetInnerHTML={{ __html: sanitized }}
       />
       </div>
     </div>
