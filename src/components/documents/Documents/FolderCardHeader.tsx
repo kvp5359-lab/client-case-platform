@@ -84,7 +84,7 @@ export function FolderCardHeader({
                   entityId={folder.id}
                   projectId={projectId}
                   workspaceId={workspaceId}
-                  emptyClassName="md:hidden md:inline-flex md:opacity-0 md:group-hover/card:opacity-100"
+                  emptyClassName="hidden md:inline-flex md:opacity-0 md:group-hover/card:opacity-100"
                 />
               </div>
             )}
@@ -129,7 +129,7 @@ export function FolderCardHeader({
               занимали место и имя папки ужималось до нуля. */}
           {(onAddSlot || onAddDocument) && (
             <>
-              <div className="md:hidden md:flex items-center gap-1.5 ml-auto md:opacity-0 md:group-hover/card:opacity-100 transition-opacity flex-shrink-0">
+              <div className="hidden md:flex items-center gap-1.5 ml-auto md:opacity-0 md:group-hover/card:opacity-100 transition-opacity flex-shrink-0">
                 {onAddSlot && (
                   <button
                     type="button"

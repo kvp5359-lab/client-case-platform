@@ -265,7 +265,7 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
               entityId={document.id}
               projectId={projectId}
               workspaceId={workspaceId}
-              emptyClassName="md:hidden md:inline-flex md:opacity-0 md:group-hover/doc:opacity-100"
+              emptyClassName="hidden md:inline-flex md:opacity-0 md:group-hover/doc:opacity-100"
             />
           )}
           <div
