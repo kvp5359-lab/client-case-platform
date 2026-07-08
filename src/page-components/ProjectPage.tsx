@@ -372,7 +372,7 @@ export default function ProjectPage() {
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               {availableModules.length > 0 && (
                 <div className="pb-3 project-tabs-cq">
-                  <TabsList className="max-w-full">
+                  <TabsList className="max-w-full overflow-x-auto scrollbar-auto-hide">
                     {availableModules
                       .filter((m) => m.showTab !== false)
                       .map((m) => {
@@ -382,27 +382,26 @@ export default function ProjectPage() {
                             key={m.id}
                             value={m.id}
                             className={cn(
-                              'flex items-center gap-1 md:gap-2',
-                              // Активная вкладка никогда не сжимается — подпись
-                              // всегда видна целиком. Неактивные отдают ширину
-                              // (min-w-0 разрешает ужиматься ниже контента).
-                              activeTab === m.id ? 'shrink-0' : 'min-w-0',
+                              // Все вкладки — натуральной ширины (не ужимаются).
+                              // Подписи неактивных капятся равным max-width, при
+                              // нехватке места ряд скроллится по горизонтали
+                              // (overflow-x-auto на TabsList) — вместо неравномерного
+                              // ужимания и пряток подписей.
+                              'flex items-center gap-1 md:gap-2 shrink-0',
                             )}
                             title={m.label}
                           >
                             <Icon className="w-4 h-4 shrink-0" />
-                            {/* Подпись адаптируется под ширину ряда (container query
-                                .project-tabs-cq): у НЕактивных вкладок при нехватке
-                                места обрезается многоточием (truncate + min-w-0), а
-                                при сильной тесноте скрывается совсем
-                                (.proj-tab-label--secondary → display:none по порогу
-                                в globals.css). Активная вкладка — всегда целиком. */}
+                            {/* Подпись показывается ВСЕГДА (у всех вкладок). Активная —
+                                целиком; неактивные — с равным max-width, длинные
+                                обрезаются многоточием одинаково. Не влезло — ряд
+                                скроллится (TabsList overflow-x-auto). */}
                             {!m.iconOnly && (
                               <span
                                 className={cn(
                                   activeTab === m.id
                                     ? 'whitespace-nowrap'
-                                    : 'truncate min-w-0 proj-tab-label--secondary',
+                                    : 'truncate max-w-[6.5rem]',
                                 )}
                               >
                                 {m.label}
