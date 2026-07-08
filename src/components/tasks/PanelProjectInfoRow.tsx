@@ -97,6 +97,9 @@ export function PanelProjectInfoRow({ projectId, workspaceId, onHidePanel }: Pan
         currentStatusId={statusId}
         onChange={(newId) => updateProjectStatus.mutate(newId)}
         disabled={!canEditStatus}
+        // На мобиле статус тоже сжимается и усекается при нехватке ширины —
+        // иначе он давит название проекта. На десктопе (md+) — как раньше.
+        triggerClassName="shrink min-w-0 md:shrink-0"
       />
 
       <div className="flex-1 min-w-0" />

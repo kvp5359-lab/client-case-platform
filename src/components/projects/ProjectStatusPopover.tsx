@@ -23,6 +23,9 @@ type ProjectStatusPopoverProps = {
    * `md` — высота 32px, чтобы выровнять со стандартными h-8 инпутами.
    */
   size?: 'sm' | 'md'
+  /** Доп. классы триггера. Напр. `shrink min-w-0` — разрешить чипу сжиматься
+   *  и усекать название статуса при нехватке ширины (по умолчанию `shrink-0`). */
+  triggerClassName?: string
 }
 
 export function ProjectStatusPopover({
@@ -32,6 +35,7 @@ export function ProjectStatusPopover({
   onChange,
   disabled,
   size = 'sm',
+  triggerClassName,
 }: ProjectStatusPopoverProps) {
   const sizeCls =
     size === 'md' ? 'text-sm h-8 px-3' : 'text-[11px] px-2 py-0.5'
@@ -62,9 +66,10 @@ export function ProjectStatusPopover({
       disabled={disabled}
       onClick={(e) => e.stopPropagation()}
       className={cn(
-        'inline-flex items-center rounded-md border shrink-0 transition-opacity hover:opacity-80',
+        'inline-flex items-center rounded-md border shrink-0 min-w-0 transition-opacity hover:opacity-80',
         sizeCls,
         disabled && 'cursor-not-allowed opacity-60',
+        triggerClassName,
       )}
       style={{
         backgroundColor: `${current.color}1A`,
@@ -72,7 +77,7 @@ export function ProjectStatusPopover({
         borderColor: `${current.color}66`,
       }}
     >
-      {current.name}
+      <span className="truncate">{current.name}</span>
     </button>
   ) : (
     <button
