@@ -332,10 +332,22 @@ function moveTrailingParaBreaks(root: Element): void {
  * краям бабла). Группа подряд идущих `<br>` → одна пустая строка.
  */
 function normalizeRootBlankLines(root: Element): void {
+  const BLOCK = new Set([
+    'P', 'DIV', 'BLOCKQUOTE', 'OL', 'UL', 'LI',
+    'TABLE', 'THEAD', 'TBODY', 'TFOOT', 'TR', 'TD', 'TH',
+  ])
   const isBr = (n: ChildNode | null): boolean =>
     !!n && n.nodeType === 1 && (n as Element).tagName === 'BR'
   const isBlankText = (n: ChildNode | null): boolean =>
     !!n && n.nodeType === 3 && (n.textContent ?? '').trim() === ''
+  const isBlockEl = (n: ChildNode | null): boolean =>
+    !!n && n.nodeType === 1 && BLOCK.has((n as Element).tagName)
+  const meaningfulPrev = (n: ChildNode): ChildNode | null => {
+    let p = n.previousSibling
+    while (isBlankText(p)) p = p!.previousSibling
+    return p
+  }
+  // Края: снять ведущие/замыкающие root-level <br> (пустые строки на краях бабла).
   while (root.firstChild && (isBr(root.firstChild) || isBlankText(root.firstChild)))
     root.firstChild.remove()
   while (root.lastChild && (isBr(root.lastChild) || isBlankText(root.lastChild)))
@@ -343,16 +355,26 @@ function normalizeRootBlankLines(root: Element): void {
   let node: ChildNode | null = root.firstChild
   while (node) {
     if (isBr(node)) {
+      // Собрать группу подряд идущих <br> (+ пробельные узлы между ними).
+      const run: ChildNode[] = [node]
       let cur: ChildNode | null = node.nextSibling
       while (cur && (isBr(cur) || isBlankText(cur))) {
-        const next = cur.nextSibling
-        cur.remove()
-        cur = next
+        run.push(cur)
+        cur = cur.nextSibling
       }
-      const p = document.createElement('p')
-      p.appendChild(document.createElement('br'))
-      node.replaceWith(p)
-      node = p.nextSibling
+      // Разделитель ПУСТОЙ СТРОКИ (→ <p><br></p>) — только если <br> стоит МЕЖДУ
+      // блоками (сосед-блок хотя бы с одной стороны). Если оба соседа инлайновые
+      // (текст) — это ПЕРЕНОС СТРОКИ внутри плоского текста (plain-text из TG:
+      // `Привет!<br>Подготовил`), его НЕ трогаем, иначе появлялась лишняя пустая
+      // строка (баг 2026-07-08).
+      const isSeparator = isBlockEl(meaningfulPrev(node)) || isBlockEl(cur)
+      if (isSeparator) {
+        const p = document.createElement('p')
+        p.appendChild(document.createElement('br'))
+        node.replaceWith(p)
+        for (let i = 1; i < run.length; i++) run[i].remove()
+      }
+      node = cur
     } else {
       node = node.nextSibling
     }

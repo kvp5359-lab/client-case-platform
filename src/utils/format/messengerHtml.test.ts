@@ -189,6 +189,23 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
     expect(out).not.toMatch(/<\/p>\s*<br\s*\/?>\s*<p>/i) // нет bare <br> между <p>
   })
 
+  it('одиночный <br> в плоском тексте (plain-text из TG) — перенос строки, НЕ пустая строка', () => {
+    // BubbleTextContent для plain-text шлёт content.replace(/\n/g,'<br>').
+    // "Привет!\nПодготовил" → "Привет!<br>Подготовил". <br> между инлайн-текстом
+    // это перенос строки, а не разделитель абзацев — НЕ оборачиваем в <p><br></p>
+    // (иначе появлялась лишняя пустая строка — регресс от normalizeRootBlankLines).
+    const out = sanitizeMessengerHtml('Привет!<br>Подготовил 👌')
+    expect(out).not.toContain('<p><br></p>')
+    expect(out).toMatch(/Привет!\s*<br\s*\/?>\s*Подготовил/i)
+  })
+
+  it('двойной <br> в плоском тексте — одна пустая строка (не блок-разделитель)', () => {
+    const out = sanitizeMessengerHtml('Строка1<br><br>Строка2')
+    expect(out).toContain('Строка1')
+    expect(out).toContain('Строка2')
+    expect(out).not.toContain('<p><br></p>') // остаётся <br><br>, не оборачивается
+  })
+
   it('хвостовой <br> в самом конце сообщения не даёт лишней пустой строки', () => {
     const out = sanitizeMessengerHtml('<p>Текст.<br></p>')
     expect(out).toContain('Текст.')
