@@ -19,6 +19,7 @@
 |---|---|---|---|---|
 | [2026-07-06-project-load-fail-after-create](open/2026-07-06-project-load-fail-after-create.md) | low | ProjectContext, create-project, race | «Не удалось загрузить проект» сразу после создания (разовая гонка, Sentry) | 2026-07-06 |
 | [2026-07-08-project-tasks-errorboundary-crash](open/2026-07-08-project-tasks-errorboundary-crash.md) | medium | ProjectPage, tasks, ErrorBoundary, sentry | Краш экрана «Задачи» проекта (ErrorBoundary); стек скрывала проводка логгера — исправлено, ждёт следующего краша со стеком | 2026-07-08 |
+| [2026-07-08-sentry-load-fail-noise](open/2026-07-08-sentry-load-fail-noise.md) | low | sentry, logger, data-loading, noise | Sentry шумит на транзиентных «Не удалось загрузить …» (69 путей → алерты) | 2026-07-08 |
 
 ## Решённые
 
