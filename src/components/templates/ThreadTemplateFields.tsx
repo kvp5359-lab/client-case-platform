@@ -67,6 +67,21 @@ export const PROJECT_ROLE_OPTIONS = [
   { value: 'Участник', label: 'Наблюдатели' },
 ] as const
 
+/** Управление одним переопределяемым полем в контексте типа проекта. */
+export type FieldOverrideCtl = { active: boolean; onToggle: (next: boolean) => void }
+
+/**
+ * Управление пер-проектными переопределениями (задаётся только редактором
+ * шаблона проекта). undefined = обычный редактор общего шаблона (без пометок
+ * «из общего / индивидуально»).
+ */
+export type ThreadTemplateProjectOverrideCtl = {
+  deadline: FieldOverrideCtl
+  message: FieldOverrideCtl
+  access: FieldOverrideCtl
+  assignees: FieldOverrideCtl
+}
+
 export type ThreadTemplateEmailProps = {
   chips: EmailChip[]
   inputValue: string
@@ -150,6 +165,9 @@ export type ThreadTemplateFieldsProps = {
 
   initialMessageHtml: string
   onInitialMessageChange: (v: string) => void
+
+  /** Пер-проектные переопределения (только редактор шаблона проекта). */
+  projectOverride?: ThreadTemplateProjectOverrideCtl
 }
 
 export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
@@ -197,10 +215,38 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
     email,
     initialMessageHtml,
     onInitialMessageChange,
+    projectOverride,
   } = props
 
   const [iconColorOpen, setIconColorOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
+
+  // Заголовок переопределяемого поля (в редакторе шаблона проекта): показывает
+  // «из общего / индивидуально» и переключает наследование.
+  const overrideHeader = (label: string, ctl: FieldOverrideCtl) => (
+    <div className="flex items-center justify-between gap-2">
+      <Label className="text-sm text-muted-foreground">{label}</Label>
+      {ctl.active ? (
+        <button
+          type="button"
+          onClick={() => ctl.onToggle(false)}
+          className="text-xs text-amber-600 hover:text-amber-700 whitespace-nowrap"
+          title="Вернуть значение из общего шаблона"
+        >
+          Индивидуально · сбросить
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => ctl.onToggle(true)}
+          className="text-xs text-muted-foreground hover:text-foreground whitespace-nowrap"
+          title="Задать своё значение для этого типа проекта"
+        >
+          Из общего · переопределить
+        </button>
+      )}
+    </div>
+  )
 
   const currentStatus = taskStatuses.find((s) => s.id === statusId)
   // Дедлайн шаблона — «через N дней после создания». Чип выглядит как «Срок»
@@ -334,7 +380,7 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
       {/* Стиль задачи: дедлайн (датой) + статус + проект чипами одной строкой. */}
       {taskStyleThreadBlock && (
         <div className="flex items-center gap-2 flex-wrap -mt-1">
-          {showDeadlineDays && (
+          {showDeadlineDays && !projectOverride && (
             <Popover>
               <PopoverTrigger asChild>
                 <button
@@ -469,7 +515,31 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
         </div>
       )}
 
-      {(isTask || isEmail) && showDeadlineDays && !taskStyleThreadBlock && (
+      {/* Выделенный блок дедлайна в редакторе шаблона проекта — с пометкой
+          «из общего / индивидуально». */}
+      {(isTask || isEmail) && showDeadlineDays && projectOverride && (
+        <div className="flex flex-col gap-1">
+          {overrideHeader('Дедлайн', projectOverride.deadline)}
+          <div
+            className={cn(
+              'flex items-center gap-2',
+              !projectOverride.deadline.active && 'opacity-50 pointer-events-none',
+            )}
+          >
+            <Input
+              type="number"
+              min={0}
+              className="w-24"
+              value={deadlineDays}
+              onChange={(e) => onDeadlineDaysChange?.(e.target.value)}
+              placeholder="—"
+            />
+            <span className="text-sm text-muted-foreground">дней после создания</span>
+          </div>
+        </div>
+      )}
+
+      {(isTask || isEmail) && showDeadlineDays && !taskStyleThreadBlock && !projectOverride && (
         <div className="flex flex-col gap-1">
           <Label className="text-sm text-muted-foreground">Дедлайн</Label>
           <div className="flex items-center gap-2">
@@ -519,58 +589,81 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
 
       {(isTask || isEmail) && (
         <div className="flex flex-col gap-1">
-          <Label className="text-sm text-muted-foreground">Исполнители</Label>
-          <AssigneesPopover
-            mode="controlled"
-            workspaceId={workspaceId}
-            assigneeIds={assigneeIds}
-            onToggle={onToggleAssignee}
-            participantsOverride={participants}
-          />
+          {projectOverride ? (
+            overrideHeader('Исполнители', projectOverride.assignees)
+          ) : (
+            <Label className="text-sm text-muted-foreground">Исполнители</Label>
+          )}
+          <div
+            className={cn(
+              projectOverride &&
+                !projectOverride.assignees.active &&
+                'opacity-50 pointer-events-none',
+            )}
+          >
+            <AssigneesPopover
+              mode="controlled"
+              workspaceId={workspaceId}
+              assigneeIds={assigneeIds}
+              onToggle={onToggleAssignee}
+              participantsOverride={participants}
+            />
+          </div>
         </div>
       )}
 
       <div className="flex flex-col gap-1">
-        <Label className="text-sm text-muted-foreground">Доступ</Label>
-        <div className="flex gap-2">
-          <Button
-            variant={accessType === 'all' ? 'default' : 'outline'}
-            size="sm"
-            className="gap-1.5"
-            onClick={() => onAccessTypeChange('all')}
-          >
-            <Users className="w-3.5 h-3.5" />
-            Все участники
-          </Button>
-          <Button
-            variant={accessType === 'roles' ? 'default' : 'outline'}
-            size="sm"
-            className="gap-1.5"
-            onClick={() => onAccessTypeChange('roles')}
-          >
-            <UserCheck className="w-3.5 h-3.5" />
-            По ролям
-          </Button>
-        </div>
-        {accessType === 'roles' && (
-          <div className="flex flex-wrap gap-1.5 mt-1">
-            {PROJECT_ROLE_OPTIONS.map((r) => (
-              <button
-                key={r.value}
-                type="button"
-                className={cn(
-                  'px-2.5 py-1 rounded-full text-xs border transition-colors',
-                  selectedRoles.has(r.value)
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background hover:bg-muted border-border',
-                )}
-                onClick={() => onToggleRole(r.value)}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
+        {projectOverride ? (
+          overrideHeader('Доступ', projectOverride.access)
+        ) : (
+          <Label className="text-sm text-muted-foreground">Доступ</Label>
         )}
+        <div
+          className={cn(
+            'flex flex-col gap-1',
+            projectOverride && !projectOverride.access.active && 'opacity-50 pointer-events-none',
+          )}
+        >
+          <div className="flex gap-2">
+            <Button
+              variant={accessType === 'all' ? 'default' : 'outline'}
+              size="sm"
+              className="gap-1.5"
+              onClick={() => onAccessTypeChange('all')}
+            >
+              <Users className="w-3.5 h-3.5" />
+              Все участники
+            </Button>
+            <Button
+              variant={accessType === 'roles' ? 'default' : 'outline'}
+              size="sm"
+              className="gap-1.5"
+              onClick={() => onAccessTypeChange('roles')}
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              По ролям
+            </Button>
+          </div>
+          {accessType === 'roles' && (
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {PROJECT_ROLE_OPTIONS.map((r) => (
+                <button
+                  key={r.value}
+                  type="button"
+                  className={cn(
+                    'px-2.5 py-1 rounded-full text-xs border transition-colors',
+                    selectedRoles.has(r.value)
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background hover:bg-muted border-border',
+                  )}
+                  onClick={() => onToggleRole(r.value)}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Email-поля + первое сообщение. В task-стиле — единый блок «Письмо»/«Первое
@@ -604,25 +697,39 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
               />
             </div>
             <div className="flex flex-col gap-1">
-              <Label className="text-xs text-muted-foreground">Текст письма</Label>
+              {projectOverride ? (
+                overrideHeader('Текст письма', projectOverride.message)
+              ) : (
+                <Label className="text-xs text-muted-foreground">Текст письма</Label>
+              )}
               <Textarea
                 value={initialMessageHtml}
                 onChange={(e) => onInitialMessageChange(e.target.value)}
                 placeholder="Здравствуйте!&#10;&#10;Просим предоставить..."
                 rows={3}
-                className="resize-y text-sm bg-background"
+                className={cn(
+                  'resize-y text-sm bg-background',
+                  projectOverride && !projectOverride.message.active && 'opacity-50 pointer-events-none',
+                )}
               />
             </div>
           </div>
         ) : (
           <div className={cn('rounded-md p-3 space-y-1', acc.bgSoft(accentColor))}>
-            <Label className="text-sm font-medium">Первое сообщение</Label>
+            {projectOverride ? (
+              overrideHeader('Первое сообщение', projectOverride.message)
+            ) : (
+              <Label className="text-sm font-medium">Первое сообщение</Label>
+            )}
             <Textarea
               value={initialMessageHtml}
               onChange={(e) => onInitialMessageChange(e.target.value)}
               placeholder="Текст первого сообщения..."
               rows={3}
-              className="resize-y text-sm bg-background"
+              className={cn(
+                'resize-y text-sm bg-background',
+                projectOverride && !projectOverride.message.active && 'opacity-50 pointer-events-none',
+              )}
             />
           </div>
         )

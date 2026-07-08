@@ -154,11 +154,31 @@ function ThreadTemplateDialogBody({
     isTask,
     isEmail,
     canSave,
+    isProjectMode,
+    deadlineOverridden,
+    messageOverridden,
+    accessOverridden,
+    assigneesOverridden,
+    toggleDeadlineOverride,
+    toggleMessageOverride,
+    toggleAccessOverride,
+    toggleAssigneesOverride,
     handleTabChange,
     handleSave,
     toggleAssignee,
     toggleRole,
   } = useThreadTemplateForm({ template, onSave, taskStatuses, enrichedEmails })
+
+  // Пер-проектные переопределения полей (только когда шаблон открыт из редактора
+  // типа проекта). Общие поля (имя/иконка/название/тип) правятся как есть.
+  const projectOverrideCtl = isProjectMode
+    ? {
+        deadline: { active: deadlineOverridden, onToggle: toggleDeadlineOverride },
+        message: { active: messageOverridden, onToggle: toggleMessageOverride },
+        access: { active: accessOverridden, onToggle: toggleAccessOverride },
+        assignees: { active: assigneesOverridden, onToggle: toggleAssigneesOverride },
+      }
+    : undefined
 
   return (
     <>
@@ -178,9 +198,17 @@ function ThreadTemplateDialogBody({
         </DialogTitle>
       </DialogHeader>
 
+      {isProjectMode && (
+        <p className="text-xs text-muted-foreground px-1 -mt-1">
+          Имя, иконка и название — общие для всех типов проекта. Исполнителей, срок,
+          сообщение и доступ можно настроить индивидуально для этого типа.
+        </p>
+      )}
+
       <div className="py-2">
         <ThreadTemplateFields
           workspaceId={workspaceId}
+          projectOverride={projectOverrideCtl}
           isTask={isTask}
           isEmail={isEmail}
           showTemplateName

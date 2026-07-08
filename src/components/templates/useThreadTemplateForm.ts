@@ -5,9 +5,13 @@
  * Выделено для уменьшения размера диалога.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
-import type { ThreadTemplate, ThreadTemplateFormData } from '@/types/threadTemplate'
+import type {
+  ThreadTemplate,
+  ThreadTemplateFormData,
+  ThreadTemplateProjectOverride,
+} from '@/types/threadTemplate'
 
 export type TabMode = 'task' | 'chat' | 'email'
 
@@ -41,10 +45,37 @@ export function useThreadTemplateForm({
     (template?.accent_color as ThreadAccentColor) ?? 'blue',
   )
   const [icon, setIcon] = useState(template?.icon ?? 'message-square')
-  const [accessType, setAccessType] = useState<'all' | 'roles'>(template?.access_type ?? 'all')
-  const [selectedRoles, setSelectedRoles] = useState<Set<string>>(
-    new Set(template?.access_roles ?? []),
+  // ── Пер-проектное переопределение ──
+  // Когда шаблон загружен в контексте типа проекта, template.projectOverride
+  // задан. Поля формы инициализируются ЭФФЕКТИВНЫМ значением (override ?? общее),
+  // а общие («рыба») значения запоминаем — чтобы восстановить при «сбросе».
+  const override = template?.projectOverride
+  const isProjectMode = !!override
+
+  const commonDeadline = template?.deadline_days ?? null
+  const commonMessage = template?.initial_message_html ?? ''
+  const commonAccessType: 'all' | 'roles' = template?.access_type ?? 'all'
+  const commonAccessRoles = useMemo(() => template?.access_roles ?? [], [template])
+  const commonAssigneeIds = useMemo(
+    () => (template?.thread_template_assignees ?? []).map((a) => a.participant_id),
+    [template],
   )
+
+  const effDeadline =
+    override && override.deadline_days != null ? override.deadline_days : commonDeadline
+  const effMessage =
+    override && override.initial_message_html != null
+      ? override.initial_message_html
+      : commonMessage
+  const effAccessType: 'all' | 'roles' =
+    override && override.access_type != null ? override.access_type : commonAccessType
+  const effAccessRoles =
+    override && override.access_type != null ? override.access_roles ?? [] : commonAccessRoles
+  const effAssignees =
+    override && override.assignees_overridden ? override.override_assignee_ids : commonAssigneeIds
+
+  const [accessType, setAccessType] = useState<'all' | 'roles'>(effAccessType)
+  const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set(effAccessRoles))
   const [statusId, setStatusId] = useState<string | null>(template?.default_status_id ?? null)
   const [defaultProjectId, setDefaultProjectId] = useState<string | null>(
     template?.default_project_id ?? null,
@@ -54,13 +85,57 @@ export function useThreadTemplateForm({
     template?.on_complete_set_project_status_id ?? null,
   )
   const [deadlineDays, setDeadlineDays] = useState<string>(
-    template?.deadline_days != null ? String(template.deadline_days) : '',
+    effDeadline != null ? String(effDeadline) : '',
   )
-  const [assigneeIds, setAssigneeIds] = useState<Set<string>>(
-    new Set((template?.thread_template_assignees ?? []).map((a) => a.participant_id)),
-  )
+  const [assigneeIds, setAssigneeIds] = useState<Set<string>>(new Set(effAssignees))
   const [emailSubject, setEmailSubject] = useState(template?.email_subject_template ?? '')
-  const [initialMessageHtml, setInitialMessageHtml] = useState(template?.initial_message_html ?? '')
+  const [initialMessageHtml, setInitialMessageHtml] = useState(effMessage)
+
+  // Флаги «поле переопределено индивидуально для этого типа проекта».
+  const [deadlineOverridden, setDeadlineOverridden] = useState(
+    !!override && override.deadline_days != null,
+  )
+  const [messageOverridden, setMessageOverridden] = useState(
+    !!override && override.initial_message_html != null,
+  )
+  const [accessOverridden, setAccessOverridden] = useState(
+    !!override && override.access_type != null,
+  )
+  const [assigneesOverridden, setAssigneesOverridden] = useState(
+    !!override && override.assignees_overridden,
+  )
+
+  const toggleDeadlineOverride = useCallback(
+    (next: boolean) => {
+      setDeadlineOverridden(next)
+      if (!next) setDeadlineDays(commonDeadline != null ? String(commonDeadline) : '')
+    },
+    [commonDeadline],
+  )
+  const toggleMessageOverride = useCallback(
+    (next: boolean) => {
+      setMessageOverridden(next)
+      if (!next) setInitialMessageHtml(commonMessage)
+    },
+    [commonMessage],
+  )
+  const toggleAccessOverride = useCallback(
+    (next: boolean) => {
+      setAccessOverridden(next)
+      if (!next) {
+        setAccessType(commonAccessType)
+        setSelectedRoles(new Set(commonAccessRoles))
+      }
+    },
+    [commonAccessType, commonAccessRoles],
+  )
+  const toggleAssigneesOverride = useCallback(
+    (next: boolean) => {
+      setAssigneesOverridden(next)
+      if (!next) setAssigneeIds(new Set(commonAssigneeIds))
+    },
+    [commonAssigneeIds],
+  )
 
   // Зеркалирование: «Название треда» повторяет «Название шаблона», а «Тема
   // письма» — «Название треда», пока пользователь не изменит их вручную. После
@@ -127,6 +202,23 @@ export function useThreadTemplateForm({
   const handleSave = useCallback(() => {
     if (!canSave) return
     const days = deadlineDays.trim() ? parseInt(deadlineDays, 10) : null
+    const validDays = days != null && !isNaN(days) ? days : null
+    // Пер-проектный payload: для каждого поля — либо индивидуальное значение,
+    // либо null (наследовать общий шаблон).
+    const projectOverride: ThreadTemplateProjectOverride | undefined = isProjectMode
+      ? {
+          deadline_days: deadlineOverridden ? validDays : null,
+          initial_message_html: messageOverridden ? initialMessageHtml.trim() || '' : null,
+          access_type: accessOverridden ? accessType : null,
+          access_roles: accessOverridden
+            ? accessType === 'roles'
+              ? Array.from(selectedRoles)
+              : []
+            : null,
+          assignees_overridden: assigneesOverridden,
+          override_assignee_ids: assigneesOverridden ? Array.from(assigneeIds) : [],
+        }
+      : undefined
     onSave({
       name: templateName.trim(),
       description: description.trim() || '',
@@ -147,6 +239,7 @@ export function useThreadTemplateForm({
       default_contact_email: isEmail ? enrichedEmails.map((e) => e.email).join(', ') : '',
       email_subject_template: isEmail ? emailSubject.trim() : '',
       initial_message_html: initialMessageHtml.trim() || '',
+      projectOverride,
     })
   }, [
     canSave,
@@ -168,6 +261,11 @@ export function useThreadTemplateForm({
     enrichedEmails,
     emailSubject,
     initialMessageHtml,
+    isProjectMode,
+    deadlineOverridden,
+    messageOverridden,
+    accessOverridden,
+    assigneesOverridden,
     onSave,
   ])
 
@@ -224,6 +322,16 @@ export function useThreadTemplateForm({
     isTask,
     isEmail,
     canSave,
+    // project-override mode
+    isProjectMode,
+    deadlineOverridden,
+    messageOverridden,
+    accessOverridden,
+    assigneesOverridden,
+    toggleDeadlineOverride,
+    toggleMessageOverride,
+    toggleAccessOverride,
+    toggleAssigneesOverride,
     // actions
     handleTabChange,
     handleSave,

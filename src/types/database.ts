@@ -6408,27 +6408,75 @@ export type Database = {
           },
         ]
       }
+      project_template_thread_assignees: {
+        Row: {
+          participant_id: string
+          template_id: string
+          thread_template_id: string
+        }
+        Insert: {
+          participant_id: string
+          template_id: string
+          thread_template_id: string
+        }
+        Update: {
+          participant_id?: string
+          template_id?: string
+          thread_template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_template_thread_assignees_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_template_thread_assignees_template_id_thread_templ_fkey"
+            columns: ["template_id", "thread_template_id"]
+            isOneToOne: false
+            referencedRelation: "project_template_thread_templates"
+            referencedColumns: ["template_id", "thread_template_id"]
+          },
+        ]
+      }
       project_template_thread_templates: {
         Row: {
+          access_roles: string[] | null
+          access_type: string | null
           created_at: string
+          deadline_days: number | null
           default_status_id: string | null
+          initial_message_html: string | null
           on_complete_set_project_status_id: string | null
+          override_assignees: boolean
           sort_order: number
           template_id: string
           thread_template_id: string
         }
         Insert: {
+          access_roles?: string[] | null
+          access_type?: string | null
           created_at?: string
+          deadline_days?: number | null
           default_status_id?: string | null
+          initial_message_html?: string | null
           on_complete_set_project_status_id?: string | null
+          override_assignees?: boolean
           sort_order?: number
           template_id: string
           thread_template_id: string
         }
         Update: {
+          access_roles?: string[] | null
+          access_type?: string | null
           created_at?: string
+          deadline_days?: number | null
           default_status_id?: string | null
+          initial_message_html?: string | null
           on_complete_set_project_status_id?: string | null
+          override_assignees?: boolean
           sort_order?: number
           template_id?: string
           thread_template_id?: string

@@ -251,7 +251,15 @@ export function ProjectTemplateThreadList({
 
   const handleSave = (data: ThreadTemplateFormData) => {
     saveMutation.mutate(
-      { data, templateId: editingItem?.id ?? null },
+      {
+        data,
+        templateId: editingItem?.id ?? null,
+        // Общие исполнители шаблона — чтобы при пер-проектном сохранении RPC
+        // (delete+reinsert) их не стёр.
+        commonAssigneeIds: (editingItem?.thread_template_assignees ?? []).map(
+          (a) => a.participant_id,
+        ),
+      },
       {
         onSuccess: () => {
           setIsDialogOpen(false)

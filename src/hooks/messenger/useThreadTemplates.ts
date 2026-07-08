@@ -77,21 +77,62 @@ type JunctionRow = {
   sort_order: number
   default_status_id: string | null
   on_complete_set_project_status_id: string | null
+  // Пер-проектные override-поля (null скаляр = наследовать из общего шаблона).
+  deadline_days: number | null
+  initial_message_html: string | null
+  access_type: 'all' | 'roles' | null
+  access_roles: string[] | null
+  override_assignees: boolean
   thread_templates: ThreadTemplate | null
 }
 
-function mapJunctionRow(r: JunctionRow): ThreadTemplate | null {
+function mapJunctionRow(
+  r: JunctionRow,
+  overrideAssigneeIds: string[],
+): ThreadTemplate | null {
   if (!r.thread_templates) return null
   return {
+    // База — «рыба» общего шаблона (в т.ч. общие deadline/access/message/
+    // исполнители остаются как есть, эффективное значение считает потребитель).
     ...r.thread_templates,
     sort_order: r.sort_order,
     default_status_id: r.default_status_id,
     on_complete_set_project_status_id: r.on_complete_set_project_status_id,
+    projectOverride: {
+      deadline_days: r.deadline_days,
+      initial_message_html: r.initial_message_html,
+      access_type: r.access_type,
+      access_roles: r.access_roles,
+      assignees_overridden: r.override_assignees,
+      override_assignee_ids: overrideAssigneeIds,
+    },
   }
 }
 
 const JUNCTION_SELECT =
-  'sort_order, default_status_id, on_complete_set_project_status_id, thread_templates(*, thread_template_assignees(participant_id))'
+  'sort_order, default_status_id, on_complete_set_project_status_id, deadline_days, initial_message_html, access_type, access_roles, override_assignees, thread_templates(*, thread_template_assignees(participant_id))'
+
+/**
+ * Override-исполнители типа проекта (project_template_thread_assignees) —
+ * отдельным запросом (составной FK не встраиваем через PostgREST). Карта
+ * thread_template_id → participant_id[].
+ */
+async function fetchOverrideAssigneeMap(
+  projectTemplateId: string,
+): Promise<Map<string, string[]>> {
+  const { data, error } = await supabase
+    .from('project_template_thread_assignees')
+    .select('thread_template_id, participant_id')
+    .eq('template_id', projectTemplateId)
+  if (error) throw error
+  const map = new Map<string, string[]>()
+  for (const row of (data ?? []) as { thread_template_id: string; participant_id: string }[]) {
+    const arr = map.get(row.thread_template_id) ?? []
+    arr.push(row.participant_id)
+    map.set(row.thread_template_id, arr)
+  }
+  return map
+}
 
 /**
  * Шаблоны, видимые внутри проекта: привязанные к типу этого проекта (через
@@ -131,8 +172,9 @@ export function useThreadTemplatesForProject(
         .eq('template_id', projectTemplateId)
         .order('sort_order', { ascending: true })
       if (jErr) throw jErr
+      const overrideMap = await fetchOverrideAssigneeMap(projectTemplateId)
       const scoped = ((jrows ?? []) as unknown as JunctionRow[])
-        .map(mapJunctionRow)
+        .map((r) => mapJunctionRow(r, overrideMap.get(r.thread_templates?.id ?? '') ?? []))
         .filter((t): t is ThreadTemplate => t !== null)
       const scopedIds = new Set(scoped.map((t) => t.id))
 
@@ -173,8 +215,9 @@ export function useThreadTemplatesByProjectTemplate(
         .eq('template_id', projectTemplateId)
         .order('sort_order', { ascending: true })
       if (error) throw error
+      const overrideMap = await fetchOverrideAssigneeMap(projectTemplateId)
       return ((data ?? []) as unknown as JunctionRow[])
-        .map(mapJunctionRow)
+        .map((r) => mapJunctionRow(r, overrideMap.get(r.thread_templates?.id ?? '') ?? []))
         .filter((t): t is ThreadTemplate => t !== null)
     },
     enabled: !!projectTemplateId,

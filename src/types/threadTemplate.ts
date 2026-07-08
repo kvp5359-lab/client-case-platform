@@ -7,6 +7,27 @@ export type ThreadTemplateAssignee = {
   participant_id: string
 }
 
+/**
+ * Пер-проектные переопределения полей шаблона треда для конкретного типа
+ * проекта (хранятся в связке project_template_thread_templates + таблице
+ * project_template_thread_assignees). Заполняется только при загрузке шаблона
+ * через junction типа проекта (mapJunctionRow). Общий шаблон в библиотеке при
+ * этом не меняется — здесь лежит «поверх».
+ *
+ * Скалярные поля: null = наследовать из общего шаблона. Пустая строка у
+ * initial_message_html = осознанное переопределение «без сообщения».
+ * Исполнители: assignees_overridden=false → наследуем thread_template_assignees;
+ * true → используем override_assignee_ids (даже пустой набор = «никого»).
+ */
+export type ThreadTemplateProjectOverride = {
+  deadline_days: number | null
+  initial_message_html: string | null
+  access_type: 'all' | 'roles' | null
+  access_roles: string[] | null
+  assignees_overridden: boolean
+  override_assignee_ids: string[]
+}
+
 export type ThreadTemplate = {
   id: string
   workspace_id: string
@@ -55,8 +76,15 @@ export type ThreadTemplate = {
   created_by: string | null
   created_at: string
   updated_at: string
-  // Joined from thread_template_assignees
+  // Joined from thread_template_assignees (ОБЩИЕ исполнители шаблона)
   thread_template_assignees?: ThreadTemplateAssignee[]
+  /**
+   * Пер-проектные переопределения. Присутствует ТОЛЬКО когда шаблон загружен
+   * в контексте типа проекта (через junction). undefined = общий шаблон из
+   * библиотеки. Базовые поля объекта (deadline_days/access_type/… + исполнители)
+   * остаются «рыбой» общего шаблона — эффективное значение = override ?? база.
+   */
+  projectOverride?: ThreadTemplateProjectOverride
 }
 
 export type ThreadTemplateFormData = {
@@ -78,4 +106,10 @@ export type ThreadTemplateFormData = {
   default_contact_email: string
   email_subject_template: string
   initial_message_html: string
+  /**
+   * Когда задано — сохранение идёт как пер-проектное переопределение в junction
+   * типа проекта (эти поля не пишутся в общий шаблон). undefined = обычное
+   * сохранение общего шаблона (библиотека или создание нового).
+   */
+  projectOverride?: ThreadTemplateProjectOverride
 }

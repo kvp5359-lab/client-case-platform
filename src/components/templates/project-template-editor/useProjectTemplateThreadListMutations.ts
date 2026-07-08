@@ -37,11 +37,15 @@ export function useProjectTemplateThreadListMutations(params: {
     mutationFn: async ({
       data,
       templateId,
+      commonAssigneeIds,
     }: {
       data: ThreadTemplateFormData
       templateId: string | null
+      /** Текущие ОБЩИЕ исполнители шаблона — передаём в RPC при пер-проектном
+       *  сохранении, чтобы RPC (delete+reinsert) их не стёр. */
+      commonAssigneeIds?: string[]
     }) => {
-      const { assignee_ids, ...templateData } = data
+      const { assignee_ids, projectOverride, ...templateData } = data
       // Пер-проектные поля живут в junction, тело — в глобальном thread_templates.
       const perProject = {
         default_status_id: templateData.default_status_id ?? null,
@@ -49,7 +53,63 @@ export function useProjectTemplateThreadListMutations(params: {
           templateData.on_complete_set_project_status_id ?? null,
       }
 
-      if (templateId) {
+      if (templateId && projectOverride) {
+        // ── Пер-проектное переопределение (редактирование этапа внутри типа
+        // проекта). Общее тело (имя/иконка/название/тип/описание) — в общий
+        // шаблон; исполнителей общего шаблона НЕ трогаем (передаём как есть).
+        // Дедлайн/сообщение/доступ/исполнители — в junction + override-таблицу.
+        const commonBody = {
+          name: data.name,
+          description: data.description,
+          default_description: data.default_description,
+          thread_type: data.thread_type,
+          is_email: data.is_email,
+          thread_name_template: data.thread_name_template,
+          accent_color: data.accent_color,
+          icon: data.icon,
+          default_project_id: data.default_project_id,
+          default_contact_email: data.default_contact_email,
+          email_subject_template: data.email_subject_template,
+        }
+        const { error } = await supabase.rpc('update_thread_template_with_assignees', {
+          p_template_id: templateId,
+          p_updates: commonBody,
+          p_assignee_ids: commonAssigneeIds ?? [],
+        })
+        if (error) throw error
+        const { error: jErr } = await supabase
+          .from('project_template_thread_templates')
+          .update({
+            ...perProject,
+            deadline_days: projectOverride.deadline_days,
+            initial_message_html: projectOverride.initial_message_html,
+            access_type: projectOverride.access_type,
+            access_roles: projectOverride.access_roles,
+            override_assignees: projectOverride.assignees_overridden,
+          })
+          .eq('template_id', projectTemplateId)
+          .eq('thread_template_id', templateId)
+        if (jErr) throw jErr
+        // Override-исполнители: переписываем набор целиком.
+        const { error: delErr } = await supabase
+          .from('project_template_thread_assignees')
+          .delete()
+          .eq('template_id', projectTemplateId)
+          .eq('thread_template_id', templateId)
+        if (delErr) throw delErr
+        if (projectOverride.assignees_overridden && projectOverride.override_assignee_ids.length > 0) {
+          const { error: insErr } = await supabase
+            .from('project_template_thread_assignees')
+            .insert(
+              projectOverride.override_assignee_ids.map((pid) => ({
+                template_id: projectTemplateId,
+                thread_template_id: templateId,
+                participant_id: pid,
+              })),
+            )
+          if (insErr) throw insErr
+        }
+      } else if (templateId) {
         // Тело + исполнители — в глобальный шаблон (общий для всех типов).
         const { error } = await supabase.rpc('update_thread_template_with_assignees', {
           p_template_id: templateId,

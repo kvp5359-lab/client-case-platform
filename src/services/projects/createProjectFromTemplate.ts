@@ -241,9 +241,18 @@ export async function seedProjectContent(
   for (const tpl of selectedThreadTemplates) {
     promises.push(
       (async () => {
+        // Пер-проектные переопределения (если шаблон загружен в контексте типа
+        // проекта). Эффективное значение = override ?? общее («рыба»).
+        const po = tpl.projectOverride
+        const effDeadlineDays =
+          po && po.deadline_days != null ? po.deadline_days : tpl.deadline_days
+        const effAccessType = po && po.access_type != null ? po.access_type : tpl.access_type
+        const effAccessRoles =
+          po && po.access_type != null ? (po.access_roles ?? []) : (tpl.access_roles ?? [])
+
         const deadline =
-          tpl.thread_type === 'task' && tpl.deadline_days != null
-            ? addDays(new Date(), tpl.deadline_days).toISOString()
+          tpl.thread_type === 'task' && effDeadlineDays != null
+            ? addDays(new Date(), effDeadlineDays).toISOString()
             : null
         const { data: thread, error: threadErr } = await supabase
           .from('project_threads')
@@ -252,8 +261,8 @@ export async function seedProjectContent(
             workspace_id: workspaceId,
             name: tpl.name,
             type: tpl.thread_type,
-            access_type: tpl.access_type,
-            access_roles: tpl.access_type === 'roles' ? (tpl.access_roles ?? []) : [],
+            access_type: effAccessType,
+            access_roles: effAccessType === 'roles' ? effAccessRoles : [],
             accent_color: tpl.accent_color,
             icon: tpl.icon,
             status_id: tpl.default_status_id,
@@ -267,7 +276,10 @@ export async function seedProjectContent(
           .single()
         if (threadErr) throw threadErr
 
-        const assigneeIds = (tpl.thread_template_assignees ?? []).map((a) => a.participant_id)
+        const assigneeIds =
+          po && po.assignees_overridden
+            ? po.override_assignee_ids
+            : (tpl.thread_template_assignees ?? []).map((a) => a.participant_id)
         if (tpl.thread_type === 'task' && assigneeIds.length > 0) {
           const rows = assigneeIds.map((pid) => ({ thread_id: thread.id, participant_id: pid }))
           const { error: aErr } = await supabase.from('task_assignees').insert(rows)
