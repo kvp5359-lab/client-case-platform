@@ -14,7 +14,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  ChevronDown, ChevronRight, Plus, MoreHorizontal, Trash2, ArrowUp, ArrowDown, Eye, EyeOff, Ban, GripVertical,
+  ChevronDown, ChevronRight, Plus, MoreHorizontal, Trash2, Eye, EyeOff, Ban, GripVertical,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -43,7 +43,7 @@ type Props = {
 
 export function PlanGroupContainer({
   group, children, canEdit, onRename, onToggleCollapse, onDelete, onAddTask,
-  onSetColor, onToggleClientVisible, onMoveUp, onMoveDown, renderChild,
+  onSetColor, onToggleClientVisible, renderChild,
 }: Props) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(group.name)
@@ -92,8 +92,13 @@ export function PlanGroupContainer({
         </button>
       )}
 
-      {/* Заголовок группы */}
-      <div className="flex items-center gap-1.5 px-2 py-1.5">
+      {/* Заголовок группы — плашка чуть темнее тела группы */}
+      <div
+        className={cn(
+          'flex items-center gap-1.5 px-2 py-1.5 bg-muted/60',
+          collapsed ? 'rounded-lg' : 'rounded-t-lg',
+        )}
+      >
         <button
           type="button"
           onClick={onToggleCollapse}
@@ -113,7 +118,7 @@ export function PlanGroupContainer({
               if (e.key === 'Enter') commitName()
               if (e.key === 'Escape') { setDraft(group.name); setEditing(false) }
             }}
-            className="flex-1 min-w-0 bg-transparent text-sm font-semibold outline-none border-b border-border focus:border-foreground"
+            className="flex-1 min-w-0 bg-transparent text-base font-semibold outline-none border-b border-border focus:border-foreground"
           />
         ) : (
           <button
@@ -121,7 +126,7 @@ export function PlanGroupContainer({
             disabled={!canEdit}
             onClick={() => canEdit && setEditing(true)}
             className={cn(
-              'flex-1 min-w-0 truncate text-left text-sm font-semibold',
+              'flex-1 min-w-0 truncate text-left text-base font-semibold',
               accentText,
               canEdit && !accentText && 'hover:text-foreground',
             )}
@@ -140,24 +145,7 @@ export function PlanGroupContainer({
 
         {canEdit && (
           <>
-            <Button
-              variant="ghost" size="icon"
-              className="h-6 w-6 text-muted-foreground disabled:opacity-30"
-              onClick={onMoveUp}
-              disabled={!onMoveUp}
-              title="Переместить группу выше"
-            >
-              <ArrowUp className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost" size="icon"
-              className="h-6 w-6 text-muted-foreground disabled:opacity-30"
-              onClick={onMoveDown}
-              disabled={!onMoveDown}
-              title="Переместить группу ниже"
-            >
-              <ArrowDown className="h-4 w-4" />
-            </Button>
+            {/* Ручной ↑↓ порядок убран — группы переупорядочиваются перетаскиванием. */}
             <Button
               variant="ghost" size="icon"
               className="h-6 w-6 text-muted-foreground md:opacity-0 md:group-hover/planroot:opacity-100"

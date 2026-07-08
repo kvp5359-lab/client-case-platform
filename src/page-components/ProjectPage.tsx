@@ -13,7 +13,8 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { cn } from '@/lib/utils'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs } from '@/components/ui/tabs'
+import { ProjectModuleTabBar } from './ProjectPage/components/ProjectModuleTabBar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -371,89 +372,62 @@ export default function ProjectPage() {
             {/* Вкладки модулей — теперь и для клиента (сайдбара у него нет) */}
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               {availableModules.length > 0 && (
-                <div className="pb-3 project-tabs-cq">
-                  <TabsList className="max-w-full overflow-x-auto scrollbar-auto-hide">
-                    {availableModules
-                      .filter((m) => m.showTab !== false)
-                      .map((m) => {
-                        const Icon = m.icon
-                        return (
-                          <TabsTrigger
-                            key={m.id}
-                            value={m.id}
-                            className={cn(
-                              // Все вкладки — натуральной ширины (не ужимаются).
-                              // Подписи неактивных капятся равным max-width, при
-                              // нехватке места ряд скроллится по горизонтали
-                              // (overflow-x-auto на TabsList) — вместо неравномерного
-                              // ужимания и пряток подписей.
-                              'flex items-center gap-1 md:gap-2 shrink-0',
-                            )}
-                            title={m.label}
-                          >
-                            <Icon className="w-4 h-4 shrink-0" />
-                            {/* Подпись показывается ВСЕГДА (у всех вкладок). Активная —
-                                целиком; неактивные — с равным max-width, длинные
-                                обрезаются многоточием одинаково. Не влезло — ряд
-                                скроллится (TabsList overflow-x-auto). */}
-                            {!m.iconOnly && (
-                              <span
-                                className={cn(
-                                  activeTab === m.id
-                                    ? 'whitespace-nowrap'
-                                    : 'truncate max-w-[6.5rem]',
-                                )}
-                              >
-                                {m.label}
-                              </span>
-                            )}
-                            {m.id === 'tasks' && activeTab === 'tasks' && (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <span
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onKeyDown={(e) => e.stopPropagation()}
-                                    className="ml-0.5 p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0"
-                                  >
-                                    <MoreVertical className="h-3.5 w-3.5" />
-                                  </span>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start">
-                                  <DropdownMenuItem onClick={generatePlanDialog.open}>
-                                    <Sparkles className="h-4 w-4 mr-2" />
-                                    Сформировать план
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            )}
-                            {m.id === 'forms' && activeTab === 'forms' && canAddForms && (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <span
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onKeyDown={(e) => e.stopPropagation()}
-                                    className="ml-0.5 p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0"
-                                  >
-                                    <MoreVertical className="h-3.5 w-3.5" />
-                                  </span>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start">
-                                  <DropdownMenuItem onClick={addFormKitDialog.open}>
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Добавить анкету
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            )}
-                          </TabsTrigger>
-                        )
-                      })}
-                  </TabsList>
-                </div>
+                <ProjectModuleTabBar
+                  modules={availableModules
+                    .filter((m) => m.showTab !== false)
+                    .map((m) => ({ id: m.id, label: m.label, icon: m.icon, iconOnly: m.iconOnly }))}
+                  activeTab={activeTab}
+                  onSelect={handleTabChange}
+                  renderTabExtra={(id) => {
+                    if (id === 'tasks' && activeTab === 'tasks') {
+                      return (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
+                              className="ml-0.5 p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0"
+                            >
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </span>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem onClick={generatePlanDialog.open}>
+                              <Sparkles className="h-4 w-4 mr-2" />
+                              Сформировать план
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )
+                    }
+                    if (id === 'forms' && activeTab === 'forms' && canAddForms) {
+                      return (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
+                              className="ml-0.5 p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0"
+                            >
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </span>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem onClick={addFormKitDialog.open}>
+                              <Plus className="h-4 w-4 mr-2" />
+                              Добавить анкету
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )
+                    }
+                    return null
+                  }}
+                />
               )}
 
               <ProjectTabsContent

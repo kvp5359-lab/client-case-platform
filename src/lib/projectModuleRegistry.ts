@@ -115,7 +115,7 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
     id: 'visa_selection',
     label: 'Подбор ВНЖ',
     icon: Compass,
-    order: 3.5,
+    order: 4.5,
     templateKey: 'visa_selection',
     permissionKey: 'visa_selection',
   },
@@ -134,7 +134,6 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
     order: 5,
     templateKey: null,
     permissionKey: 'history',
-    iconOnly: true,
   },
   {
     id: 'digest',
@@ -143,7 +142,6 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
     order: 5.5,
     templateKey: null,
     permissionKey: 'digest',
-    iconOnly: true,
   },
   {
     id: 'project-context',
@@ -171,9 +169,8 @@ export const PROJECT_MODULES: ModuleDefinition[] = [
     id: 'finances',
     label: 'Финансы',
     icon: DollarSign,
-    order: 9,
+    order: 3.5,
     templateKey: 'finances',
     permissionKey: 'finance',
-    iconOnly: true,
   },
 ]
