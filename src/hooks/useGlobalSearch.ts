@@ -257,5 +257,17 @@ export function useProjectIconResolver(workspaceId: string | undefined) {
   )
 }
 
+/** Резолвит префикс имени проекта (как в сайдбаре) по template_id.
+ *  null, если у шаблона нет префикса или `show_name_prefix_in_sidebar=false`. */
+export function useProjectPrefixResolver(workspaceId: string | undefined) {
+  const { data: templatesById } = useProjectTemplateIcons(workspaceId)
+  return useMemo(
+    () =>
+      (templateId: string | null): string | null =>
+        templateId ? templatesById?.[templateId]?.namePrefix ?? null : null,
+    [templatesById],
+  )
+}
+
 // useDebouncedValue удалён — общий хук `useDebounce` живёт в @/hooks/shared/useDebounce.
 // Импортируй `useDebounce(value, 250)` оттуда.

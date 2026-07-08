@@ -21,6 +21,7 @@ import {
   useGlobalSearch,
   useRecentlyViewed,
   useProjectIconResolver,
+  useProjectPrefixResolver,
   type GlobalSearchEntityType,
 } from '@/hooks/useGlobalSearch'
 import { useDebounce } from '@/hooks/shared/useDebounce'
@@ -109,6 +110,7 @@ export function SidebarGlobalSearch({
   const { data: results, isFetching: isSearching } = useGlobalSearch(workspaceId, debouncedQuery)
   const { data: recent } = useRecentlyViewed(workspaceId, 15)
   const resolveProjectIcon = useProjectIconResolver(workspaceId)
+  const resolveProjectPrefix = useProjectPrefixResolver(workspaceId)
 
   const isSearchMode = debouncedQuery.trim().length >= 2
   const hasResults = (results?.length ?? 0) > 0
@@ -208,7 +210,7 @@ export function SidebarGlobalSearch({
     }))
     const fromRecent = rows.filter((r) => recentKeys.has(r.key))
     const rest = rows.filter((r) => !recentKeys.has(r.key))
-    const order: GlobalSearchEntityType[] = ['thread', 'project', 'knowledge_article', 'participant', 'message']
+    const order: GlobalSearchEntityType[] = ['project', 'thread', 'knowledge_article', 'participant', 'message']
     const byType = new Map<GlobalSearchEntityType, DisplayRow[]>()
     for (const r of rest) {
       const list = byType.get(r.entity_type) ?? []
@@ -252,6 +254,12 @@ export function SidebarGlobalSearch({
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm text-gray-800 truncate">
+                {row.entity_type === 'project' &&
+                  resolveProjectPrefix(row.project_template_id) && (
+                    <span className="text-gray-400 font-normal">
+                      {resolveProjectPrefix(row.project_template_id)}{' '}
+                    </span>
+                  )}
                 <span>{row.title || '—'}</span>
                 {row.subtitle && (
                   <span className="text-gray-400 ml-2 font-normal">{row.subtitle}</span>
@@ -268,7 +276,7 @@ export function SidebarGlobalSearch({
         </li>
       )
     },
-    [handlePick, resolveProjectIcon, workspaceId],
+    [handlePick, resolveProjectIcon, resolveProjectPrefix, workspaceId],
   )
 
   const dropdown = (
@@ -282,7 +290,7 @@ export function SidebarGlobalSearch({
           </div>
         ) : (
           <div className="overflow-y-auto">
-            <SectionHeader icon={<Clock size={12} />} label="Недавнее" />
+            <SectionHeader icon={<Clock size={12} />} label="Недавнее" first />
             <ul>{recentRows.map(rowFor)}</ul>
           </div>
         )
@@ -298,16 +306,14 @@ export function SidebarGlobalSearch({
         <div className="overflow-y-auto">
           {searchSections.fromRecent.length > 0 && (
             <>
-              <SectionHeader icon={<Clock size={12} />} label="Недавнее" />
+              <SectionHeader icon={<Clock size={12} />} label="Недавнее" first />
               <ul>{searchSections.fromRecent.map(rowFor)}</ul>
-              {searchSections.groups.length > 0 && (
-                <div className="h-px bg-gray-200" />
-              )}
             </>
           )}
-          {searchSections.groups.map((group) => (
+          {searchSections.groups.map((group, i) => (
             <div key={group.type}>
               <SectionHeader
+                first={searchSections.fromRecent.length === 0 && i === 0}
                 icon={
                   <EntityIcon
                     type={group.type}

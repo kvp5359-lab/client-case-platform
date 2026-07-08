@@ -21,6 +21,7 @@ import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import {
   useGlobalSearch,
   useProjectIconResolver,
+  useProjectPrefixResolver,
   type GlobalSearchEntityType,
   type GlobalSearchRow,
 } from '@/hooks/useGlobalSearch'
@@ -60,12 +61,13 @@ export default function SearchPage() {
 
   const { data: results, isFetching } = useGlobalSearch(workspaceId, debouncedQuery, 40)
   const resolveProjectIcon = useProjectIconResolver(workspaceId)
+  const resolveProjectPrefix = useProjectPrefixResolver(workspaceId)
 
   const isSearchMode = debouncedQuery.trim().length >= 2
 
   const grouped = useMemo(() => {
     if (!results) return [] as Array<{ type: GlobalSearchEntityType; items: GlobalSearchRow[] }>
-    const order: GlobalSearchEntityType[] = ['thread', 'project', 'knowledge_article', 'participant', 'message']
+    const order: GlobalSearchEntityType[] = ['project', 'thread', 'knowledge_article', 'participant', 'message']
     const byType = new Map<GlobalSearchEntityType, GlobalSearchRow[]>()
     for (const r of results) {
       const list = byType.get(r.entity_type) ?? []
@@ -180,6 +182,12 @@ export default function SearchPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="text-sm text-gray-800">
+                                {it.entity_type === 'project' &&
+                                  resolveProjectPrefix(it.project_template_id) && (
+                                    <span className="text-gray-400 font-normal">
+                                      {resolveProjectPrefix(it.project_template_id)}{' '}
+                                    </span>
+                                  )}
                                 <span className="font-medium">{it.title || '—'}</span>
                                 {it.subtitle && (
                                   <span className="text-gray-400 ml-2 font-normal">
