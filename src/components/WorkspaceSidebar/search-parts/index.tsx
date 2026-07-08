@@ -58,9 +58,23 @@ export function SearchInputInline({
   )
 }
 
-export function SectionHeader({ icon, label }: { icon: React.ReactNode; label: string }) {
+export function SectionHeader({
+  icon,
+  label,
+  first,
+}: {
+  icon: React.ReactNode
+  label: string
+  /** Первый заголовок в списке — без отступа сверху. */
+  first?: boolean
+}) {
   return (
-    <div className="px-3 py-1.5 flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-gray-500 bg-gray-50 border-b border-gray-100">
+    <div
+      className={cn(
+        'px-3 py-1.5 flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-gray-500 bg-gray-100 border-y border-gray-200',
+        !first && 'mt-2',
+      )}
+    >
       {icon}
       <span>{label}</span>
     </div>
