@@ -14,7 +14,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  ChevronDown, ChevronRight, Plus, MoreHorizontal, Trash2, Eye, EyeOff, Ban, GripVertical,
+  ChevronDown, ChevronRight, Plus, MoreHorizontal, Trash2, Eye, EyeOff, Ban, GripVertical, Pencil,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -74,7 +74,7 @@ export function PlanGroupContainer({
       // dnd-kit добавлял scaleX/scaleY → визуальное сплющивание при drag'е.
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        'group/plangroup relative mb-1 rounded-lg border border-border/70 bg-muted/20',
+        'group/plangroup relative mt-4 mb-1 rounded-lg border border-border/70 bg-muted/20',
         isDragging && 'opacity-60 z-10',
       )}
     >
@@ -92,10 +92,10 @@ export function PlanGroupContainer({
         </button>
       )}
 
-      {/* Заголовок группы — плашка чуть темнее тела группы */}
+      {/* Заголовок группы — плашка темнее тела группы */}
       <div
         className={cn(
-          'flex items-center gap-1.5 px-2 py-1.5 bg-muted/60',
+          'flex items-center gap-1.5 px-2 py-1.5 bg-muted',
           collapsed ? 'rounded-lg' : 'rounded-t-lg',
         )}
       >
@@ -121,19 +121,44 @@ export function PlanGroupContainer({
             className="flex-1 min-w-0 bg-transparent text-base font-semibold outline-none border-b border-border focus:border-foreground"
           />
         ) : (
-          <button
-            type="button"
-            disabled={!canEdit}
-            onClick={() => canEdit && setEditing(true)}
-            className={cn(
-              'flex-1 min-w-0 truncate text-left text-base font-semibold',
-              accentText,
-              canEdit && !accentText && 'hover:text-foreground',
+          <div className="flex flex-1 min-w-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className={cn(
+                'min-w-0 truncate text-left text-base font-semibold',
+                accentText,
+                !accentText && 'hover:text-foreground',
+              )}
+              title={collapsed ? 'Развернуть группу' : 'Свернуть группу'}
+            >
+              {group.name || 'Без названия'}
+            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="shrink-0 p-0.5 text-muted-foreground/50 hover:text-foreground transition-opacity opacity-0 group-hover/plangroup:opacity-100"
+                title="Переименовать группу"
+                aria-label="Переименовать группу"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
             )}
-            title={canEdit ? 'Переименовать группу' : undefined}
+          </div>
+        )}
+
+        {/* «+» — слева от индикаторов: на десктопе появляется по наведению на СВОЮ
+            группу (display-toggle, места в покое не занимает), на тач виден всегда. */}
+        {canEdit && (
+          <Button
+            variant="ghost" size="icon"
+            className="h-6 w-6 text-muted-foreground inline-flex md:hidden md:group-hover/plangroup:inline-flex"
+            onClick={onAddTask}
+            title="Добавить задачу в группу"
           >
-            {group.name || 'Без названия'}
-          </button>
+            <Plus className="h-4 w-4" />
+          </Button>
         )}
 
         {/* Индикатор «скрыта от клиента» — виден только команде (клиент группу не увидит вовсе). */}
@@ -145,15 +170,6 @@ export function PlanGroupContainer({
 
         {canEdit && (
           <>
-            {/* Ручной ↑↓ порядок убран — группы переупорядочиваются перетаскиванием. */}
-            <Button
-              variant="ghost" size="icon"
-              className="h-6 w-6 text-muted-foreground md:opacity-0 md:group-hover/planroot:opacity-100"
-              onClick={onAddTask}
-              title="Добавить задачу в группу"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground">

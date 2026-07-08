@@ -10,7 +10,7 @@
  * Когда передан projectId — автоматически фильтрует по проекту, скрывает фильтр «Проект».
  */
 
-import { useState, useMemo, useCallback, useEffect, lazy, Suspense, memo } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef, lazy, Suspense, memo } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckSquare, Plus } from 'lucide-react'
 import { PageLoader } from '@/components/ui/loaders'
@@ -119,6 +119,9 @@ export const TaskListView = memo(function TaskListView({
   const planVis = usePlanBlockVisibility()
   const [presetPopoverOpen, setPresetPopoverOpen] = useState(false)
   const [deletingTask, setDeletingTask] = useState<TaskItem | null>(null)
+  // «+» в заголовке группы: диалог создания открывается общий (как «Создать»),
+  // а целевую группу + позицию помним в ref — после создания задачу привяжем.
+  const pendingGroupRef = useRef<{ groupId: string; sortOrder: number } | null>(null)
 
   // ── Загрузка данных ──
 
@@ -340,7 +343,16 @@ export const TaskListView = memo(function TaskListView({
     filters.projectFilterIds.size === 0
 
   // Создание группы задач из меню «Создать» (только в plan-режиме проекта).
-  const { addGroup: addTaskGroup } = useProjectTaskGroups(projectId, workspaceId)
+  const { addGroup: addTaskGroup, assignThreadToGroup } = useProjectTaskGroups(projectId, workspaceId)
+
+  // После создания задачи через «+» группы — привязать её к группе и в её конец.
+  useEffect(() => {
+    const pending = pendingGroupRef.current
+    if (!pending || !createdThread) return
+    pendingGroupRef.current = null
+    void assignThreadToGroup(createdThread.id, pending.groupId)
+    reorderTasks.mutate([{ id: createdThread.id, sort_order: pending.sortOrder }])
+  }, [createdThread, assignThreadToGroup, reorderTasks])
 
   // ── Рендер ──
 
@@ -400,6 +412,12 @@ export const TaskListView = memo(function TaskListView({
           }
           onReorderTasks={(updates) => reorderTasks.mutate(updates)}
           onRequestDeleteTask={isWorkspaceOwner ? (task) => setDeletingTask(task) : undefined}
+          onRequestCreateInGroup={(groupId, sortOrder) => {
+            pendingGroupRef.current = { groupId, sortOrder }
+            setCreateDefaultType('task')
+            setCreateTemplate(null)
+            setCreateOpen(true)
+          }}
         />
       ) : allTasks.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
@@ -510,6 +528,9 @@ export const TaskListView = memo(function TaskListView({
               if (!open) {
                 setCreateTemplate(null)
                 setCreateDefaultType('task')
+                // Диалог закрыт пользователем без создания — цель группы сбросить,
+                // иначе следующее обычное создание случайно уедет в ту группу.
+                pendingGroupRef.current = null
               }
             }}
             onCreate={handleCreate}

@@ -78,6 +78,9 @@ type Props = {
   onTimeChange?: (taskId: string, v: TaskTimeValue) => void
   onReorderTasks: (updates: { id: string; sort_order: number }[]) => void
   onRequestDeleteTask?: (task: TaskItem) => void
+  /** «+» в заголовке группы: открыть окно создания задачи (как «Создать»);
+   *  созданная задача привязывается к группе с указанным sort_order (конец группы). */
+  onRequestCreateInGroup?: (groupId: string, sortOrder: number) => void
 }
 
 export function ProjectFlatPlanList({
@@ -100,6 +103,7 @@ export function ProjectFlatPlanList({
   onTimeChange,
   onReorderTasks,
   onRequestDeleteTask,
+  onRequestCreateInGroup,
 }: Props) {
   const {
     blocks,
@@ -287,23 +291,16 @@ export function ProjectFlatPlanList({
     }
   }
 
-  const handleAddTaskToGroup = async (groupId: string) => {
-    const thread = await createTask.mutateAsync({
-      name: 'Новая задача',
-      accessType: 'all',
-      type: 'task',
-      ...(workspace?.default_task_accent && { accentColor: workspace.default_task_accent as ThreadAccentColor }),
-      ...(workspace?.default_task_icon && { icon: workspace.default_task_icon }),
-    })
-    // Порядок = конец этой группы.
+  // «+» в заголовке группы: открываем полноценное окно создания (как кнопка
+  // «Создать») через родителя; он привяжет созданную задачу к группе и в
+  // её конец. Позицию конца группы считаем здесь, где есть blocks/threadGroupMap.
+  const requestCreateInGroup = (groupId: string) => {
     const childSorts = [
       ...tasks.filter((t) => (threadGroupMap?.[t.id] ?? null) === groupId).map((t) => t.sort_order ?? 0),
       ...blocks.filter((b) => (b.group_id ?? null) === groupId).map((b) => b.sort_order),
     ]
     const nextSort = childSorts.length ? Math.max(...childSorts) + 10 : 0
-    onReorderTasks([{ id: thread.id, sort_order: nextSort }])
-    await assignThreadToGroup(thread.id, groupId)
-    onOpenTask(thread.id)
+    onRequestCreateInGroup?.(groupId, nextSort)
   }
 
   // Строка плана. `disabled` — выключить DnD у конкретной строки.
@@ -365,7 +362,7 @@ export function ProjectFlatPlanList({
                     onRename={(name) => renameGroup(entry.group.id, name)}
                     onToggleCollapse={() => setGroupCollapsed(entry.group.id, !entry.group.is_collapsed)}
                     onDelete={() => deleteGroup(entry.group.id)}
-                    onAddTask={() => handleAddTaskToGroup(entry.group.id)}
+                    onAddTask={() => requestCreateInGroup(entry.group.id)}
                     onSetColor={(c) => setGroupColor(entry.group.id, c)}
                     onToggleClientVisible={() =>
                       setGroupVisibleToClient(entry.group.id, !entry.group.visible_to_client)

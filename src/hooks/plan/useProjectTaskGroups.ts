@@ -99,7 +99,21 @@ export function useProjectTaskGroups(projectId: string | undefined, workspaceId:
         .eq('id', id)
       if (error) throw error
     },
-    onSuccess: invalidate,
+    // Оптимистично патчим группу в кэше сразу — иначе сворачивание/переименование/
+    // смена цвета ждут круга до БД (задержка ~1с). onSettled рефетчит фоном.
+    onMutate: async ({ id, updates }: { id: string; updates: TaskGroupUpdate }) => {
+      const key = taskGroupKeys.byProject(projectId ?? '')
+      await qc.cancelQueries({ queryKey: key })
+      const prev = qc.getQueryData<TaskGroupRow[]>(key)
+      qc.setQueryData<TaskGroupRow[]>(key, (old) =>
+        Array.isArray(old) ? old.map((g) => (g.id === id ? { ...g, ...updates } : g)) : old,
+      )
+      return { prev }
+    },
+    onError: (_e, _v, ctx: { prev?: TaskGroupRow[] } | undefined) => {
+      if (ctx?.prev) qc.setQueryData(taskGroupKeys.byProject(projectId ?? ''), ctx.prev)
+    },
+    onSettled: invalidate,
   })
 
   const deleteGroup = useMutation({
