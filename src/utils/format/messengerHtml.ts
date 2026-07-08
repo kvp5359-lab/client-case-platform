@@ -280,16 +280,83 @@ function stripFixedHeights(root: Element): void {
  * последним ребёнком. Чистим только края (leading/trailing), `<br>` между двумя
  * строками текста не трогаем. Замер на живом письме AliExpress: высота бабла
  * 1034px → 827px, число `<br>` 12 → 2.
+ *
+ * ⚠️ Чистим ТОЛЬКО контейнеры email-мусора (div/td/th/a) — там edge-`<br>` это
+ * остаток вырезанной картинки. `p`/`li`/`blockquote` НЕ трогаем: в наших
+ * сообщениях из редактора хвостовой `<br>` внутри `<p>` = осознанная пустая
+ * строка (в Telegram `</p><p>` → `\n\n`, видна). Раньше срезали и её → абзацы
+ * слипались, часть пустых строк пропадала (в TG были, в баббле нет).
  */
 function trimInnerEdgeBreaks(root: Element): void {
   const isBlankEdge = (n: ChildNode | null): boolean =>
     !!n &&
     ((n.nodeType === 1 && (n as Element).tagName === 'BR') ||
       (n.nodeType === 3 && (n.textContent ?? '').replace(/\s/g, '') === ''))
-  root.querySelectorAll('div, td, th, p, li, blockquote, a').forEach((el) => {
+  root.querySelectorAll('div, td, th, a').forEach((el) => {
     while (el.firstChild && isBlankEdge(el.firstChild)) el.firstChild.remove()
     while (el.lastChild && isBlankEdge(el.lastChild)) el.lastChild.remove()
   })
+}
+
+/**
+ * Выносит хвостовой `<br>` из `<p>` наружу как соседний `<br>` после блока.
+ * Причина (замерено в браузере): хвостовой `<br>` ВНУТРИ `<p>текст.<br></p>`
+ * браузер НЕ рисует (высоты не даёт, gap=0) — а именно так tiptap кодирует
+ * пустую строку в конце абзаца. При этом в Telegram `<br>`+`</p>` = `\n\n`
+ * (пустая строка видна) → баббл расходился с Telegram. `<br>` МЕЖДУ блоками
+ * рисуется как пустая строка (gap≈17). Поэтому переносим хвостовой `<br>`
+ * из `<p>` в позицию сразу после него. Работает и для абзацев внутри `<li>`
+ * (tiptap: `<li><p>…<br></p></li>`) — `<br>` остаётся внутри `<li>`.
+ * Хвостовой `<br>` в самом конце сообщения потом срежет trimEdgeWhitespaceHtml.
+ */
+function moveTrailingParaBreaks(root: Element): void {
+  root.querySelectorAll('p').forEach((el) => {
+    while (el.lastChild && el.lastChild.nodeType === 1 &&
+           (el.lastChild as Element).tagName === 'BR') {
+      const br = el.lastChild
+      el.removeChild(br)
+      el.after(br)
+    }
+  })
+}
+
+/**
+ * Финальная нормализация пустых строк: разделители-`<br>` между блоками (прямые
+ * дети root) → один `<p><br></p>`. Bare `<br>` между блоками рисуется пустой
+ * строкой, НО при копировании из бабла сериализуется грязно → при вставке в
+ * редактор пустая строка ДВОИЛАСЬ (её приходилось стирать вручную). `<p><br></p>`
+ * рисуется так же (замер: зазор 17) и round-trip'ится в tiptap как РОВНО одна
+ * пустая строка (замер настоящей вставки). Внутриабзацные `<br>` (перенос строки
+ * внутри `<p>`) и вложенный email-контент (в `div`/`td`) — НЕ прямые дети root,
+ * не трогаются. Ведущие/замыкающие разделители снимаются (нет пустых строк по
+ * краям бабла). Группа подряд идущих `<br>` → одна пустая строка.
+ */
+function normalizeRootBlankLines(root: Element): void {
+  const isBr = (n: ChildNode | null): boolean =>
+    !!n && n.nodeType === 1 && (n as Element).tagName === 'BR'
+  const isBlankText = (n: ChildNode | null): boolean =>
+    !!n && n.nodeType === 3 && (n.textContent ?? '').trim() === ''
+  while (root.firstChild && (isBr(root.firstChild) || isBlankText(root.firstChild)))
+    root.firstChild.remove()
+  while (root.lastChild && (isBr(root.lastChild) || isBlankText(root.lastChild)))
+    root.lastChild.remove()
+  let node: ChildNode | null = root.firstChild
+  while (node) {
+    if (isBr(node)) {
+      let cur: ChildNode | null = node.nextSibling
+      while (cur && (isBr(cur) || isBlankText(cur))) {
+        const next = cur.nextSibling
+        cur.remove()
+        cur = next
+      }
+      const p = document.createElement('p')
+      p.appendChild(document.createElement('br'))
+      node.replaceWith(p)
+      node = p.nextSibling
+    } else {
+      node = node.nextSibling
+    }
+  }
 }
 
 function collapseEmptyLines(html: string): string {
@@ -339,6 +406,8 @@ function collapseEmptyLines(html: string): string {
 
   unwrapLayoutTables(root)
   trimInnerEdgeBreaks(root)
+  moveTrailingParaBreaks(root)
+  normalizeRootBlankLines(root)
 
   let result = root.innerHTML
   // 3+ подряд <br> → 2 (= одна пустая строка).

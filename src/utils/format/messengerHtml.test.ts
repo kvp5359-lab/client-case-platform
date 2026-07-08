@@ -165,6 +165,36 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
     expect(out).toMatch(/<br/i)
   })
 
+  it('выносит хвостовой <br> из <p> наружу (пустая строка из редактора видна)', () => {
+    // tiptap: пустая строка в конце абзаца = <p>текст.<br></p>. Хвостовой <br>
+    // ВНУТРИ <p> браузер не рисует (замер: gap 0) → абзацы слипались, хотя в
+    // Telegram пустая строка видна. Переносим <br> наружу — между блоками он
+    // рисуется как пустая строка (gap ≈17), совпадает с Telegram.
+    const dirty = '<p>Первый абзац.<br></p><p>Второй абзац.</p>'
+    const out = sanitizeMessengerHtml(dirty)
+    expect(out).toContain('Первый абзац.')
+    expect(out).toContain('Второй абзац.')
+    // <br> вынесен из <p> — текст стоит прямо перед </p>, а пустая строка между
+    // абзацами = <p><br></p> (чисто копируется/вставляется, не двоится в редакторе)
+    expect(out).toContain('Первый абзац.</p>')
+    expect(out).toMatch(/<\/p>\s*<p><br\s*\/?><\/p>\s*<p>Второй/i)
+  })
+
+  it('пустую строку между абзацами кодирует как <p><br></p>, а не bare <br> (не двоится при вставке)', () => {
+    // Regression: bare <br> между блоками грязно копируется из бабла → при
+    // вставке в tiptap-композер пустая строка двоилась. <p><br></p> round-trip'ится
+    // ровно в одну пустую строку.
+    const out = sanitizeMessengerHtml('<p>A</p><p></p><p>B</p>')
+    expect(out).toContain('<p><br></p>')
+    expect(out).not.toMatch(/<\/p>\s*<br\s*\/?>\s*<p>/i) // нет bare <br> между <p>
+  })
+
+  it('хвостовой <br> в самом конце сообщения не даёт лишней пустой строки', () => {
+    const out = sanitizeMessengerHtml('<p>Текст.<br></p>')
+    expect(out).toContain('Текст.')
+    expect(out).not.toMatch(/<br/i) // край сообщения обрезается
+  })
+
   it('не трогает реальный текст в блоке без font-size:0', () => {
     const dirty = '<div style="color: #333">Обычный . текст</div>'
     const out = sanitizeMessengerHtml(dirty)
