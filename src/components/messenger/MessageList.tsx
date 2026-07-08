@@ -56,6 +56,14 @@ type MessageListProps = {
    * спокойно). Влияет на разделитель, левый контур бабла и цвет события.
    */
   unreadTone?: 'red' | 'slate'
+  /**
+   * Считать ли служебные события (смена статуса, создание, переименование…)
+   * непрочитанными для текущего зрителя. true — если зритель исполнитель задачи
+   * ИЛИ у треда нет исполнителей вообще (тогда события видят все участники).
+   * Зеркалит гейт в БД (recompute_thread_unread_for), чтобы красный контур
+   * события в ленте совпадал с бейджем непрочитанного. По умолчанию true.
+   */
+  viewerGetsEvents?: boolean
   /** Шапка-слот в начале ленты (бабл описания треда) — скроллится вместе с лентой. */
   headerSlot?: React.ReactNode
 }
@@ -119,6 +127,7 @@ export function MessageList({
   isBackfilling = false,
   suppressUnread = false,
   unreadTone = 'red',
+  viewerGetsEvents = true,
 }: MessageListProps) {
   const {
     currentParticipantId,
@@ -407,6 +416,7 @@ export function MessageList({
     // планов, согласовано с сервером (recompute_thread_unread_for исключает его из инбокса).
     const isEventUnread = (ev: ThreadAuditEvent) =>
       !suppressUnread &&
+      viewerGetsEvents &&
       isLastReadAtLoaded &&
       ev.action !== 'change_deadline' &&
       ev.user_id !== currentUserId &&
@@ -442,7 +452,7 @@ export function MessageList({
       ei++
     }
     return items
-  }, [messages, auditEvents, suppressUnread, isLastReadAtLoaded, currentUserId, lastReadAtMs])
+  }, [messages, auditEvents, suppressUnread, viewerGetsEvents, isLastReadAtLoaded, currentUserId, lastReadAtMs])
 
   // Дата элемента ленты (сообщение / событие / группа событий) — для разделителя
   // даты. Разделитель считается по ВСЕЙ ленте, а не только по сообщениям, иначе
@@ -559,6 +569,7 @@ export function MessageList({
             // Пока lastReadAt ещё грузится (isLastReadAtLoaded=false) — не подсвечиваем, чтобы не мигало.
             const eventIsUnread =
               !suppressUnread &&
+              viewerGetsEvents &&
               isLastReadAtLoaded &&
               item.event.action !== 'change_deadline' &&
               item.event.user_id !== currentUserId &&

@@ -207,6 +207,16 @@ export function MessengerTabContent({
     telegramDialogOpen,
   })
 
+  // Служебные события (статус/создание/переименование…) считаются непрочитанными
+  // только исполнителю задачи ИЛИ всем, если исполнителей нет вовсе. Зеркалит гейт
+  // в БД (recompute_thread_unread_for), чтобы красный контур события в ленте
+  // совпадал с бейджем. assigneeIds — participant_id[], сравниваем с моим pid.
+  const viewerGetsEvents = useMemo(() => {
+    if (assigneeIds.length === 0) return true
+    const myPid = state.currentParticipant?.participantId ?? null
+    return myPid !== null && assigneeIds.includes(myPid)
+  }, [assigneeIds, state.currentParticipant?.participantId])
+
   // «Ответить» подхватывает режим отвечаемого сообщения (отвечаешь на «Команде»
   // → композер встаёт в «Команде»). Фокус в поле ввода ставит MessageInput по
   // изменению replyTo.
@@ -643,6 +653,7 @@ export function MessengerTabContent({
             isForeignPersonalThread || (!state.showUnread && !mutedUnreadActive)
           }
           unreadTone={unreadTone}
+          viewerGetsEvents={viewerGetsEvents}
         />
 
         {/* Линия над композером (наезжает на список через negative margin):
