@@ -206,6 +206,13 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
 
   const hasAnyAttachments = totalAttachments > 0
 
+  // 🔒 Внешнюю доставку вложений запускаем ТОЛЬКО для клиентских сообщений.
+  // Внутренние (team/self/«Заметка») наружу не уходят — их текст блокирует
+  // триггер БД (dispatch_message_to_channels), но вложения идут ФРОНТ-invoke'ом
+  // мимо триггера. Без этого гейта внутреннее сообщение с файлом утекало клиенту
+  // в канал (баг 2026-07-08). Вложение при этом всё равно загружено в сервис.
+  const isClientVisible = (params.visibility ?? 'client') === 'client'
+
   if (params.replyToMessageId || hasAnyAttachments) {
     const { data: fullMessage } = await supabase
       .from('project_messages')
@@ -219,7 +226,7 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
     }
   }
 
-  if (hasAnyAttachments && params.threadId) {
+  if (hasAnyAttachments && params.threadId && isClientVisible) {
     // Для Email / Wazzup / MTProto-тредов триггер БД пропускает сообщения с
     // has_attachments=true (как и для группового TG). Поэтому здесь сами
     // инициируем отправку — соответствующая edge function подтянет файлы из
@@ -295,7 +302,7 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
     }
   }
 
-  if (hasAnyAttachments) {
+  if (hasAnyAttachments && isClientVisible) {
     let tgQuery = supabase
       .from('project_telegram_chats')
       .select('telegram_chat_id')

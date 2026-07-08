@@ -186,10 +186,23 @@ Deno.serve(async (req: Request) => {
     {
       const { data: msgRow } = await serviceClient
         .from("project_messages")
-        .select("sender_participant_id")
+        .select("sender_participant_id, visibility")
         .eq("id", body.message_id)
         .maybeSingle();
       senderParticipantId = (msgRow?.sender_participant_id as string | null) ?? null;
+
+      // 🔒 Backstop: НЕ отправляем в Telegram внутренние сообщения (team/self/
+      // «Заметка»). Фронт уже гейтит внешнюю доставку по visibility, это защита
+      // на уровне канала — утечка внутреннего сообщения клиенту критична
+      // (баг 2026-07-08: внутреннее сообщение с файлом ушло клиенту в группу).
+      const visibility = (msgRow?.visibility as string | null) ?? "client";
+      if (visibility !== "client") {
+        await markMessageSent(serviceClient, body.message_id, { channelFields: {} });
+        return new Response(
+          JSON.stringify({ ok: true, skipped: "internal_visibility" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
     }
 
     const employeeBot = await findEmployeeBot(

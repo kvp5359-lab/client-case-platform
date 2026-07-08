@@ -181,7 +181,13 @@ export async function publishDraftMessage(
   }
   const { data: tgLink } = await tgQuery.maybeSingle()
 
-  if (tgLink?.telegram_chat_id) {
+  // 🔒 Только клиентские сообщения уходят в канал. Публикация черновика — это
+  // UPDATE is_draft=false (триггер БД на него не срабатывает), поэтому отправку
+  // инициирует ТОЛЬКО этот путь. Без гейта внутренний (team/self) черновик
+  // утёк бы клиенту в Telegram — и текст, и вложения (баг 2026-07-08).
+  const isClientVisible = ((message.visibility as string | undefined) ?? 'client') === 'client'
+
+  if (tgLink?.telegram_chat_id && isClientVisible) {
     const hasAttachments = message.attachments && message.attachments.length > 0
 
     // Refresh session to ensure fresh JWT for Edge Function auth
