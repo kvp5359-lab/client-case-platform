@@ -31,6 +31,7 @@ import {
   TIME_OPTIONS,
   formatDateShort,
   addMinutes,
+  parseHM,
   isoEqual,
   getInitialScrollTarget,
   parseValue,
@@ -162,8 +163,21 @@ export function TaskTimePickerPopover({ value, onChange, trigger }: Props) {
   }
 
   const handleStartTimeChange = (t: string) => {
+    if (!endTime) {
+      setEndTime(addMinutes(t, 30))
+    } else if (startTime && !endDate) {
+      // Смена начала сохраняет длительность события: сдвигаем конец на ту же
+      // разницу (12:00–12:30 + смена начала на 14:00 → 14:30). Только для
+      // одного дня — при многодневном диапазоне (endDate) конец на другом дне
+      // не трогаем.
+      const prev = parseHM(startTime)
+      const end = parseHM(endTime)
+      if (prev && end) {
+        const durationMin = (end.h * 60 + end.m) - (prev.h * 60 + prev.m)
+        setEndTime(addMinutes(t, durationMin))
+      }
+    }
     setStartTime(t)
-    if (!endTime) setEndTime(addMinutes(t, 30))
   }
   const handleEndTimeChange = (t: string) => {
     setEndTime(t)
