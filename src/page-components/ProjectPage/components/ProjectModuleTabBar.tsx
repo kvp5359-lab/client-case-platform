@@ -122,7 +122,7 @@ export function ProjectModuleTabBar({
         })}
       </div>
 
-      <TabsList className="flex-1 min-w-0 justify-start overflow-hidden">
+      <TabsList className="min-w-0 justify-start overflow-hidden">
         {visible.map((m, i) => {
           const Icon = m.icon
           const partial = truncateLast && i === visible.length - 1
@@ -142,17 +142,15 @@ export function ProjectModuleTabBar({
             </TabsTrigger>
           )
         })}
-      </TabsList>
-
-      {/* Кнопка-«бутерброд» — всегда видна, список ВСЕХ вкладок. */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            title="Все вкладки"
-            aria-label="Все вкладки"
-            className="shrink-0 h-8 w-8 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
+        {/* Кнопка-«бутерброд» на той же серой плашке, сразу за последней вкладкой. */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              title="Все вкладки"
+              aria-label="Все вкладки"
+              className="ml-0.5 shrink-0 h-7 w-8 flex items-center justify-center rounded-md bg-background shadow text-muted-foreground hover:text-foreground transition-colors"
+            >
             <Menu className="h-4 w-4" />
           </button>
         </DropdownMenuTrigger>
@@ -171,7 +169,8 @@ export function ProjectModuleTabBar({
             )
           })}
         </DropdownMenuContent>
-      </DropdownMenu>
+        </DropdownMenu>
+      </TabsList>
     </div>
   )
 }
