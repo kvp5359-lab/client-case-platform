@@ -18,6 +18,7 @@ import { Callout } from './extensions/callout'
 import { Accordion } from './extensions/accordion'
 import { Columns, Column } from './extensions/columns'
 import { ImageBlock } from './extensions/image-block'
+import { ImageSpoiler } from './extensions/image-spoiler'
 import { ColoredCode } from './extensions/colored-code'
 import { BlockGapInserter } from './block-gap-inserter'
 import { LinkPreviewPopup } from './link-preview-popup'
@@ -143,6 +144,7 @@ export function TiptapEditor({
       Columns,
       Column,
       ImageBlock,
+      ImageSpoiler,
       Image.configure({
         inline: false,
         allowBase64: false,

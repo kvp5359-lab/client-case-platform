@@ -1,6 +1,7 @@
-import { Node, mergeAttributes } from '@tiptap/core'
+import { Node } from '@tiptap/core'
 import { ReactNodeViewRenderer } from '@tiptap/react'
 import { ImageBlockView } from '../node-views/image-block-view'
+import { imageFigureSpec } from '../node-views/image-shared'
 
 export type ImageBlockOptions = {
   HTMLAttributes: Record<string, string>
@@ -96,65 +97,7 @@ export const ImageBlock = Node.create<ImageBlockOptions>({
   },
 
   renderHTML({ HTMLAttributes }) {
-    const roundedClasses: Record<string, string> = {
-      none: 'rounded-none',
-      sm: 'rounded-xl',
-      md: 'rounded-2xl',
-      lg: 'rounded-3xl',
-      xl: 'rounded-[2rem]',
-    }
-    const borderWidthValues: Record<string, number> = {
-      none: 0,
-      thin: 1,
-      medium: 2,
-      thick: 4,
-    }
-    const shadowStyles: Record<string, string> = {
-      none: '',
-      sm: '0 0 8px rgba(0,0,0,0.12)',
-      md: '0 0 16px rgba(0,0,0,0.15)',
-      lg: '0 0 28px rgba(0,0,0,0.18)',
-      xl: '0 0 40px rgba(0,0,0,0.22)',
-    }
-
-    const roundedClass = roundedClasses[HTMLAttributes.rounded] || roundedClasses.lg
-    const shadowValue = shadowStyles[HTMLAttributes.shadow] || ''
-    const bw = borderWidthValues[HTMLAttributes.borderWidth] || 0
-    const borderColor = HTMLAttributes.borderColor || '#d1d5db'
-    const borderInline = bw > 0 ? `border: ${bw}px solid ${borderColor};` : ''
-    const shadowInline = shadowValue ? `box-shadow: ${shadowValue};` : ''
-    const widthStyle = HTMLAttributes.width === 'auto' ? 'fit-content' : `${HTMLAttributes.width}%`
-
-    return [
-      'figure',
-      mergeAttributes(this.options.HTMLAttributes, {
-        'data-type': 'image-block',
-        'data-size': HTMLAttributes.size,
-        'data-width': HTMLAttributes.width || 'auto',
-        'data-border-width': HTMLAttributes.borderWidth || 'none',
-        'data-border-color': borderColor,
-        'data-rounded': HTMLAttributes.rounded || 'lg',
-        'data-shadow': HTMLAttributes.shadow || 'none',
-        class: `my-6 ${roundedClass} overflow-hidden`,
-        style: `display: block; width: ${widthStyle}; ${borderInline} ${shadowInline}`,
-      }),
-      [
-        'img',
-        {
-          src: HTMLAttributes.src,
-          alt: HTMLAttributes.alt || '',
-          class: `w-full h-auto ${roundedClass}`,
-          style: 'max-width: 100%; height: auto; display: block;',
-        },
-      ],
-      HTMLAttributes.caption
-        ? [
-            'figcaption',
-            { class: 'text-center text-sm text-gray-500 mt-2' },
-            HTMLAttributes.caption,
-          ]
-        : '',
-    ]
+    return imageFigureSpec(HTMLAttributes, this.options.HTMLAttributes)
   },
 
   addNodeView() {

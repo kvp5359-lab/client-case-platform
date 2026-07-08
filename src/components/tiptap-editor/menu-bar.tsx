@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { type Editor } from '@tiptap/react'
-import { RemoveFormatting, Maximize2, Minimize2, ImagePlus } from 'lucide-react'
+import { RemoveFormatting, Maximize2, Minimize2, ImagePlus, ImageDown } from 'lucide-react'
 import { Toggle } from '@/components/ui/toggle'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
@@ -36,6 +36,7 @@ export function MenuBar({
   const [tablePopoverOpen, setTablePopoverOpen] = useState(false)
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false)
   const imageInputRef = useRef<HTMLInputElement>(null)
+  const spoilerInputRef = useRef<HTMLInputElement>(null)
 
   if (!editor) {
     return null
@@ -130,6 +131,40 @@ export function MenuBar({
                     borderColor: saved.borderColor || '#d1d5db',
                     shadow: saved.shadow || 'none',
                   })
+                  .run()
+              } catch {
+                // ошибка обрабатывается в uploadImageToStorage
+              }
+            }}
+          />
+
+          {/* Image spoiler — инлайновый значок-подсказка */}
+          <Toggle
+            size="sm"
+            pressed={false}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              spoilerInputRef.current?.click()
+            }}
+            title="Вставить картинку-подсказку"
+          >
+            <ImageDown className="h-4 w-4" />
+          </Toggle>
+          <input
+            ref={spoilerInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0]
+              if (!file || !editor) return
+              e.target.value = ''
+              try {
+                const url = await onImageUpload(file)
+                editor
+                  .chain()
+                  .focus()
+                  .setImageSpoiler({ src: url, alt: file.name, label: 'подсказка' })
                   .run()
               } catch {
                 // ошибка обрабатывается в uploadImageToStorage
