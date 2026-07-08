@@ -35,7 +35,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    logger.error('[ErrorBoundary]', error)
+    // error первым — logger.error ловит любую Error в аргументах и шлёт её в
+    // Sentry как exception (со стеком); componentStack идёт в контекст, чтобы
+    // видеть, ГДЕ именно упало.
+    logger.error(error, '[ErrorBoundary]', { componentStack: info.componentStack })
     if (process.env.NODE_ENV === 'development' && info.componentStack) {
       console.error('[ErrorBoundary] Component stack:', info.componentStack)
     }

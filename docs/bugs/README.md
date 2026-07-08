@@ -18,6 +18,7 @@
 | ID | Severity | Область | Название | Замечен |
 |---|---|---|---|---|
 | [2026-07-06-project-load-fail-after-create](open/2026-07-06-project-load-fail-after-create.md) | low | ProjectContext, create-project, race | «Не удалось загрузить проект» сразу после создания (разовая гонка, Sentry) | 2026-07-06 |
+| [2026-07-08-project-tasks-errorboundary-crash](open/2026-07-08-project-tasks-errorboundary-crash.md) | medium | ProjectPage, tasks, ErrorBoundary, sentry | Краш экрана «Задачи» проекта (ErrorBoundary); стек скрывала проводка логгера — исправлено, ждёт следующего краша со стеком | 2026-07-08 |
 
 ## Решённые
 

@@ -34,14 +34,19 @@ export const logger = {
   error: (...args: unknown[]) => {
     console.error('[ERROR]', ...args)
     if (!isDevelopment) {
-      // Первый аргумент — обычно объект ошибки; остальное кладём в контекст.
-      const err = args[0]
-      const extra = args.length > 1 ? { extra: { details: args.slice(1) } } : undefined
-      if (err instanceof Error) {
+      // Ищем настоящую Error среди аргументов — call-sites часто пишут
+      // logger.error('текст', err) ИЛИ logger.error(err). Без этого строка-
+      // префикс попадала в captureMessage, а реальная ошибка (со стеком) —
+      // терялась в extra, и все такие ошибки сваливались в одно issue.
+      const err = args.find((a) => a instanceof Error) as Error | undefined
+      const rest = args.filter((a) => a !== err)
+      const extra = rest.length ? { extra: { details: rest } } : undefined
+      if (err) {
         Sentry.captureException(err, extra)
       } else {
+        const first = args[0]
         Sentry.captureMessage(
-          typeof err === 'string' ? err : JSON.stringify(err),
+          typeof first === 'string' ? first : JSON.stringify(first),
           { level: 'error', ...(extra ?? {}) },
         )
       }
