@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { StatusDropdown } from '@/components/common/status-dropdown'
-import { GripVertical, Pencil, Trash2 } from 'lucide-react'
+import { GripVertical, Pencil, Trash2, Link2 } from 'lucide-react'
 import { TemplateAccessButton } from '@/components/knowledge/template-access/TemplateAccessButton'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import type { KnowledgeArticle, useKnowledgeBasePage } from '../useKnowledgeBasePage'
@@ -223,26 +223,45 @@ export function ReadOnlyArticleRow({
   depth,
   isLast = false,
   onArticleClick,
+  onCopyLink,
 }: {
   article: TreeArticle
   depth: number
   isLast?: boolean
   onArticleClick: (article: TreeArticle) => void
+  /** Если задан — по ховеру показывается иконка «скопировать ссылку для клиента». */
+  onCopyLink?: (article: TreeArticle) => void
 }) {
   return (
     <div className="relative">
       {depth > 0 && <TreeConnector depth={depth} isLast={isLast} />}
       <div
-        className="flex items-center gap-1.5 py-0.5 px-2 hover:bg-muted/50 rounded-sm cursor-pointer"
+        className="group flex items-center gap-1.5 py-0.5 px-2 hover:bg-muted/50 rounded-sm cursor-pointer"
         style={{ paddingLeft: `${BASE_PAD + depth * INDENT + ARTICLE_EXTRA}px` }}
         onClick={() => onArticleClick(article)}
       >
         <StatusDot article={article} />
         <span
-          className={`text-base truncate flex-1 ${!article.status_id ? 'text-muted-foreground/70' : ''}`}
+          className={`text-base truncate min-w-0 ${!article.status_id ? 'text-muted-foreground/70' : ''}`}
         >
           {article.title}
         </span>
+        {onCopyLink && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onCopyLink(article)
+            }}
+            title="Скопировать ссылку для клиента"
+            aria-label="Скопировать ссылку для клиента"
+            className="shrink-0 p-1 rounded text-muted-foreground opacity-0 transition-opacity hover:text-foreground hover:bg-muted group-hover:opacity-100 focus-visible:opacity-100"
+          >
+            <Link2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+        {/* Распорка отталкивает тэги вправо — иконка остаётся у названия. */}
+        <div className="flex-1" />
         <ArticleTags article={article} />
       </div>
     </div>

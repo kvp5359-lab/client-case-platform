@@ -223,6 +223,7 @@ export function ReadOnlyGroupTreeItem({
   collapsedGroups,
   toggleCollapse,
   onArticleClick,
+  onCopyLink,
   getArticlesForGroup,
   isLast = false,
 }: {
@@ -232,6 +233,7 @@ export function ReadOnlyGroupTreeItem({
   collapsedGroups: Set<string>
   toggleCollapse: (id: string) => void
   onArticleClick: (article: TreeArticle) => void
+  onCopyLink?: (article: TreeArticle) => void
   getArticlesForGroup: (groupId: string) => TreeArticle[]
   isLast?: boolean
 }) {
@@ -289,6 +291,7 @@ export function ReadOnlyGroupTreeItem({
                 collapsedGroups={collapsedGroups}
                 toggleCollapse={toggleCollapse}
                 onArticleClick={onArticleClick}
+                onCopyLink={onCopyLink}
                 getArticlesForGroup={getArticlesForGroup}
                 isLast={isLastChild}
               />
@@ -301,6 +304,7 @@ export function ReadOnlyGroupTreeItem({
               depth={depth + 1}
               isLast={i === groupArticles.length - 1}
               onArticleClick={onArticleClick}
+              onCopyLink={onCopyLink}
             />
           ))}
         </div>

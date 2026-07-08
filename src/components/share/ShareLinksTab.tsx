@@ -552,18 +552,18 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t bg-muted/20 px-3 py-2">
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
+      <div className="flex flex-col gap-2 border-t bg-muted/20 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <label className="flex items-center gap-2 cursor-pointer select-none whitespace-nowrap">
             <Switch checked={hideUnderText} onCheckedChange={setHideUnderText} />
             Прятать под названием
           </label>
-          <label className="flex items-center gap-2 cursor-pointer select-none">
+          <label className="flex items-center gap-2 cursor-pointer select-none whitespace-nowrap">
             <Switch checked={numbered} onCheckedChange={setNumbered} />
             Нумеровать
           </label>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center justify-end gap-2">
           {selectedCount > 0 && (
             <button
               type="button"

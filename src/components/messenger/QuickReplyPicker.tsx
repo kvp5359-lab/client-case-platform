@@ -236,9 +236,10 @@ export function QuickReplyPicker({
               </div>
             </div>
 
-            {/* Вкладки — единый поиск сверху остаётся на месте, скачков нет. */}
+            {/* Вкладки — единый поиск сверху остаётся на месте, скачков нет.
+                На мобиле не переносятся, а скроллятся горизонтально. */}
             {showTabs && (
-              <div className="flex items-center gap-1 border-b px-2 py-1">
+              <div className="flex items-center gap-1 border-b px-2 py-1 overflow-x-auto scrollbar-hide">
                 {(
                   [
                     ['replies', 'Быстрые ответы'],
@@ -252,7 +253,7 @@ export function QuickReplyPicker({
                     type="button"
                     onClick={() => setActiveTab(id)}
                     className={cn(
-                      'rounded px-2.5 py-1 text-xs font-medium transition-colors',
+                      'shrink-0 whitespace-nowrap rounded px-2.5 py-1 text-xs font-medium transition-colors',
                       activeTab === id
                         ? 'bg-accent text-foreground'
                         : 'text-muted-foreground hover:text-foreground',

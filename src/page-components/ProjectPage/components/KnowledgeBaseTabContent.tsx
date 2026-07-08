@@ -10,7 +10,9 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { ensureArticleShareLink, buildShareUrl } from '@/services/api/shareLinks'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -33,7 +35,7 @@ type KnowledgeBaseTabContentProps = {
 }
 
 export function KnowledgeBaseTabContent({
-  projectId: _projectId,
+  projectId,
   workspaceId,
   templateId,
 }: KnowledgeBaseTabContentProps) {
@@ -56,6 +58,21 @@ export function KnowledgeBaseTabContent({
   const handleOpenAI = () => {
     openAI()
   }
+
+  // Скопировать публичную ссылку на статью для клиента (тот же токен, что в
+  // сборщике ⚡). Ссылка привязана к паре (статья, этот проект).
+  const handleCopyLink = useCallback(
+    async (article: TreeArticle) => {
+      try {
+        const token = await ensureArticleShareLink(article.id, projectId)
+        await navigator.clipboard.writeText(buildShareUrl(token))
+        toast.success('Ссылка скопирована')
+      } catch {
+        toast.error('Не удалось скопировать ссылку')
+      }
+    },
+    [projectId],
+  )
 
   const toggleCollapse = useCallback((id: string) => {
     setCollapsedGroups((prev) => {
@@ -279,6 +296,7 @@ export function KnowledgeBaseTabContent({
               collapsedGroups={collapsedGroups}
               toggleCollapse={toggleCollapse}
               onArticleClick={openArticle}
+              onCopyLink={handleCopyLink}
               getArticlesForGroup={getArticlesForGroup}
             />
           ))}
@@ -298,6 +316,7 @@ export function KnowledgeBaseTabContent({
               depth={0}
               isLast={i === ungroupedArticles.length - 1}
               onArticleClick={openArticle}
+              onCopyLink={handleCopyLink}
             />
           ))}
         </div>
