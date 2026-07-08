@@ -316,7 +316,7 @@ export const InboxChatItem = memo(function InboxChatItem({
               {chat.thread_name}
             </span>
             {!hideProjectName && chat.project_name && (
-              <span className="truncate shrink-0 max-w-[50%] rounded bg-slate-200 px-1.5 py-0 text-[12px] leading-[18px] font-medium text-gray-700">
+              <span className="truncate shrink-0 max-w-[50%] rounded bg-[#e6ebf2] px-1.5 py-0 text-[12px] leading-[18px] font-medium text-gray-700">
                 {chat.project_name}
               </span>
             )}
