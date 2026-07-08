@@ -103,6 +103,14 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
   // Сбрасывается на false при любом open*Tab (см. ниже).
   const [hidden, setHidden] = useState(false)
 
+  // Флаг «анимировать закрытие панели» (слайд-выезд 300мс). По умолчанию true.
+  // Ставится false ТОЛЬКО когда закрытие пришло от браузера («Назад»/свайп,
+  // popstate): там Chrome сам рисует нативную анимацию свайпа, и наш слайд
+  // накладывался бы поверх → визуально «двойное закрытие». Мгновенное скрытие
+  // при popstate убирает наложение. Закрытие из приложения (крестик) — анимируем.
+  // Renderer читает ref в момент закрытия и сбрасывает обратно в true.
+  const closeAnimateRef = useRef(true)
+
   // In-memory вкладки для standalone-режима (personal dialogs).
   // Объявлено ДО блока синка с pageProjectId, потому что синк его reset'ает
   // при переходе со standalone-треда на страницу проекта.
@@ -422,6 +430,9 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
     const target = historyTargetRef.current
     if (!target) {
       historyNavRef.current = false
+      // Закрытие пришло от браузера (свайп/кнопка «Назад») → без нашего слайда,
+      // чтобы не накладываться на нативную анимацию свайпа Chrome.
+      closeAnimateRef.current = false
       // eslint-disable-next-line react-hooks/set-state-in-effect -- реакция на popstate (Назад/Вперёд браузера)
       setHidden(true)
       setStandaloneThread(null)
@@ -753,6 +764,7 @@ export function useTaskPanelTabbedShell({ workspaceId, pageProjectId }: TaskPane
       contactId={activeProjectId ? null : activeContactId}
       pageProjectId={pageProjectId}
       standaloneThread={standaloneThread}
+      closeAnimateRef={closeAnimateRef}
     />
   )
 

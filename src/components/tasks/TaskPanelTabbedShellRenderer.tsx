@@ -60,6 +60,10 @@ export type RendererProps = {
    *  игнорируются. Это нужно чтобы «внутренние задачи» (без проекта и контакта)
    *  не сваливались в общий глобальный pool task_panel_tabs. */
   standaloneThread: TaskItem | null
+  /** Флаг «анимировать закрытие». Renderer читает `.current` в момент закрытия:
+   *  false → скрыть мгновенно (закрытие пришло от свайпа/«Назад» браузера, чтобы
+   *  наш слайд не накладывался на нативную анимацию Chrome), затем сбрасывает в true. */
+  closeAnimateRef?: React.MutableRefObject<boolean>
 }
 
 export
@@ -83,6 +87,7 @@ function TaskPanelTabbedShellRenderer({
   contactId,
   pageProjectId,
   standaloneThread,
+  closeAnimateRef,
 }: RendererProps) {
   // Видимость системных вкладок по правам пользователя в текущем scope (project).
   const visibleSystemTypes = usePanelTabsVisibility(workspaceId, projectId)
@@ -305,6 +310,16 @@ function TaskPanelTabbedShellRenderer({
     if (!open) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- сброс painted → слайд выезда
       setPainted(false)
+      // Закрытие от браузера (свайп/«Назад») → скрыть мгновенно, без слайда:
+      // Chrome сам рисует нативную анимацию свайпа, наш слайд накладывался бы
+      // поверх («двойное закрытие»). Ref сбрасываем в true — следующее закрытие
+      // из приложения (крестик) снова анимируется.
+      const instant = closeAnimateRef?.current === false
+      if (closeAnimateRef) closeAnimateRef.current = true
+      if (instant) {
+        setRender(false)
+        return
+      }
       const t = setTimeout(() => setRender(false), 300)
       return () => clearTimeout(t)
     }
@@ -315,7 +330,7 @@ function TaskPanelTabbedShellRenderer({
       cancelAnimationFrame(id)
       document.body.removeAttribute('data-task-panel-open')
     }
-  }, [open])
+  }, [open, closeAnimateRef])
   const visible = open && painted
 
   const portalRoot = typeof document !== 'undefined' ? document.getElementById('workspace-panel-root') : null

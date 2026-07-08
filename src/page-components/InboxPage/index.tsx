@@ -3,7 +3,7 @@
  * Каждый чат — отдельная строка, сортировка по времени последнего сообщения.
  */
 
-import { useState, useCallback, useEffect, useMemo, Suspense } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef, Suspense } from 'react'
 import { useParams } from 'next/navigation'
 import { MessageSquare, ArrowLeft, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -49,6 +49,14 @@ export default function InboxPage() {
   const selfSenderName = useMySenderName(workspaceId)
   const queryClient = useQueryClient()
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
+  // «Мгновенное» закрытие чата — без слайда-выезда. Ставится, когда закрытие
+  // пришло от браузера (свайп/«Назад», popstate): Chrome сам рисует нативную
+  // анимацию свайпа, наш слайд накладывался бы поверх («двойное закрытие»).
+  const [chatInstantClose, setChatInstantClose] = useState(false)
+  // true только когда закрытие инициировано из приложения (крестик/«← Входящие»):
+  // handleCloseChat зовёт history.back() → popstate, и по этому флажку popstate
+  // понимает, что закрытие «наше» (анимируем), а не свайп браузера (мгновенно).
+  const chatCloseAnimateRef = useRef(false)
   const [toolbarContainer, setToolbarContainer] = useState<HTMLDivElement | null>(null)
   const closePanel = useSidePanelStore((s) => s.closePanel)
   const queueInitialMessage = useQueueThreadInitialMessage(workspaceId ?? '')
@@ -77,6 +85,8 @@ export default function InboxPage() {
     // На мобиле при открытии добавляли запись истории — снимаем её через back()
     // (popstate-обработчик ниже закроет чат). На десктопе просто сбрасываем.
     if (isMobileViewport() && window.history.state?.ccInboxChat) {
+      // Закрытие ИЗ приложения (крестик/«← Входящие») → анимируем слайд-выезд.
+      chatCloseAnimateRef.current = true
       window.history.back()
     } else {
       setSelectedThreadId(null)
@@ -84,7 +94,15 @@ export default function InboxPage() {
   }, [])
 
   useEffect(() => {
-    const onPop = () => setSelectedThreadId((cur) => (cur ? null : cur))
+    const onPop = () => {
+      // Если флажок не выставлен — закрытие пришло от свайпа/«Назад» браузера:
+      // гасим наш слайд (Chrome рисует свою нативную анимацию свайпа, наложение
+      // выглядит как «двойное закрытие»). Крестик выставляет флажок → анимируем.
+      const animate = chatCloseAnimateRef.current
+      chatCloseAnimateRef.current = false
+      setChatInstantClose(!animate)
+      setSelectedThreadId((cur) => (cur ? null : cur))
+    }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])
@@ -158,11 +176,18 @@ export default function InboxPage() {
     if (activeChat) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- синхронизация renderChat с задержкой на закрытие
       setRenderChat(activeChat)
+      // Открыли чат → сбрасываем instant-флаг, чтобы вход был со слайдом.
+      setChatInstantClose(false)
+      return
+    }
+    if (chatInstantClose) {
+      // Закрытие свайпом/«Назад» — контент убираем сразу, без слайда 300мс.
+      setRenderChat(null)
       return
     }
     const t = setTimeout(() => setRenderChat(null), 300)
     return () => clearTimeout(t)
-  }, [activeChat])
+  }, [activeChat, chatInstantClose])
 
   // Участники проекта для хедера. Для workspace-level тредов (project_id=null)
   // участников проекта нет — передаём undefined, хук отключает запрос.
@@ -324,6 +349,9 @@ export default function InboxPage() {
               'absolute inset-y-0 right-0 left-[28px] z-10 flex flex-col overflow-hidden min-w-0',
               'transition-transform duration-300 ease-out shadow-[-6px_0_16px_-4px_rgba(0,0,0,0.18)]',
               activeChat ? 'translate-x-0' : 'translate-x-full',
+              // Закрытие свайпом/«Назад» — без слайда (гасим transition), чтобы
+              // не накладываться на нативную анимацию свайпа Chrome.
+              chatInstantClose && 'transition-none',
               'md:static md:flex-1 md:left-auto md:translate-x-0 md:shadow-none md:z-auto md:transition-none',
             )}
           >
