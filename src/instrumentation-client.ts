@@ -10,6 +10,8 @@ import * as Sentry from '@sentry/nextjs'
 // См. docs/bugs/open/2026-07-08-sentry-load-fail-noise.md.
 const TRANSIENT_NOISE = [
   /^Не удалось загрузить/i,
+  /^Ошибка загрузки/i,
+  /^Ошибка подсчёта/i,
   /Failed to fetch/i,
   /Failed to load/i,
   /Load failed/i,
