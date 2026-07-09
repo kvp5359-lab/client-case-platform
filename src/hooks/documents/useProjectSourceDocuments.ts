@@ -12,7 +12,7 @@ import {
   refreshGoogleDriveTokenIfNeeded,
   downloadGoogleDriveFile,
 } from '@/services/documents/sourceDocumentService'
-import { useInvalidateSourceDocuments } from './useSourceDocumentsQuery'
+import { useInvalidateAllSourceViews } from './useSourceDocumentsQuery'
 import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import type { SourceDocument } from '@/types/documents'
 
@@ -35,16 +35,16 @@ export function useProjectSourceDocuments({
   setSourceCollapsed,
   setSourceFolderName,
 }: UseProjectSourceDocumentsProps) {
-  const invalidateSourceDocuments = useInvalidateSourceDocuments()
+  const invalidateAllSourceViews = useInvalidateAllSourceViews()
 
   /**
-   * Инвалидирует кэш source documents — React Query автоматически перезагрузит данные.
+   * Инвалидирует источники — и панель, и лотки наборов (согласованность).
    * Используется в тех местах, где раньше вызывался loadSourceDocuments().
    */
   const loadSourceDocuments = useCallback(async () => {
     if (!projectId) return
-    await invalidateSourceDocuments(projectId)
-  }, [projectId, invalidateSourceDocuments])
+    await invalidateAllSourceViews()
+  }, [projectId, invalidateAllSourceViews])
 
   const cleanupTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set())
 
@@ -65,7 +65,8 @@ export function useProjectSourceDocuments({
     isTogglingRef.current = true
     try {
       await toggleHidden(sourceDocId, currentHiddenState)
-      await invalidateSourceDocuments(projectId)
+      // Синхронно и панель, и лотки набора (is_hidden общий флаг).
+      await invalidateAllSourceViews()
     } catch (err) {
       logger.error('toggleSourceDocumentHidden failed:', err)
       toast.error('Не удалось изменить видимость документа')
@@ -79,7 +80,7 @@ export function useProjectSourceDocuments({
     isTogglingRef.current = true
     try {
       await toggleSourceFolderHidden(projectId, folderName, hide)
-      await invalidateSourceDocuments(projectId)
+      await invalidateAllSourceViews()
       toast.success(hide ? 'Папка скрыта' : 'Папка показана')
     } catch (err) {
       logger.error('handleToggleFolderHidden failed:', err)
@@ -112,7 +113,7 @@ export function useProjectSourceDocuments({
         setSourceFolderName?.(result.folderName)
       }
 
-      await invalidateSourceDocuments(projectId)
+      await invalidateAllSourceViews()
       setSystemSectionTab('unassigned')
       setSourceCollapsed(false)
 

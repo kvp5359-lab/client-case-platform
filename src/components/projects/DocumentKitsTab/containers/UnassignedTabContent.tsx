@@ -5,7 +5,8 @@
  * Генерация, Загруженные, Из источника
  */
 
-import { memo, useState } from 'react'
+import { memo, useState, useMemo } from 'react'
+import { toast } from 'sonner'
 import {
   RefreshCw,
   Eye,
@@ -15,6 +16,7 @@ import {
   FileDown,
   Plus,
   Unplug,
+  Loader2,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
@@ -25,8 +27,22 @@ import { UnassignedSection, SourceSection } from '@/components/documents/section
 import { useDocumentKitContext } from '../context'
 import { useSourceConnectionState } from '@/store/documentKitUI'
 import { useDocumentGenerations } from '@/hooks/documents/useDocumentGenerations'
+import {
+  useDocumentSourcesQuery,
+  useAddDocumentSourceMutation,
+  useDeleteDocumentSourceMutation,
+} from '@/hooks/documents/useSourceDocumentsQuery'
 import { GenerationCard } from '../components/GenerationCard'
 import { CreateGenerationDialog } from '@/components/documents/dialogs/CreateGenerationDialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 /**
  * Тянет имя папки-источника напрямую через edge function — отдельный React
@@ -79,6 +95,39 @@ export const UnassignedTabContent = memo(function UnassignedTabContent() {
   const { data: generations = [] } = useDocumentGenerations(projectId)
   const [generationsCollapsed, setGenerationsCollapsed] = useState(false)
   const [createGenOpen, setCreateGenOpen] = useState(false)
+
+  // Источники проекта (наборные + отдельные) — для заголовков групп и добавления.
+  const { data: sources = [] } = useDocumentSourcesQuery(projectId)
+  const sourceNameById = useMemo(
+    () => new Map(sources.map((s) => [s.id, s.name || 'Источник'])),
+    [sources],
+  )
+  // Удалять можно только отдельные источники (не привязанные к набору).
+  const removableSourceIds = useMemo(
+    () => new Set(sources.filter((s) => !s.document_kit_id).map((s) => s.id)),
+    [sources],
+  )
+  const addSource = useAddDocumentSourceMutation()
+  const deleteSource = useDeleteDocumentSourceMutation()
+  const [addSourceOpen, setAddSourceOpen] = useState(false)
+  const [newSourceLink, setNewSourceLink] = useState('')
+
+  const handleAddSource = () => {
+    if (!newSourceLink.trim() || addSource.isPending) return
+    addSource.mutate(
+      { projectId, workspaceId, link: newSourceLink },
+      {
+        onSuccess: () => {
+          toast.success('Источник добавлен')
+          setAddSourceOpen(false)
+          setNewSourceLink('')
+        },
+      },
+    )
+  }
+  const handleDeleteSource = (sourceId: string) => {
+    deleteSource.mutate({ sourceId, projectId })
+  }
 
   const { ungroupedDocuments, sourceDocuments, folders } = data
   const {
@@ -207,6 +256,14 @@ export const UnassignedTabContent = memo(function UnassignedTabContent() {
             </button>
           )}
           <div className="flex items-center gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={() => setAddSourceOpen(true)}
+              className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-gray-800 transition-colors"
+              title="Добавить источник"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
             {isSourceConnected && (
               <button
                 type="button"
@@ -277,6 +334,8 @@ export const UnassignedTabContent = memo(function UnassignedTabContent() {
         </div>
         <SourceSection
           documents={sourceDocuments}
+          sourceNameById={sourceNameById}
+          removableSourceIds={removableSourceIds}
           isCollapsed={sourceCollapsed}
           isSyncing={isSyncing}
           selectedDocuments={selectedDocuments}
@@ -289,6 +348,7 @@ export const UnassignedTabContent = memo(function UnassignedTabContent() {
           onMoveSourceDocument={handlers.onMoveSourceDocument}
           onSourceDocDragStart={handlers.onSourceDocDragStart}
           onSourceDocDragEnd={handlers.onSourceDocDragEnd}
+          onDeleteSource={handleDeleteSource}
         />
       </div>
 
@@ -298,6 +358,52 @@ export const UnassignedTabContent = memo(function UnassignedTabContent() {
         projectId={projectId}
         workspaceId={workspaceId}
       />
+
+      <Dialog
+        open={addSourceOpen}
+        onOpenChange={(o) => {
+          if (addSource.isPending) return
+          setAddSourceOpen(o)
+          if (!o) setNewSourceLink('')
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Добавить источник</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Input
+              value={newSourceLink}
+              onChange={(e) => setNewSourceLink(e.target.value)}
+              placeholder="https://drive.google.com/drive/folders/..."
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !addSource.isPending) {
+                  e.preventDefault()
+                  handleAddSource()
+                }
+              }}
+            />
+            <p className="text-xs text-muted-foreground">
+              Вставьте ссылку на папку Google Drive. Её файлы появятся в списке источников —
+              оттуда их можно перетаскивать в наборы.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAddSourceOpen(false)}
+              disabled={addSource.isPending}
+            >
+              Отмена
+            </Button>
+            <Button onClick={handleAddSource} disabled={addSource.isPending || !newSourceLink.trim()}>
+              {addSource.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Добавить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 })

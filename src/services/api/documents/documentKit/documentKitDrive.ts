@@ -131,6 +131,7 @@ export async function createDocumentKitFromDriveFolder(params: {
       workspaceId,
       sourceFolderId: folderId,
       documentKitId: kit.id,
+      sourceName: structure.folderName?.trim() || null,
       groupByTopLevel: true,
     })
   } catch (error) {

@@ -4,7 +4,7 @@
  * Тулбар документов: фильтр, поиск, загрузка, меню
  */
 
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import {
   MoreHorizontal,
   FileText,
@@ -16,6 +16,7 @@ import {
   Inbox,
   FileDown,
   Link as LinkIcon,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -41,6 +42,8 @@ type DocumentsToolbarProps = {
   onAddDocument?: (folderId: string) => void
   onOpenAddKitDialog?: () => void
   onOpenCreateKitFromDrive?: () => void
+  showHiddenSource: boolean
+  setShowHiddenSource: (v: boolean) => void
   generateDocOpen: boolean
   setGenerateDocOpen: (open: boolean) => void
   projectId: string
@@ -62,6 +65,8 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
   onAddDocument,
   onOpenAddKitDialog,
   onOpenCreateKitFromDrive,
+  showHiddenSource,
+  setShowHiddenSource,
   generateDocOpen,
   setGenerateDocOpen,
   projectId,
@@ -76,8 +81,13 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
   const sidePanelOpen = useSidePanelStore((s) => s.panelTab !== null)
   const compact = compactProp ?? sidePanelOpen
 
+  const [filterOpen, setFilterOpen] = useState(false)
+  // Активен ли какой-либо фильтр (для подсветки кнопки при свёрнутой строке).
+  const filterActive = filterMode !== 'all' || showHiddenSource
+
   return (
-    <div className="flex items-center gap-2 h-9 min-w-0">
+    <div className="flex flex-col gap-2 min-w-0">
+      <div className="flex items-center gap-2 h-9 min-w-0">
       {/* Кнопка загрузки документов */}
       {(onKitlessDocument || onAddDocument) && (
         <DropdownMenu>
@@ -141,50 +151,22 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
         )}
       </div>
 
-      {/* Фильтр: Все документы / Требуется действие. На мобиле — короткие
-          подписи (Все / Действие), на десктопе — полные (или короткие при
-          открытой панели через compact). */}
-      <div className="shrink-0 flex items-center gap-1 bg-muted/50 rounded-lg p-1 w-fit">
-        <button
-          type="button"
-          onClick={() => setFilterMode('all')}
-          className={cn(
-            'px-3 py-1 text-sm rounded-md transition-colors whitespace-nowrap',
-            filterMode === 'all'
-              ? 'bg-white text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.2)] font-medium'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          {compact ? (
-            'Все'
-          ) : (
-            <>
-              <span className="md:hidden">Все</span>
-              <span className="hidden md:inline">Все документы</span>
-            </>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilterMode('action-required')}
-          className={cn(
-            'px-3 py-1 text-sm rounded-md transition-colors whitespace-nowrap',
-            filterMode === 'action-required'
-              ? 'bg-orange-50 text-orange-600 shadow-[0_1px_3px_rgba(0,0,0,0.2)] font-medium'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-          title="Требуется действие"
-        >
-          {compact ? (
-            'Действие'
-          ) : (
-            <>
-              <span className="md:hidden">Действие</span>
-              <span className="hidden md:inline">Требуется действие</span>
-            </>
-          )}
-        </button>
-      </div>
+      {/* Кнопка «Фильтр» — раскрывает строку с фильтрами (тип документов,
+          скрытые файлы, в будущем — другие). Точка = фильтр применён. */}
+      <button
+        type="button"
+        onClick={() => setFilterOpen((v) => !v)}
+        className={cn(
+          'shrink-0 self-stretch flex items-center gap-1.5 px-3 text-sm rounded-lg border transition-colors whitespace-nowrap',
+          filterOpen || filterActive
+            ? 'border-foreground/30 text-foreground bg-muted/50'
+            : 'border-border text-muted-foreground hover:text-foreground hover:bg-muted/50',
+        )}
+      >
+        <SlidersHorizontal className="h-3.5 w-3.5" />
+        {compact ? '' : 'Фильтр'}
+        {filterActive && <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />}
+      </button>
 
       {(onOpenAddKitDialog || onOpenCreateKitFromDrive) && (
         <DropdownMenu>
@@ -225,6 +207,51 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+      )}
+      </div>
+
+      {/* Раскрывающаяся строка фильтров */}
+      {filterOpen && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-1 pb-1">
+          {/* Тип: все / требуется действие */}
+          <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1 w-fit">
+            <button
+              type="button"
+              onClick={() => setFilterMode('all')}
+              className={cn(
+                'px-3 py-1 text-sm rounded-md transition-colors whitespace-nowrap',
+                filterMode === 'all'
+                  ? 'bg-white text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.2)] font-medium'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              Все документы
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterMode('action-required')}
+              className={cn(
+                'px-3 py-1 text-sm rounded-md transition-colors whitespace-nowrap',
+                filterMode === 'action-required'
+                  ? 'bg-orange-50 text-orange-600 shadow-[0_1px_3px_rgba(0,0,0,0.2)] font-medium'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              Требуется действие
+            </button>
+          </div>
+
+          {/* Скрытые файлы источника */}
+          <label className="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showHiddenSource}
+              onChange={(e) => setShowHiddenSource(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-border accent-foreground"
+            />
+            Показывать скрытые файлы
+          </label>
+        </div>
       )}
 
       <GenerateDocumentDialog

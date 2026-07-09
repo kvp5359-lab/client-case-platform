@@ -7668,6 +7668,39 @@ export type Database = {
           },
         ]
       }
+      document_sources: {
+        Row: {
+          created_at: string
+          document_kit_id: string | null
+          drive_folder_id: string
+          id: string
+          name: string | null
+          project_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_kit_id?: string | null
+          drive_folder_id: string
+          id?: string
+          name?: string | null
+          project_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          document_kit_id?: string | null
+          drive_folder_id?: string
+          id?: string
+          name?: string | null
+          project_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       source_documents: {
         Row: {
           created_at: string | null
@@ -7683,6 +7716,7 @@ export type Database = {
           name: string
           parent_drive_folder_id: string | null
           parent_folder_name: string | null
+          source_id: string | null
           project_id: string
           synced_at: string | null
           updated_at: string | null
@@ -7703,6 +7737,7 @@ export type Database = {
           name: string
           parent_drive_folder_id?: string | null
           parent_folder_name?: string | null
+          source_id?: string | null
           project_id: string
           synced_at?: string | null
           updated_at?: string | null
@@ -7723,6 +7758,7 @@ export type Database = {
           name?: string
           parent_drive_folder_id?: string | null
           parent_folder_name?: string | null
+          source_id?: string | null
           project_id?: string
           synced_at?: string | null
           updated_at?: string | null

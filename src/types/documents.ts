@@ -47,6 +47,8 @@ export type SourceDocument = {
   parentFolderName?: string
   /** id Drive-подпапки первого уровня (для привязки к папке набора по id). */
   parentDriveFolderId?: string
+  /** id источника (document_sources), к которому относится файл. */
+  sourceId?: string
   sourceDocumentId: string
   isHidden?: boolean
 }

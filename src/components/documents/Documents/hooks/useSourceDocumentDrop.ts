@@ -7,7 +7,10 @@
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { useSourceDocumentUpload } from '@/components/projects/DocumentKitsTab/hooks/useSourceDocumentUpload'
-import { useInvalidateSourceDocuments } from '@/hooks/documents/useSourceDocumentsQuery'
+import {
+  useInvalidateSourceDocuments,
+  useInvalidateKitSourceDocuments,
+} from '@/hooks/documents/useSourceDocumentsQuery'
 import type { SourceDocumentInfo } from '@/components/documents/types'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 
@@ -41,10 +44,11 @@ export function useSourceDocumentDrop({
 
   const firstKit = documentKits[0]
   const invalidateSourceDocuments = useInvalidateSourceDocuments()
+  const invalidateKitSourceDocuments = useInvalidateKitSourceDocuments()
 
   const loadSourceDocuments = useCallback(async () => {
-    await invalidateSourceDocuments(projectId)
-  }, [projectId, invalidateSourceDocuments])
+    await Promise.all([invalidateSourceDocuments(projectId), invalidateKitSourceDocuments()])
+  }, [projectId, invalidateSourceDocuments, invalidateKitSourceDocuments])
 
   const sourceUpload = useSourceDocumentUpload({
     kit: firstKit,

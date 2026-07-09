@@ -12,10 +12,84 @@ import { Tables } from '@/types/database'
 import type { GoogleDriveFile } from './googleDriveTypes'
 
 type SourceDocumentRow = Tables<'source_documents'>
+export type DocumentSourceRow = Tables<'document_sources'>
 
 export type SourceDocumentWithUsage = {
   isUsed: boolean
 } & SourceDocumentRow
+
+/**
+ * Список источников проекта (папки Google Drive). Наборные (document_kit_id) и
+ * отдельные (null) — вместе.
+ */
+export async function getDocumentSourcesByProject(
+  projectId: string,
+): Promise<DocumentSourceRow[]> {
+  const { data, error } = await supabase
+    .from('document_sources')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    logger.error('Ошибка загрузки источников проекта:', error)
+    throw new DocumentError('Не удалось загрузить источники', error)
+  }
+  return data || []
+}
+
+/**
+ * Гарантирует запись источника (document_sources) для папки Drive и возвращает id.
+ * Идемпотентно по (project_id, drive_folder_id).
+ */
+export async function ensureDocumentSource(params: {
+  projectId: string
+  workspaceId: string
+  driveFolderId: string
+  documentKitId?: string | null
+  name?: string | null
+}): Promise<string> {
+  const { projectId, workspaceId, driveFolderId, documentKitId = null, name = null } = params
+
+  const { data: existing } = await supabase
+    .from('document_sources')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('drive_folder_id', driveFolderId)
+    .maybeSingle()
+
+  if (existing?.id) return existing.id
+
+  const { data: created, error } = await supabase
+    .from('document_sources')
+    .insert({
+      project_id: projectId,
+      workspace_id: workspaceId,
+      drive_folder_id: driveFolderId,
+      document_kit_id: documentKitId,
+      name,
+    })
+    .select('id')
+    .single()
+
+  if (error || !created) {
+    throw new DocumentError('Не удалось создать источник', error)
+  }
+  return created.id
+}
+
+/**
+ * Удаление источника проекта вместе с его файлами-зеркалом.
+ */
+export async function deleteDocumentSource(sourceId: string): Promise<void> {
+  // Файлы-зеркало этого источника (сами документы набора не трогаем)
+  await supabase.from('source_documents').delete().eq('source_id', sourceId)
+  const { error } = await supabase.from('document_sources').delete().eq('id', sourceId)
+  if (error) {
+    logger.error('Ошибка удаления источника:', error)
+    throw new DocumentError('Не удалось удалить источник', error)
+  }
+}
 
 export type SyncResult = {
   filesFound: number
@@ -24,9 +98,10 @@ export type SyncResult = {
 }
 
 /**
- * Получение документов-источников для проекта (общий источник, НЕ привязанный
- * к набору). Файлы, привязанные к набору (document_kit_id IS NOT NULL),
- * показываются внутри набора — сюда не попадают, чтобы не дублировались.
+ * Получение ВСЕХ документов-источников проекта (правая панель «Из источника»).
+ * Показываются все источники — и привязанные к наборам, и отдельные. Наборные
+ * файлы при этом видны и в лотке набора (один файл в двух местах, by design).
+ * Скрытие (is_hidden) — общий флаг, синхронно во всех местах.
  */
 export async function getSourceDocumentsByProject(projectId: string): Promise<{
   documents: SourceDocumentRow[]
@@ -37,7 +112,6 @@ export async function getSourceDocumentsByProject(projectId: string): Promise<{
       .from('source_documents')
       .select('*')
       .eq('project_id', projectId)
-      .is('document_kit_id', null)
       .order('parent_folder_name', { ascending: true, nullsFirst: false })
       .order('name', { ascending: true })
 
@@ -191,6 +265,8 @@ export async function syncSourceDocumentsFromDrive(params: {
   workspaceId: string
   sourceFolderId: string
   documentKitId?: string | null
+  /** Имя источника при первом создании записи document_sources. */
+  sourceName?: string | null
   /** Относить файлы к подпапке ПЕРВОГО уровня (для наборов из Drive), а не к
    *  ближайшей. Корневые файлы получают пустое имя папки. */
   groupByTopLevel?: boolean
@@ -200,8 +276,18 @@ export async function syncSourceDocumentsFromDrive(params: {
     workspaceId,
     sourceFolderId,
     documentKitId = null,
+    sourceName = null,
     groupByTopLevel = false,
   } = params
+
+  // Источник как сущность (document_sources) — создаём при необходимости.
+  const sourceId = await ensureDocumentSource({
+    projectId,
+    workspaceId,
+    driveFolderId: sourceFolderId,
+    documentKitId,
+    name: sourceName,
+  })
 
   try {
     // 1. Получаем файлы из Google Drive через Edge Function
@@ -253,6 +339,7 @@ export async function syncSourceDocumentsFromDrive(params: {
       project_id: projectId,
       workspace_id: workspaceId,
       document_kit_id: documentKitId,
+      source_id: sourceId,
       google_drive_file_id: file.id,
       name: file.name,
       mime_type: file.mimeType,
@@ -280,17 +367,14 @@ export async function syncSourceDocumentsFromDrive(params: {
     }
 
     // 3. Удаление файлов, которых больше нет в Google Drive (batch, N+1 fix).
-    // Ограничиваем скоупом источника (набор или общий проектный), чтобы синк
-    // одного источника не сносил файлы другого.
+    // Ограничиваем скоупом источника (по source_id), чтобы синк одного источника
+    // не сносил файлы другого.
     const googleDriveFileIds = new Set(files.map((file) => file.id))
 
-    const existingQuery = supabase
+    const { data: existingSourceDocs, error: fetchError } = await supabase
       .from('source_documents')
       .select('id, google_drive_file_id')
-      .eq('project_id', projectId)
-    const { data: existingSourceDocs, error: fetchError } = await (documentKitId
-      ? existingQuery.eq('document_kit_id', documentKitId)
-      : existingQuery.is('document_kit_id', null))
+      .eq('source_id', sourceId)
 
     if (fetchError) {
       throw new DocumentError('Ошибка получения списка документов из БД', fetchError)

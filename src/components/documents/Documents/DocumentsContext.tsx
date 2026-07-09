@@ -38,7 +38,7 @@ type DocumentsContextValue = {
     folderId: string | null,
     targetDocId?: string,
     position?: 'top' | 'bottom',
-  ) => void
+  ) => Promise<void>
   onSourceDocSlotDrop: (sourceDocJson: string, slotId: string, folderId: string) => void
   // Messenger attachment drag & drop
   onMessengerAttachmentDrop: (
@@ -115,7 +115,7 @@ export type DocumentsProviderProps = {
     folderId: string | null,
     targetDocId?: string,
     position?: 'top' | 'bottom',
-  ) => void
+  ) => Promise<void>
   onSourceDocSlotDrop: (sourceDocJson: string, slotId: string, folderId: string) => void
   onMessengerAttachmentDrop: (
     attachmentJson: string,

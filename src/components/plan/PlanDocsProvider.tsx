@@ -123,7 +123,7 @@ export function PlanDocsProvider({
       onMoveDocument={noop}
       onDuplicateDocument={noop}
       onSlotUnlink={(slotId) => unlinkSlot(slotId)}
-      onSourceDocDrop={noop}
+      onSourceDocDrop={async () => {}}
       onSourceDocSlotDrop={noop}
       onMessengerAttachmentDrop={noop}
       onMessengerAttachmentSlotDrop={noop}

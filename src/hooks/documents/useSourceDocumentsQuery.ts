@@ -7,12 +7,19 @@
  * Данные кэшируются React Query, инвалидируются после мутаций.
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
+import { toast } from 'sonner'
 import {
   getSourceDocumentsByProject,
   getSourceDocumentsByKit,
+  getDocumentSourcesByProject,
+  ensureDocumentSource,
+  deleteDocumentSource,
+  toggleSourceDocumentHidden,
+  syncSourceDocumentsFromDrive,
 } from '@/services/documents/sourceDocumentService'
+import { extractGoogleDriveFolderId } from '@/utils/googleDrive'
 import { googleDriveKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { SourceDocument } from '@/types/documents'
 
@@ -86,6 +93,7 @@ async function fetchKitSourceDocuments(kitId: string): Promise<SourceDocument[]>
       iconLink: doc.icon_link || undefined,
       parentFolderName: doc.parent_folder_name || undefined,
       parentDriveFolderId: doc.parent_drive_folder_id || undefined,
+      sourceId: doc.source_id || undefined,
       sourceDocumentId: doc.id,
       isHidden: doc.is_hidden || undefined,
     }))
@@ -95,13 +103,17 @@ async function fetchKitSourceDocuments(kitId: string): Promise<SourceDocument[]>
  * React Query хук: файлы источника Google Drive, привязанные к набору.
  * Показываются внутри папок набора («лоток»). Скрытые исключаются.
  */
-export function useKitSourceDocumentsQuery(kitId: string | undefined, enabled = true) {
+export function useKitSourceDocumentsQuery(
+  kitId: string | undefined,
+  enabled = true,
+  showHidden = false,
+) {
   return useQuery({
     queryKey: googleDriveKeys.kitSourceDocuments(kitId ?? ''),
     queryFn: () => fetchKitSourceDocuments(kitId!),
     enabled: !!kitId && enabled,
     staleTime: STALE_TIME.MEDIUM,
-    select: (docs) => docs.filter((doc) => !doc.isHidden),
+    select: (docs) => (showHidden ? docs : docs.filter((doc) => !doc.isHidden)),
   })
 }
 
@@ -118,4 +130,162 @@ export function useInvalidateSourceDocuments() {
       }),
     [queryClient],
   )
+}
+
+/**
+ * Инвалидация лотков источника всех наборов проекта (broad-префикс).
+ * Вызывать после приёма/переноса файла из источника в набор.
+ */
+export function useInvalidateKitSourceDocuments() {
+  const queryClient = useQueryClient()
+  return useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: googleDriveKeys.kitSourceDocumentsAll(),
+      }),
+    [queryClient],
+  )
+}
+
+/**
+ * Сбрасывает ОБА представления источников — правую панель «Из источника» и
+ * лотки наборов. Вызывать при любом изменении файла источника (скрытие, приём,
+ * синхронизация), чтобы панель и лоток были согласованы.
+ */
+export function useInvalidateAllSourceViews() {
+  const queryClient = useQueryClient()
+  return useCallback(
+    () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: googleDriveKeys.sourceDocumentsAll() }),
+        queryClient.invalidateQueries({ queryKey: googleDriveKeys.kitSourceDocumentsAll() }),
+      ]),
+    [queryClient],
+  )
+}
+
+/**
+ * Скрыть/показать файл источника (флаг is_hidden). В лотке набора файлы всегда
+ * не скрыты (скрытые отфильтрованы), поэтому кнопка их прячет; вернуть — через
+ * будущий фильтр «показать скрытые».
+ */
+export function useToggleKitSourceHidden() {
+  const invalidateAll = useInvalidateAllSourceViews()
+  return useMutation({
+    mutationFn: ({ sourceDocId, hidden }: { sourceDocId: string; hidden: boolean }) =>
+      toggleSourceDocumentHidden(sourceDocId, hidden),
+    // Синхронно обновляем и панель, и лотки — is_hidden общий флаг.
+    onSuccess: () => invalidateAll(),
+    onError: () => toast.error('Не удалось скрыть файл'),
+  })
+}
+
+/**
+ * Синхронизация файлов набора из папки-источника Google Drive: проверяет, есть
+ * ли новые/удалённые файлы, и обновляет лоток.
+ */
+export function useSyncKitSourceMutation() {
+  const invalidateAll = useInvalidateAllSourceViews()
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      workspaceId,
+      kitId,
+      driveFolderId,
+    }: {
+      projectId: string
+      workspaceId: string
+      kitId: string
+      driveFolderId: string
+    }) =>
+      syncSourceDocumentsFromDrive({
+        projectId,
+        workspaceId,
+        sourceFolderId: driveFolderId,
+        documentKitId: kitId,
+        groupByTopLevel: true,
+      }),
+    onSuccess: () => invalidateAll(),
+  })
+}
+
+/** Список источников проекта (наборные + отдельные). */
+export function useDocumentSourcesQuery(projectId: string | undefined) {
+  return useQuery({
+    queryKey: googleDriveKeys.documentSources(projectId ?? ''),
+    queryFn: () => getDocumentSourcesByProject(projectId!),
+    enabled: !!projectId,
+    staleTime: STALE_TIME.MEDIUM,
+  })
+}
+
+function useInvalidateDocumentSources() {
+  const queryClient = useQueryClient()
+  return useCallback(
+    (projectId: string) =>
+      queryClient.invalidateQueries({
+        queryKey: googleDriveKeys.documentSources(projectId),
+      }),
+    [queryClient],
+  )
+}
+
+/**
+ * Добавить отдельный источник (папку Drive) в проект по ссылке и синхронизировать
+ * его файлы.
+ */
+export function useAddDocumentSourceMutation() {
+  const invalidateAll = useInvalidateAllSourceViews()
+  const invalidateSources = useInvalidateDocumentSources()
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      workspaceId,
+      link,
+      name,
+    }: {
+      projectId: string
+      workspaceId: string
+      link: string
+      name?: string | null
+    }) => {
+      const folderId = extractGoogleDriveFolderId(link)
+      if (!folderId) throw new Error('Некорректная ссылка на папку Google Drive')
+      await ensureDocumentSource({
+        projectId,
+        workspaceId,
+        driveFolderId: folderId,
+        documentKitId: null,
+        name: name?.trim() || null,
+      })
+      return syncSourceDocumentsFromDrive({
+        projectId,
+        workspaceId,
+        sourceFolderId: folderId,
+        documentKitId: null,
+        sourceName: name?.trim() || null,
+      })
+    },
+    onSuccess: (_r, v) => {
+      invalidateSources(v.projectId)
+      invalidateAll()
+    },
+    onError: (e) =>
+      toast.error(e instanceof Error ? e.message : 'Не удалось добавить источник'),
+  })
+}
+
+/** Удалить источник проекта вместе с его файлами-зеркалом. */
+export function useDeleteDocumentSourceMutation() {
+  const invalidateAll = useInvalidateAllSourceViews()
+  const invalidateSources = useInvalidateDocumentSources()
+  return useMutation({
+    mutationFn: ({ sourceId }: { sourceId: string; projectId: string }) =>
+      deleteDocumentSource(sourceId),
+    onSuccess: (_r, v) => {
+      invalidateSources(v.projectId)
+      invalidateAll()
+    },
+    onError: () => toast.error('Не удалось удалить источник'),
+  })
 }

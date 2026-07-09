@@ -17,7 +17,9 @@ import {
   ArrowUp,
   ArrowDown,
   Cloud,
+  CloudDownload,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
@@ -29,10 +31,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useGroupedDocuments } from '@/hooks/documents/useGroupedDocuments'
-import { useKitSourceDocumentsQuery } from '@/hooks/documents/useSourceDocumentsQuery'
+import {
+  useKitSourceDocumentsQuery,
+  useSyncKitSourceMutation,
+} from '@/hooks/documents/useSourceDocumentsQuery'
 import { getCurrentDocumentFile } from '@/utils/documentUtils'
 import { formatSize } from '@/utils/files/formatSize'
 import { FolderCard } from './FolderCard'
+import { KitSourceFileRow } from './KitSourceFileRow'
 import { useDocumentsContext } from './DocumentsContext'
 import type { DocumentStatus, FolderSlotWithDocument } from '@/components/documents/types'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
@@ -83,6 +89,8 @@ export type KitDocumentsProps = {
   onMoveKit?: (kit: DocumentKitWithDocuments, direction: 'up' | 'down') => void
   isFirst?: boolean
   isLast?: boolean
+  /** Показывать скрытые файлы источника в лотке. */
+  showHiddenSource?: boolean
 }
 
 export const KitDocuments = memo(function KitDocuments({
@@ -108,6 +116,7 @@ export const KitDocuments = memo(function KitDocuments({
   onMoveKit,
   isFirst,
   isLast,
+  showHiddenSource = false,
 }: KitDocumentsProps) {
   const { statuses } = useDocumentsContext()
   // Старая sidePanelStore.panelTab уже не используется новой системой
@@ -153,6 +162,7 @@ export const KitDocuments = memo(function KitDocuments({
   const { data: kitSourceDocs = EMPTY_SOURCE } = useKitSourceDocumentsQuery(
     kit.id,
     !!kit.drive_folder_id,
+    showHiddenSource,
   )
   // Группируем файлы источника по id Drive-подпапки первого уровня — сопоставление
   // с папкой набора идёт по folder.drive_folder_id (устойчиво к переименованию).
@@ -173,6 +183,29 @@ export const KitDocuments = memo(function KitDocuments({
     () => sourceByDriveFolderId.get('') || EMPTY_SOURCE,
     [sourceByDriveFolderId],
   )
+
+  // Синхронизация файлов набора из папки-источника Google Drive.
+  const syncKitSource = useSyncKitSourceMutation()
+  const handleSyncKitSource = () => {
+    if (!kit.drive_folder_id || syncKitSource.isPending) return
+    const toastId = toast.loading('Проверяю источник…')
+    syncKitSource.mutate(
+      {
+        projectId: kit.project_id,
+        workspaceId: kit.workspace_id,
+        kitId: kit.id,
+        driveFolderId: kit.drive_folder_id,
+      },
+      {
+        onSuccess: (r) =>
+          toast.success(
+            `Источник обновлён — файлов: ${r.filesFound}${r.deleted ? `, убрано: ${r.deleted}` : ''}`,
+            { id: toastId },
+          ),
+        onError: () => toast.error('Не удалось обновить источник', { id: toastId }),
+      },
+    )
+  }
 
   const slotDocumentIds = useMemo(() => {
     const ids = new Set<string>()
@@ -296,6 +329,12 @@ export const KitDocuments = memo(function KitDocuments({
                   Создать папки на Google Drive
                 </DropdownMenuItem>
               )}
+              {kit.drive_folder_id && (
+                <DropdownMenuItem onClick={handleSyncKitSource}>
+                  <CloudDownload className="h-4 w-4 mr-2" />
+                  Обновить файлы из источника
+                </DropdownMenuItem>
+              )}
               {kit.template_id && (
                 <DropdownMenuItem onClick={() => onSyncKit(kit)}>
                   <RefreshCw className="h-4 w-4 mr-2" />
@@ -365,13 +404,7 @@ export const KitDocuments = memo(function KitDocuments({
             </div>
             <div className="flex flex-col gap-0.5">
               {rootSourceDocs.map((doc) => (
-                <div
-                  key={doc.sourceDocumentId}
-                  className="flex items-center gap-2 px-1.5 py-1 rounded text-sm text-muted-foreground/90 bg-muted/30"
-                  title={doc.name}
-                >
-                  <span className="truncate">{doc.name}</span>
-                </div>
+                <KitSourceFileRow key={doc.sourceDocumentId} doc={doc} />
               ))}
             </div>
           </div>

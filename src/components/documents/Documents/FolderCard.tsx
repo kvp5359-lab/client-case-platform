@@ -9,6 +9,7 @@ import { Cloud } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DocumentItem } from './DocumentItem'
 import { SlotItem } from './SlotItem'
+import { KitSourceFileRow } from './KitSourceFileRow'
 import { FolderCardHeader } from './FolderCardHeader'
 import { UploadProgressRow } from './UploadProgressRow'
 import { useDocumentsContext } from './DocumentsContext'
@@ -68,6 +69,7 @@ export const FolderCard = memo(function FolderCard({
     projectId,
     workspaceId,
     statuses,
+    onSourceDocDrop,
     sourceUploadFolderId,
     sourceUploadPhase,
     sourceUploadTargetDocId,
@@ -235,10 +237,18 @@ export const FolderCard = memo(function FolderCard({
                 ))}
               </div>
             )}
-            <SourceDocumentsBlock sourceDocuments={sourceDocuments} />
+            <SourceDocumentsBlock
+              sourceDocuments={sourceDocuments}
+              folderId={folder.id}
+              onSourceDocDrop={onSourceDocDrop}
+            />
           </>
         ) : sourceDocuments.length > 0 ? (
-          <SourceDocumentsBlock sourceDocuments={sourceDocuments} />
+          <SourceDocumentsBlock
+            sourceDocuments={sourceDocuments}
+            folderId={folder.id}
+            onSourceDocDrop={onSourceDocDrop}
+          />
         ) : (
           <div
             className={cn(
@@ -259,7 +269,20 @@ export const FolderCard = memo(function FolderCard({
  * по документам/слотам. Показывается под сохранёнными документами папки.
  * Перетаскивание в слоты/папки — следующий шаг (отображение дорабатывается).
  */
-function SourceDocumentsBlock({ sourceDocuments }: { sourceDocuments: SourceDocument[] }) {
+function SourceDocumentsBlock({
+  sourceDocuments,
+  folderId,
+  onSourceDocDrop,
+}: {
+  sourceDocuments: SourceDocument[]
+  folderId: string
+  onSourceDocDrop: (
+    json: string,
+    folderId: string | null,
+    targetDocId?: string,
+    position?: 'top' | 'bottom',
+  ) => Promise<void>
+}) {
   if (sourceDocuments.length === 0) return null
   return (
     <div className="mt-2 ml-1 border-t border-dashed border-muted-foreground/20 pt-2">
@@ -269,13 +292,20 @@ function SourceDocumentsBlock({ sourceDocuments }: { sourceDocuments: SourceDocu
       </div>
       <div className="flex flex-col gap-0.5">
         {sourceDocuments.map((doc) => (
-          <div
+          <KitSourceFileRow
             key={doc.sourceDocumentId}
-            className="flex items-center gap-2 px-1.5 py-1 rounded text-sm text-muted-foreground/90 bg-muted/30"
-            title={doc.name}
-          >
-            <span className="truncate">{doc.name}</span>
-          </div>
+            doc={doc}
+            onAccept={() =>
+              onSourceDocDrop(
+                JSON.stringify({
+                  id: doc.id,
+                  name: doc.name,
+                  sourceDocumentId: doc.sourceDocumentId,
+                }),
+                folderId,
+              )
+            }
+          />
         ))}
       </div>
     </div>

@@ -23,10 +23,16 @@ export const recentlyViewedKeys = {
 export const googleDriveKeys = {
   all: ['google-drive'] as const,
   connection: (userId: string) => ['google-drive', 'connection', userId] as const,
+  documentSources: (projectId: string) =>
+    ['google-drive', 'document-sources', projectId] as const,
   sourceDocuments: (projectId: string) =>
     ['google-drive', 'source-documents', projectId] as const,
+  /** Broad-префикс для сброса правой панели «Из источника» всех проектов. */
+  sourceDocumentsAll: () => ['google-drive', 'source-documents'] as const,
   kitSourceDocuments: (kitId: string) =>
     ['google-drive', 'kit-source-documents', kitId] as const,
+  /** Broad-префикс для сброса лотков всех наборов проекта. */
+  kitSourceDocumentsAll: () => ['google-drive', 'kit-source-documents'] as const,
   destinationDocuments: (exportFolderId: string, workspaceId: string) =>
     ['google-drive', 'destination-documents', exportFolderId, workspaceId] as const,
 }

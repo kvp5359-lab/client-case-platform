@@ -96,6 +96,7 @@ export function DocumentsTabContent({
   compact: compactProp,
 }: DocumentsTabContentProps) {
   const [filterMode, setFilterMode] = useState<'all' | 'action-required'>('all')
+  const [showHiddenSource, setShowHiddenSource] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [generateDocOpen, setGenerateDocOpen] = useState(false)
   // Старая sidePanelStore.panelTab уже не используется новой системой
@@ -443,6 +444,8 @@ export function DocumentsTabContent({
           onOpenCreateKitFromDrive={
             canAddDocumentKits ? () => setCreateKitFromDriveOpen(true) : undefined
           }
+          showHiddenSource={showHiddenSource}
+          setShowHiddenSource={setShowHiddenSource}
           generateDocOpen={generateDocOpen}
           setGenerateDocOpen={setGenerateDocOpen}
           projectId={projectId}
@@ -504,6 +507,7 @@ export function DocumentsTabContent({
                 onMoveKit={kitActions.handleMoveKit}
                 isFirst={kitIndex === 0}
                 isLast={kitIndex === documentKits.length - 1}
+                showHiddenSource={showHiddenSource}
               />
             )}
           </div>
