@@ -232,7 +232,7 @@ export function PlanGroupContainer({
 
       {/* Содержимое — droppable-зона + сортировка внутри группы */}
       {!collapsed && (
-        <div ref={setNodeRef} className={cn('pb-1 rounded-b-lg', isOver && 'bg-accent/40')}>
+        <div ref={setNodeRef} className={cn('pt-1 pb-1 rounded-b-lg', isOver && 'bg-accent/40')}>
           <SortableContext items={childIds} strategy={verticalListSortingStrategy}>
             {count === 0 ? (
               <div className="px-3 py-3 text-xs text-muted-foreground">
