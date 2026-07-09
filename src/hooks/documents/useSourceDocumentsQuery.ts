@@ -244,6 +244,47 @@ export function useSyncDocumentSourceMutation() {
   })
 }
 
+/**
+ * Синхронизация ВСЕХ источников проекта (по всем наборам + отдельные).
+ * Возвращает сводку: сколько источников проверено, файлов найдено/убрано.
+ */
+export function useSyncAllSourcesMutation() {
+  const invalidateAll = useInvalidateAllSourceViews()
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      workspaceId,
+    }: {
+      projectId: string
+      workspaceId: string
+    }) => {
+      const sources = await getDocumentSourcesByProject(projectId)
+      let filesFound = 0
+      let deleted = 0
+      let synced = 0
+      for (const s of sources) {
+        try {
+          const r = await syncSourceDocumentsFromDrive({
+            projectId,
+            workspaceId,
+            sourceFolderId: s.drive_folder_id,
+            documentKitId: s.document_kit_id,
+            sourceName: s.name,
+            groupByTopLevel: !!s.document_kit_id,
+          })
+          filesFound += r.filesFound
+          deleted += r.deleted
+          synced += 1
+        } catch {
+          // пропускаем сбойный источник, остальные синхронизируем
+        }
+      }
+      return { total: sources.length, synced, filesFound, deleted }
+    },
+    onSuccess: () => invalidateAll(),
+  })
+}
+
 /** Список источников проекта (наборные + отдельные). */
 export function useDocumentSourcesQuery(projectId: string | undefined) {
   return useQuery({

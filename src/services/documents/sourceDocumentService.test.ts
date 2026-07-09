@@ -59,11 +59,13 @@ describe('sourceDocumentService', () => {
           } as unknown as SupabaseFrom
         }
         if (table === 'documents') {
-          // .select('source_document_id').in('document_kit_id', ...).not(...)
+          // .select('source_document_id').in('document_kit_id', ...).eq('is_deleted', false).not(...)
           return {
             select: vi.fn().mockReturnValue({
               in: vi.fn().mockReturnValue({
-                not: vi.fn().mockResolvedValue({ data: mockUsedSources, error: null }),
+                eq: vi.fn().mockReturnValue({
+                  not: vi.fn().mockResolvedValue({ data: mockUsedSources, error: null }),
+                }),
               }),
             }),
           } as unknown as SupabaseFrom

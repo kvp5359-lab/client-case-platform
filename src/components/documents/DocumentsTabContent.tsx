@@ -17,7 +17,12 @@ import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { useDocumentStatuses, useDocumentKitStatuses } from '@/hooks/useStatuses'
 import { useDocuments } from '@/hooks/documents/useDocuments'
 import { useDocumentKitUIStore, useCompressState } from '@/store/documentKitUI'
-import { useSourceDocumentsQuery } from '@/hooks/documents/useSourceDocumentsQuery'
+import { toast } from 'sonner'
+import {
+  useSourceDocumentsQuery,
+  useDocumentSourcesQuery,
+  useSyncAllSourcesMutation,
+} from '@/hooks/documents/useSourceDocumentsQuery'
 import { UngroupedCard } from '@/components/documents/Documents'
 import { DocumentsProvider } from '@/components/documents/Documents/DocumentsContext'
 import { KitDocuments } from '@/components/documents/Documents/KitDocuments'
@@ -215,6 +220,25 @@ export function DocumentsTabContent({
     setCompressProgress,
   })
   const { data: sourceDocuments = [] } = useSourceDocumentsQuery(projectId)
+
+  // Синхронизация всех источников проекта (пункт верхнего меню «···»).
+  const { data: docSources = [] } = useDocumentSourcesQuery(projectId)
+  const syncAllSources = useSyncAllSourcesMutation()
+  const handleSyncAllSources = useCallback(() => {
+    if (syncAllSources.isPending) return
+    const toastId = toast.loading('Проверяю источники…')
+    syncAllSources.mutate(
+      { projectId, workspaceId },
+      {
+        onSuccess: (r) =>
+          toast.success(
+            `Проверено источников: ${r.synced} — файлов: ${r.filesFound}${r.deleted ? `, убрано: ${r.deleted}` : ''}`,
+            { id: toastId },
+          ),
+        onError: () => toast.error('Не удалось обновить источники', { id: toastId }),
+      },
+    )
+  }, [syncAllSources, projectId, workspaceId])
 
   const docActions = useDocumentsDocumentActions({
     documentKits,
@@ -444,6 +468,7 @@ export function DocumentsTabContent({
           onOpenCreateKitFromDrive={
             canAddDocumentKits ? () => setCreateKitFromDriveOpen(true) : undefined
           }
+          onSyncAllSources={docSources.length > 0 ? handleSyncAllSources : undefined}
           showHiddenSource={showHiddenSource}
           setShowHiddenSource={setShowHiddenSource}
           generateDocOpen={generateDocOpen}

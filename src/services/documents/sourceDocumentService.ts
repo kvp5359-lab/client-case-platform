@@ -134,6 +134,7 @@ export async function getSourceDocumentsByProject(projectId: string): Promise<{
         .from('documents')
         .select('source_document_id')
         .in('document_kit_id', allKitIds)
+        .eq('is_deleted', false)
         .not('source_document_id', 'is', null)
 
       if (usedError) {
@@ -180,6 +181,7 @@ export async function getSourceDocumentsByKit(documentKitId: string): Promise<{
       .from('documents')
       .select('source_document_id')
       .eq('document_kit_id', documentKitId)
+      .eq('is_deleted', false)
       .not('source_document_id', 'is', null)
 
     if (usedError) {

@@ -32,6 +32,8 @@ export type FolderCardHeaderProps = {
   onDeleteFolder?: (folderId: string) => void
   onAddSlot?: (folderId: string) => void
   onAddDocument?: (folderId: string) => void
+  /** Папка без документов/слотов/файлов источника — показываем лёгкий бейдж. */
+  isEmpty?: boolean
 }
 
 export function FolderCardHeader({
@@ -45,6 +47,7 @@ export function FolderCardHeader({
   onDeleteFolder,
   onAddSlot,
   onAddDocument,
+  isEmpty,
 }: FolderCardHeaderProps) {
   const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false)
 
@@ -58,13 +61,18 @@ export function FolderCardHeader({
 
   return (
     <>
-      {/* Разделитель */}
-      <div className="mt-5 ml-1 mr-3 border-t border-gray-100" />
+      {/* Отступ между папками (без разделительной линии) */}
+      <div className="mt-5" />
       {/* Заголовок папки */}
       <div className="group/header -mt-0.5 py-1 pl-1 pr-1 md:pr-3 select-none">
         <div className="flex items-center gap-2 w-full">
           <div className="text-sm font-medium tracking-tight text-brand-500 flex items-center gap-2 min-w-0">
             <span className="truncate">{folder.name}</span>
+            {isEmpty && (
+              <span className="shrink-0 text-[11px] font-normal text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">
+                нет документов
+              </span>
+            )}
             {hasDescription && (
               <button
                 className="p-0 flex-shrink-0 hover:bg-transparent"

@@ -17,6 +17,7 @@ import {
   FileDown,
   Link as LinkIcon,
   SlidersHorizontal,
+  CloudDownload,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -28,7 +29,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { GenerateDocumentDialog } from '@/components/projects/GenerateDocumentDialog'
-import { useSidePanelStore } from '@/store/sidePanelStore'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 import type { CompressAnalysisItem } from '@/components/documents/dialogs/CompressAnalysisDialog'
 
@@ -42,6 +42,7 @@ type DocumentsToolbarProps = {
   onAddDocument?: (folderId: string) => void
   onOpenAddKitDialog?: () => void
   onOpenCreateKitFromDrive?: () => void
+  onSyncAllSources?: () => void
   showHiddenSource: boolean
   setShowHiddenSource: (v: boolean) => void
   generateDocOpen: boolean
@@ -65,6 +66,7 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
   onAddDocument,
   onOpenAddKitDialog,
   onOpenCreateKitFromDrive,
+  onSyncAllSources,
   showHiddenSource,
   setShowHiddenSource,
   generateDocOpen,
@@ -73,14 +75,7 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
   workspaceId,
   compressAnalysisItems,
   setCompressAnalysisOpen,
-  compact: compactProp,
 }: DocumentsToolbarProps) {
-  // Когда открыта боковая панель или нас явно попросили — места мало,
-  // сокращаем подписи фильтра. `compactProp === true` жёстко форсирует сжатие
-  // (используется в TaskPanel → «Документы», где panelTab может быть null).
-  const sidePanelOpen = useSidePanelStore((s) => s.panelTab !== null)
-  const compact = compactProp ?? sidePanelOpen
-
   const [filterOpen, setFilterOpen] = useState(false)
   // Активен ли какой-либо фильтр (для подсветки кнопки при свёрнутой строке).
   const filterActive = filterMode !== 'all' || showHiddenSource
@@ -164,7 +159,7 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
         )}
       >
         <SlidersHorizontal className="h-3.5 w-3.5" />
-        {compact ? '' : 'Фильтр'}
+        Фильтр
         {filterActive && <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />}
       </button>
 
@@ -189,6 +184,12 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
               <DropdownMenuItem onClick={onOpenCreateKitFromDrive}>
                 <LinkIcon className="h-4 w-4 mr-2" />
                 Из папки Google Drive
+              </DropdownMenuItem>
+            )}
+            {onSyncAllSources && (
+              <DropdownMenuItem onClick={onSyncAllSources}>
+                <CloudDownload className="h-4 w-4 mr-2" />
+                Обновить файлы из источников
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />

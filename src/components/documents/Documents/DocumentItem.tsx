@@ -16,6 +16,7 @@ import type {
   DocumentActionHandlers,
 } from '@/components/documents/DocumentActionsMenu'
 import { formatSize } from '@/utils/files/formatSize'
+import { formatSmartDate } from '@/utils/format/dateFormat'
 import { getCurrentDocumentFile } from '@/utils/documentUtils'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { useDocumentsContext } from './DocumentsContext'
@@ -78,7 +79,7 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
       ? sizeCompressed
         ? 'text-amber-300'
         : 'text-amber-500 font-medium'
-      : 'text-gray-300'
+      : 'text-gray-400'
   const hasFile = (document.document_files?.length || 0) > 0
   const currentStatus = statuses.find((s) => s.id === document.status) || null
   const isFinal = !!currentStatus?.is_final
@@ -181,7 +182,7 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
 
   return (
     <tr
-      className={`group/doc hover:bg-gray-100/60 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50/60' : ''} ${isDragging ? 'opacity-40 bg-blue-50' : ''} ${isOver && dragOverPosition === 'top' ? 'border-t-2 border-t-blue-500 bg-blue-50/40' : ''} ${isOver && dragOverPosition === 'bottom' ? 'border-b-2 border-b-blue-500 bg-blue-50/40' : ''} ${isHighlightedCompress ? 'bg-orange-50/80 ring-1 ring-inset ring-orange-200' : ''}`}
+      className={`group/doc border-b border-gray-100 hover:bg-gray-100/60 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50/60' : ''} ${isDragging ? 'opacity-40 bg-blue-50' : ''} ${isOver && dragOverPosition === 'top' ? 'border-t-2 border-t-blue-500 bg-blue-50/40' : ''} ${isOver && dragOverPosition === 'bottom' ? 'border-b-2 border-b-blue-500 bg-blue-50/40' : ''} ${isHighlightedCompress ? 'bg-orange-50/80 ring-1 ring-inset ring-orange-200' : ''}`}
       draggable
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
@@ -191,7 +192,7 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
       onClick={() => onOpenEdit(document.id)}
     >
       {/* Чекбокс */}
-      <td className="py-0.5 pl-0 pr-0.5 w-0 align-top">
+      <td className="py-0.5 pl-0 pr-0.5 w-0 align-middle">
         <div className="flex items-center justify-center -ml-5" style={{ height: 20, width: 20 }}>
           <Checkbox
             checked={isSelected}
@@ -204,10 +205,10 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
         </div>
       </td>
       {/* Контент */}
-      <td className={`${cellClass} pl-0.5 pr-1 md:pr-2.5`}>
+      <td className={`${cellClass} pl-0.5 pr-1 align-middle`}>
         <div
           className="docs-row flex items-center gap-2.5 min-w-0"
-          style={{ minHeight: 20, marginTop: -1 }}
+          style={{ minHeight: 20 }}
         >
           <DocumentStatusIconDropdown
             documentId={document.id}
@@ -245,19 +246,6 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
               onStatusChange={onStatusChange}
             />
           </span>
-          {/* Размер файла + иконка сжатия */}
-          {hasFile && currentFile && (
-            <span
-              className={`shrink-0 inline-flex items-center gap-0.5 text-[13px] leading-tight ${sizeColorClass}`}
-            >
-              {formatSize(currentFile.file_size || 0)}
-              {currentFile.is_compressed && (
-                <span title="Документ сжат" className="inline-flex">
-                  <Minimize2 className="h-3 w-3 text-green-600" />
-                </span>
-              )}
-            </span>
-          )}
           {/* Комментарии, открыть, меню */}
           {!compressingDocIds.has(document.id) && projectId && workspaceId && (
             <CommentBadge
@@ -299,15 +287,53 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
               />
             )}
           </div>
-          {/* Прогресс сжатия */}
-          {compressingDocIds.has(document.id) && (
-            <div className="shrink-0 flex items-center gap-1">
-              <span className="text-[10px] text-orange-600 font-medium">Сжатие...</span>
-              <div className="w-12 h-1 bg-orange-100 rounded-full overflow-hidden relative">
-                <div className="absolute h-full w-1/2 bg-orange-500 rounded-full animate-[compress_1.5s_ease-in-out_infinite]" />
-              </div>
-            </div>
-          )}
+        </div>
+      </td>
+      {/* Размер (+ быстрое сжатие несжатого PDF при наведении).
+          Во время сжатия — анимация вместо размера, в том же месте. */}
+      <td className="group/size py-0.5 pl-2 pr-1 text-right align-middle whitespace-nowrap w-[80px]">
+        {compressingDocIds.has(document.id) ? (
+          <div className="flex items-center justify-end min-h-[20px] border-l border-gray-100 pl-2">
+            <span className="w-10 h-1 bg-orange-100 rounded-full overflow-hidden relative inline-block">
+              <span className="absolute h-full w-1/2 bg-orange-500 rounded-full animate-[compress_1.5s_ease-in-out_infinite]" />
+            </span>
+          </div>
+        ) : (
+          hasFile && currentFile && (
+          <div
+            className={`flex items-center justify-end gap-0.5 min-h-[20px] border-l border-gray-100 pl-2 text-[12px] tabular-nums ${sizeColorClass}`}
+          >
+            {/* Слот слева от размера: зелёная «сжат» ИЛИ кнопка сжатия (по hover).
+                Одинаков у всех строк — не двигает размер. */}
+            <span className="w-4 shrink-0 inline-flex items-center justify-center">
+              {currentFile.is_compressed ? (
+                <span title="Документ сжат" className="inline-flex">
+                  <Minimize2 className="h-3 w-3 text-green-600" />
+                </span>
+              ) : (currentFile.mime_type || '').includes('pdf') &&
+                !compressingDocIds.has(document.id) ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onCompressDocument(document.id)
+                  }}
+                  title="Сжать PDF"
+                  className="p-0.5 -my-0.5 rounded text-muted-foreground/50 hover:text-blue-600 hover:bg-muted opacity-0 group-hover/size:opacity-100 transition-opacity"
+                >
+                  <Minimize2 className="h-3 w-3" />
+                </button>
+              ) : null}
+            </span>
+            {formatSize(currentFile.file_size || 0)}
+          </div>
+          )
+        )}
+      </td>
+      {/* Дата загрузки */}
+      <td className="py-0.5 pl-1 pr-1 md:pr-2.5 text-right align-middle whitespace-nowrap w-[80px]">
+        <div className="flex items-center justify-end min-h-[20px] border-l border-gray-100 pl-1.5 text-[12px] tabular-nums text-gray-400">
+          {formatSmartDate(currentFile?.created_at ?? null)}
         </div>
       </td>
     </tr>

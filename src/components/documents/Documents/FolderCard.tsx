@@ -192,6 +192,12 @@ export const FolderCard = memo(function FolderCard({
         onDeleteFolder={onDeleteFolder}
         onAddSlot={onAddSlot}
         onAddDocument={onAddDocument}
+        isEmpty={
+          filteredDocuments.length === 0 &&
+          filledSlots.length === 0 &&
+          emptySlots.length === 0 &&
+          sourceDocuments.length === 0
+        }
       />
 
       {/* Контент папки */}
@@ -249,16 +255,20 @@ export const FolderCard = memo(function FolderCard({
             folderId={folder.id}
             onSourceDocDrop={onSourceDocDrop}
           />
-        ) : (
+        ) : draggedDocId || isDocDragOver ? (
+          // Пустая папка: подсказка-зона только во время перетаскивания.
+          // В покое статус показывает лёгкий бейдж «нет документов» в заголовке.
           <div
             className={cn(
-              'text-sm text-center py-4',
-              isDocDragOver ? 'text-blue-600 font-medium' : 'text-muted-foreground',
+              'text-sm text-center py-3 rounded border border-dashed',
+              isDocDragOver
+                ? 'text-blue-600 font-medium border-blue-300 bg-blue-50/40'
+                : 'text-muted-foreground border-transparent',
             )}
           >
-            {draggedDocId ? '↓ Перетащите документ сюда' : 'Нет документов'}
+            ↓ Перетащите документ сюда
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   )
@@ -285,29 +295,31 @@ function SourceDocumentsBlock({
 }) {
   if (sourceDocuments.length === 0) return null
   return (
-    <div className="mt-2 ml-1 border-t border-dashed border-muted-foreground/20 pt-2">
+    <div className="mt-2 ml-1 pt-2">
       <div className="flex items-center gap-1.5 mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
         <Cloud className="h-3 w-3" />
         Из источника ({sourceDocuments.length})
       </div>
-      <div className="flex flex-col gap-0.5">
-        {sourceDocuments.map((doc) => (
-          <KitSourceFileRow
-            key={doc.sourceDocumentId}
-            doc={doc}
-            onAccept={() =>
-              onSourceDocDrop(
-                JSON.stringify({
-                  id: doc.id,
-                  name: doc.name,
-                  sourceDocumentId: doc.sourceDocumentId,
-                }),
-                folderId,
-              )
-            }
-          />
-        ))}
-      </div>
+      <table className="w-full border-collapse table-fixed">
+        <tbody>
+          {sourceDocuments.map((doc) => (
+            <KitSourceFileRow
+              key={doc.sourceDocumentId}
+              doc={doc}
+              onAccept={() =>
+                onSourceDocDrop(
+                  JSON.stringify({
+                    id: doc.id,
+                    name: doc.name,
+                    sourceDocumentId: doc.sourceDocumentId,
+                  }),
+                  folderId,
+                )
+              }
+            />
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

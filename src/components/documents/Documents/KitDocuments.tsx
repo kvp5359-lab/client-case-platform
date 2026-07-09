@@ -397,16 +397,18 @@ export const KitDocuments = memo(function KitDocuments({
           />
         ))}
         {rootSourceDocs.length > 0 && (
-          <div className="mx-1 mt-2 border-t border-dashed border-muted-foreground/20 pt-2">
+          <div className="mx-1 mt-2 pt-2">
             <div className="flex items-center gap-1.5 mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
               <Cloud className="h-3 w-3" />
               Из источника — в корне ({rootSourceDocs.length})
             </div>
-            <div className="flex flex-col gap-0.5">
-              {rootSourceDocs.map((doc) => (
-                <KitSourceFileRow key={doc.sourceDocumentId} doc={doc} />
-              ))}
-            </div>
+            <table className="w-full border-collapse table-fixed">
+              <tbody>
+                {rootSourceDocs.map((doc) => (
+                  <KitSourceFileRow key={doc.sourceDocumentId} doc={doc} />
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

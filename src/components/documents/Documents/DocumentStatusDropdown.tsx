@@ -140,7 +140,7 @@ export const DocumentStatusLabelDropdown = memo(function DocumentStatusLabelDrop
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded border border-gray-200 text-[13px] leading-tight cursor-pointer text-gray-400 hover:text-gray-500 hover:border-gray-300 hover:bg-gray-50 transition-all"
+          className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-[13px] leading-tight cursor-pointer text-gray-400 hover:text-gray-500 hover:bg-gray-200 transition-all"
           onClick={(e) => e.stopPropagation()}
         >
           Статус не выбран
