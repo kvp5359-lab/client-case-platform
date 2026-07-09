@@ -43,7 +43,7 @@ serve(async (req) => {
       );
     }
 
-    const { folderId, workspaceId } = await req.json();
+    const { folderId, workspaceId, groupByTopLevel } = await req.json();
 
     if (!folderId || typeof folderId !== "string" || !isValidGoogleDriveId(folderId)) {
       return new Response(
@@ -104,15 +104,28 @@ serve(async (req) => {
       iconLink?: string;
       parents?: string[];
       parentFolderName?: string;
+      // В режиме groupByTopLevel — id подпапки ПЕРВОГО уровня, к которой относим
+      // файл (для точной привязки к папке набора). "" — файл в корне.
+      parentFolderId?: string;
     }
 
     // Рекурсивная функция для получения всех файлов из папки и подпапок (Z8-20, Z8-21)
     const MAX_DEPTH = 5;
     const MAX_FILES = 500;
-    const getAllFilesRecursively = async (parentFolderId: string, parentFolderName: string = "", depth: number = 0): Promise<DriveFile[]> => {
+    // groupByTopLevel: файл относим к подпапке ПЕРВОГО уровня (её имени), даже
+    // если он лежит во вложенной подпапке. Корневые файлы получают "" (пусто).
+    // Нужно для «набора из папки Drive», где папки набора = подпапки 1-го уровня.
+    // Без флага — поведение как раньше: имя ближайшей папки (проектный источник).
+    const getAllFilesRecursively = async (
+      parentFolderId: string,
+      parentFolderName: string = "",
+      depth: number = 0,
+      topLevelName: string | null = null,
+      topLevelId: string | null = null,
+    ): Promise<DriveFile[]> => {
       if (depth >= MAX_DEPTH) return [];
       const allFiles: DriveFile[] = [];
-      
+
       // Получаем содержимое папки (файлы и подпапки)
       const response = await fetch(
         `https://www.googleapis.com/drive/v3/files?q='${parentFolderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType,size,createdTime,modifiedTime,webViewLink,iconLink,parents)&supportsAllDrives=true&includeItemsFromAllDrives=true`,
@@ -139,16 +152,33 @@ serve(async (req) => {
 
       // Добавляем файлы с информацией о родительской папке
       for (const file of files) {
+        const label = groupByTopLevel
+          ? (depth === 0 ? "" : topLevelName ?? "")
+          : (parentFolderName || "Корневая папка");
         allFiles.push({
           ...file,
-          parentFolderName: parentFolderName || "Корневая папка"
+          parentFolderName: label,
+          parentFolderId: groupByTopLevel ? (depth === 0 ? "" : topLevelId ?? "") : undefined,
         });
       }
 
       // Рекурсивно обходим подпапки (с лимитом глубины и файлов)
       for (const folder of folders) {
         if (allFiles.length >= MAX_FILES) break;
-        const subFiles = await getAllFilesRecursively(folder.id, folder.name, depth + 1);
+        // На первом уровне фиксируем подпапку как top-level (имя+id); глубже — сохраняем.
+        const nextTopLevel = groupByTopLevel
+          ? (depth === 0 ? folder.name : topLevelName)
+          : null;
+        const nextTopLevelId = groupByTopLevel
+          ? (depth === 0 ? folder.id : topLevelId)
+          : null;
+        const subFiles = await getAllFilesRecursively(
+          folder.id,
+          folder.name,
+          depth + 1,
+          nextTopLevel,
+          nextTopLevelId,
+        );
         allFiles.push(...subFiles);
       }
 

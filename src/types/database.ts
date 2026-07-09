@@ -7681,6 +7681,7 @@ export type Database = {
           mime_type: string | null
           modified_time: string | null
           name: string
+          parent_drive_folder_id: string | null
           parent_folder_name: string | null
           project_id: string
           synced_at: string | null
@@ -7700,6 +7701,7 @@ export type Database = {
           mime_type?: string | null
           modified_time?: string | null
           name: string
+          parent_drive_folder_id?: string | null
           parent_folder_name?: string | null
           project_id: string
           synced_at?: string | null
@@ -7719,6 +7721,7 @@ export type Database = {
           mime_type?: string | null
           modified_time?: string | null
           name?: string
+          parent_drive_folder_id?: string | null
           parent_folder_name?: string | null
           project_id?: string
           synced_at?: string | null

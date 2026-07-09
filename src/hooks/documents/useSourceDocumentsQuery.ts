@@ -9,7 +9,10 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import { getSourceDocumentsByProject } from '@/services/documents/sourceDocumentService'
+import {
+  getSourceDocumentsByProject,
+  getSourceDocumentsByKit,
+} from '@/services/documents/sourceDocumentService'
 import { googleDriveKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { SourceDocument } from '@/types/documents'
 
@@ -61,6 +64,44 @@ export function useSourceDocumentsQuery(projectId: string | undefined, showHidde
       if (showHidden) return result.documents
       return result.documents.filter((doc) => !doc.isHidden)
     },
+  })
+}
+
+/**
+ * Загружает файлы источника, привязанные к набору (для показа внутри папок).
+ */
+async function fetchKitSourceDocuments(kitId: string): Promise<SourceDocument[]> {
+  const { documents: sourceDocs, usedSourceIds } = await getSourceDocumentsByKit(kitId)
+
+  return sourceDocs
+    .filter((doc) => !usedSourceIds.has(doc.id))
+    .map((doc) => ({
+      id: doc.google_drive_file_id,
+      name: doc.name,
+      mimeType: doc.mime_type || '',
+      size: doc.file_size || undefined,
+      createdTime: doc.created_time || undefined,
+      modifiedTime: doc.modified_time || undefined,
+      webViewLink: doc.web_view_link || undefined,
+      iconLink: doc.icon_link || undefined,
+      parentFolderName: doc.parent_folder_name || undefined,
+      parentDriveFolderId: doc.parent_drive_folder_id || undefined,
+      sourceDocumentId: doc.id,
+      isHidden: doc.is_hidden || undefined,
+    }))
+}
+
+/**
+ * React Query хук: файлы источника Google Drive, привязанные к набору.
+ * Показываются внутри папок набора («лоток»). Скрытые исключаются.
+ */
+export function useKitSourceDocumentsQuery(kitId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: googleDriveKeys.kitSourceDocuments(kitId ?? ''),
+    queryFn: () => fetchKitSourceDocuments(kitId!),
+    enabled: !!kitId && enabled,
+    staleTime: STALE_TIME.MEDIUM,
+    select: (docs) => docs.filter((doc) => !doc.isHidden),
   })
 }
 

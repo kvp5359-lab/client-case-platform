@@ -24,7 +24,9 @@ export type SyncResult = {
 }
 
 /**
- * Получение документов-источников для проекта (общие для всех наборов)
+ * Получение документов-источников для проекта (общий источник, НЕ привязанный
+ * к набору). Файлы, привязанные к набору (document_kit_id IS NOT NULL),
+ * показываются внутри набора — сюда не попадают, чтобы не дублировались.
  */
 export async function getSourceDocumentsByProject(projectId: string): Promise<{
   documents: SourceDocumentRow[]
@@ -35,6 +37,7 @@ export async function getSourceDocumentsByProject(projectId: string): Promise<{
       .from('source_documents')
       .select('*')
       .eq('project_id', projectId)
+      .is('document_kit_id', null)
       .order('parent_folder_name', { ascending: true, nullsFirst: false })
       .order('name', { ascending: true })
 
@@ -74,6 +77,51 @@ export async function getSourceDocumentsByProject(projectId: string): Promise<{
     if (error instanceof DocumentError) throw error
     logger.error('Ошибка получения документов-источников:', error)
     throw new DocumentError('Не удалось получить документы-источники', error)
+  }
+}
+
+/**
+ * Получение документов-источников, привязанных к конкретному набору документов.
+ * Показываются внутри папок набора (под сохранёнными документами).
+ */
+export async function getSourceDocumentsByKit(documentKitId: string): Promise<{
+  documents: SourceDocumentRow[]
+  usedSourceIds: Set<string>
+}> {
+  try {
+    const { data: sourceDocs, error: sourceError } = await supabase
+      .from('source_documents')
+      .select('*')
+      .eq('document_kit_id', documentKitId)
+      .order('parent_folder_name', { ascending: true, nullsFirst: false })
+      .order('name', { ascending: true })
+
+    if (sourceError) {
+      logger.error('Ошибка загрузки документов-источников набора:', sourceError)
+      throw new DocumentError('Не удалось загрузить документы-источники набора', sourceError)
+    }
+
+    // Использованные source_document_id — среди документов этого набора
+    const { data: usedSources, error: usedError } = await supabase
+      .from('documents')
+      .select('source_document_id')
+      .eq('document_kit_id', documentKitId)
+      .not('source_document_id', 'is', null)
+
+    if (usedError) {
+      logger.error('Ошибка загрузки использованных источников набора:', usedError)
+      throw new DocumentError('Не удалось загрузить данные об источниках набора', usedError)
+    }
+
+    const usedSourceIds = new Set(
+      usedSources?.map((d) => d.source_document_id).filter(Boolean) as string[],
+    )
+
+    return { documents: sourceDocs || [], usedSourceIds }
+  } catch (error) {
+    if (error instanceof DocumentError) throw error
+    logger.error('Ошибка получения документов-источников набора:', error)
+    throw new DocumentError('Не удалось получить документы-источники набора', error)
   }
 }
 
@@ -128,20 +176,38 @@ export async function toggleSourceFolderHidden(
 }
 
 /**
- * Синхронизация документов-источников из Google Drive
+ * Синхронизация документов-источников из Google Drive.
+ *
+ * `documentKitId`:
+ *   - не задан → общий источник проекта (document_kit_id = null), файлы видны
+ *     в правой панели «Из источника»;
+ *   - задан → файлы привязываются к набору (document_kit_id = kitId) и видны
+ *     внутри папок набора.
+ * Удаление устаревших ограничено тем же скоупом, чтобы синк одного источника
+ * не сносил файлы другого.
  */
 export async function syncSourceDocumentsFromDrive(params: {
   projectId: string
   workspaceId: string
   sourceFolderId: string
+  documentKitId?: string | null
+  /** Относить файлы к подпапке ПЕРВОГО уровня (для наборов из Drive), а не к
+   *  ближайшей. Корневые файлы получают пустое имя папки. */
+  groupByTopLevel?: boolean
 }): Promise<SyncResult> {
-  const { projectId, workspaceId, sourceFolderId } = params
+  const {
+    projectId,
+    workspaceId,
+    sourceFolderId,
+    documentKitId = null,
+    groupByTopLevel = false,
+  } = params
 
   try {
     // 1. Получаем файлы из Google Drive через Edge Function
     const response = await callEdgeFunctionRaw({
       functionName: 'google-drive-list-files',
-      body: { folderId: sourceFolderId, workspaceId },
+      body: { folderId: sourceFolderId, workspaceId, groupByTopLevel },
     }).catch(() => {
       throw new DocumentError('Ошибка соединения с сервером')
     })
@@ -176,18 +242,25 @@ export async function syncSourceDocumentsFromDrive(params: {
     }
 
     const result = await response.json()
-    const files: (GoogleDriveFile & { parentFolderName?: string })[] = result.files || []
+    const files: (GoogleDriveFile & {
+      parentFolderName?: string
+      parentFolderId?: string
+    })[] = result.files || []
     const folderName: string | null = result.folderName ?? null
 
     // 2. Upsert документов в БД
     const documentsToUpsert = files.map((file) => ({
       project_id: projectId,
       workspace_id: workspaceId,
+      document_kit_id: documentKitId,
       google_drive_file_id: file.id,
       name: file.name,
       mime_type: file.mimeType,
       file_size: file.size ? parseInt(file.size) : null,
       parent_folder_name: file.parentFolderName,
+      // id Drive-подпапки первого уровня (только в режиме groupByTopLevel);
+      // "" (корень) нормализуем в null.
+      parent_drive_folder_id: file.parentFolderId ? file.parentFolderId : null,
       web_view_link: file.webViewLink,
       icon_link: file.iconLink,
       created_time: file.createdTime,
@@ -206,13 +279,18 @@ export async function syncSourceDocumentsFromDrive(params: {
       throw new DocumentError('Ошибка сохранения документов в базу данных', upsertError)
     }
 
-    // 3. Удаление файлов, которых больше нет в Google Drive (batch, N+1 fix)
+    // 3. Удаление файлов, которых больше нет в Google Drive (batch, N+1 fix).
+    // Ограничиваем скоупом источника (набор или общий проектный), чтобы синк
+    // одного источника не сносил файлы другого.
     const googleDriveFileIds = new Set(files.map((file) => file.id))
 
-    const { data: existingSourceDocs, error: fetchError } = await supabase
+    const existingQuery = supabase
       .from('source_documents')
       .select('id, google_drive_file_id')
       .eq('project_id', projectId)
+    const { data: existingSourceDocs, error: fetchError } = await (documentKitId
+      ? existingQuery.eq('document_kit_id', documentKitId)
+      : existingQuery.is('document_kit_id', null))
 
     if (fetchError) {
       throw new DocumentError('Ошибка получения списка документов из БД', fetchError)

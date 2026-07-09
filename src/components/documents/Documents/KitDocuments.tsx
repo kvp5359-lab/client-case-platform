@@ -16,6 +16,7 @@ import {
   HardDrive,
   ArrowUp,
   ArrowDown,
+  Cloud,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSidePanelStore } from '@/store/sidePanelStore'
@@ -28,14 +29,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useGroupedDocuments } from '@/hooks/documents/useGroupedDocuments'
+import { useKitSourceDocumentsQuery } from '@/hooks/documents/useSourceDocumentsQuery'
 import { getCurrentDocumentFile } from '@/utils/documentUtils'
 import { formatSize } from '@/utils/files/formatSize'
 import { FolderCard } from './FolderCard'
 import { useDocumentsContext } from './DocumentsContext'
 import type { DocumentStatus, FolderSlotWithDocument } from '@/components/documents/types'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
+import type { SourceDocument } from '@/types/documents'
 
 const EMPTY_SLOTS: FolderSlotWithDocument[] = []
+const EMPTY_SOURCE: SourceDocument[] = []
 
 export type KitSlotHandlers = {
   onSlotClick: (slotId: string, folderId: string) => void
@@ -142,6 +146,33 @@ export const KitDocuments = memo(function KitDocuments({
     }
     return map
   }, [folderSlots, kitFolderIds])
+
+  // Файлы источника Google Drive набора («лоток»): грузим только для наборов,
+  // созданных из папки Drive. Группируем по имени Drive-подпапки, чтобы показать
+  // под сохранёнными документами одноимённой папки набора.
+  const { data: kitSourceDocs = EMPTY_SOURCE } = useKitSourceDocumentsQuery(
+    kit.id,
+    !!kit.drive_folder_id,
+  )
+  // Группируем файлы источника по id Drive-подпапки первого уровня — сопоставление
+  // с папкой набора идёт по folder.drive_folder_id (устойчиво к переименованию).
+  const sourceByDriveFolderId = useMemo(() => {
+    const map = new Map<string, SourceDocument[]>()
+    for (const doc of kitSourceDocs) {
+      const key = doc.parentDriveFolderId || ''
+      const arr = map.get(key) || []
+      arr.push(doc)
+      map.set(key, arr)
+    }
+    return map
+  }, [kitSourceDocs])
+
+  // Файлы из корня папки Drive (без подпапки) — им нет папки набора, показываем
+  // отдельным блоком на уровне набора.
+  const rootSourceDocs = useMemo(
+    () => sourceByDriveFolderId.get('') || EMPTY_SOURCE,
+    [sourceByDriveFolderId],
+  )
 
   const slotDocumentIds = useMemo(() => {
     const ids = new Set<string>()
@@ -323,8 +354,28 @@ export const KitDocuments = memo(function KitDocuments({
             filterMode={filterMode}
             onEditFolder={onEditFolder}
             onDeleteFolder={onDeleteFolder}
+            sourceDocuments={sourceByDriveFolderId.get(folder.drive_folder_id || '') || EMPTY_SOURCE}
           />
         ))}
+        {rootSourceDocs.length > 0 && (
+          <div className="mx-1 mt-2 border-t border-dashed border-muted-foreground/20 pt-2">
+            <div className="flex items-center gap-1.5 mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
+              <Cloud className="h-3 w-3" />
+              Из источника — в корне ({rootSourceDocs.length})
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {rootSourceDocs.map((doc) => (
+                <div
+                  key={doc.sourceDocumentId}
+                  className="flex items-center gap-2 px-1.5 py-1 rounded text-sm text-muted-foreground/90 bg-muted/30"
+                  title={doc.name}
+                >
+                  <span className="truncate">{doc.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

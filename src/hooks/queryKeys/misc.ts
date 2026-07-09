@@ -25,6 +25,8 @@ export const googleDriveKeys = {
   connection: (userId: string) => ['google-drive', 'connection', userId] as const,
   sourceDocuments: (projectId: string) =>
     ['google-drive', 'source-documents', projectId] as const,
+  kitSourceDocuments: (kitId: string) =>
+    ['google-drive', 'kit-source-documents', kitId] as const,
   destinationDocuments: (exportFolderId: string, workspaceId: string) =>
     ['google-drive', 'destination-documents', exportFolderId, workspaceId] as const,
 }

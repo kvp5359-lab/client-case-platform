@@ -5,3 +5,4 @@
 export * from './types'
 export * from './documentKitQueries'
 export * from './documentKitTemplates'
+export * from './documentKitDrive'

@@ -11,10 +11,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
-import { documentKitKeys, folderSlotKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { documentKitKeys, folderSlotKeys, googleDriveKeys, STALE_TIME } from '@/hooks/queryKeys'
 import {
   getDocumentKitsWithContents,
   createDocumentKitFromTemplate,
+  createDocumentKitFromDriveFolder,
   syncDocumentKitStructure,
   deleteDocumentKit,
 } from '@/services/api/documents/documentKitService'
@@ -67,6 +68,40 @@ export function useCreateDocumentKitMutation() {
       logger.error('Ошибка создания набора документов:', error)
       toast.error('Не удалось создать набор документов')
     },
+  })
+}
+
+/**
+ * Создание набора документов из папки Google Drive.
+ * Корневая папка → набор, подпапки → папки, файлы → source_documents набора.
+ */
+export function useCreateDocumentKitFromDriveMutation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({
+      link,
+      projectId,
+      workspaceId,
+    }: {
+      link: string
+      projectId: string
+      workspaceId: string
+    }) => {
+      return createDocumentKitFromDriveFolder({ link, projectId, workspaceId })
+    },
+    onSuccess: (_kitId, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: documentKitKeys.byProject(variables.projectId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: folderSlotKeys.byProject(variables.projectId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: googleDriveKeys.sourceDocuments(variables.projectId),
+      })
+    },
+    // Ошибку показывает вызывающий диалог (с конкретным текстом из сервиса)
   })
 }
 

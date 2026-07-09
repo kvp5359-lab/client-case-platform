@@ -11,7 +11,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Plus, Link as LinkIcon } from 'lucide-react'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { useDocumentStatuses, useDocumentKitStatuses } from '@/hooks/useStatuses'
@@ -55,6 +55,7 @@ import { useProjectPermissions } from '@/hooks/permissions/useProjectPermissions
 import { toggleSourceDocumentHidden } from '@/services/documents/sourceDocumentService'
 import { useDocumentSelection } from '@/hooks/documents/useDocumentSelection'
 import { CreateDriveFoldersDialog } from '@/components/documents/Documents/CreateDriveFoldersDialog'
+import { CreateKitFromDriveDialog } from '@/components/projects/CreateKitFromDriveDialog'
 import { CommentCountsProvider } from '@/components/comments/CommentCountsContext'
 
 // === ТИПЫ ===
@@ -108,9 +109,12 @@ export function DocumentsTabContent({
   const { can } = useProjectPermissions({ projectId })
   const canAddDocuments = can('documents', 'add_documents')
   const canCreateFolders = can('documents', 'create_folders')
+  const canAddDocumentKits = can('documents', 'add_document_kits')
 
   // Drive folders dialog
   const [driveFoldersKit, setDriveFoldersKit] = useState<DocumentKitWithDocuments | null>(null)
+  // Создание набора из папки Google Drive
+  const [createKitFromDriveOpen, setCreateKitFromDriveOpen] = useState(false)
 
   const { data: kitlessDocuments = [] } = useKitlessDocumentsQuery(projectId)
 
@@ -398,13 +402,27 @@ export function DocumentsTabContent({
               ? 'Добавьте первый набор документов'
               : 'Наборов документов пока нет'}
           </p>
-          {onOpenAddKitDialog && (
-            <Button onClick={onOpenAddKitDialog}>
-              <Plus className="h-4 w-4 mr-2" />
-              Добавить набор документов
-            </Button>
-          )}
+          <div className="flex items-center justify-center gap-2">
+            {onOpenAddKitDialog && (
+              <Button onClick={onOpenAddKitDialog}>
+                <Plus className="h-4 w-4 mr-2" />
+                Добавить набор документов
+              </Button>
+            )}
+            {canAddDocumentKits && (
+              <Button variant="outline" onClick={() => setCreateKitFromDriveOpen(true)}>
+                <LinkIcon className="h-4 w-4 mr-2" />
+                Из папки Google Drive
+              </Button>
+            )}
+          </div>
         </div>
+        <CreateKitFromDriveDialog
+          open={createKitFromDriveOpen}
+          onOpenChange={setCreateKitFromDriveOpen}
+          projectId={projectId}
+          workspaceId={workspaceId}
+        />
       </div>
     )
   }
@@ -422,6 +440,9 @@ export function DocumentsTabContent({
           onKitlessDocument={kitlessUpload.handleKitlessDocument}
           onAddDocument={fileUpload.handleAddDocument}
           onOpenAddKitDialog={onOpenAddKitDialog}
+          onOpenCreateKitFromDrive={
+            canAddDocumentKits ? () => setCreateKitFromDriveOpen(true) : undefined
+          }
           generateDocOpen={generateDocOpen}
           setGenerateDocOpen={setGenerateDocOpen}
           projectId={projectId}
@@ -498,6 +519,12 @@ export function DocumentsTabContent({
           onCreateProjectFolder={onCreateProjectFolder}
           rootFolderId={rootFolderId}
           defaultProjectFolderName={projectName}
+        />
+        <CreateKitFromDriveDialog
+          open={createKitFromDriveOpen}
+          onOpenChange={setCreateKitFromDriveOpen}
+          projectId={projectId}
+          workspaceId={workspaceId}
         />
       </TooltipProvider>
       </CommentCountsProvider>

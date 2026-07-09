@@ -45,6 +45,8 @@ export type SourceDocument = {
   webViewLink?: string
   iconLink?: string
   parentFolderName?: string
+  /** id Drive-подпапки первого уровня (для привязки к папке набора по id). */
+  parentDriveFolderId?: string
   sourceDocumentId: string
   isHidden?: boolean
 }

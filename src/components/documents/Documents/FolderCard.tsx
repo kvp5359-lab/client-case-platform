@@ -5,6 +5,7 @@
  */
 
 import { memo, useMemo, useState, Fragment } from 'react'
+import { Cloud } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DocumentItem } from './DocumentItem'
 import { SlotItem } from './SlotItem'
@@ -18,8 +19,10 @@ import type {
   DocumentStatus,
   FolderSlotWithDocument,
 } from '@/components/documents/types'
+import type { SourceDocument } from '@/types/documents'
 
 const noop = () => {}
+const EMPTY_SOURCE: SourceDocument[] = []
 
 export type FolderCardProps = {
   folder: Folder
@@ -38,6 +41,8 @@ export type FolderCardProps = {
   filterMode?: 'all' | 'action-required'
   onEditFolder?: (folderId: string) => void
   onDeleteFolder?: (folderId: string) => void
+  /** Файлы из источника Google Drive для этой папки («лоток» — раскладываются вручную). */
+  sourceDocuments?: SourceDocument[]
 }
 
 export const FolderCard = memo(function FolderCard({
@@ -57,6 +62,7 @@ export const FolderCard = memo(function FolderCard({
   filterMode = 'all',
   onEditFolder,
   onDeleteFolder,
+  sourceDocuments = EMPTY_SOURCE,
 }: FolderCardProps) {
   const {
     projectId,
@@ -229,7 +235,10 @@ export const FolderCard = memo(function FolderCard({
                 ))}
               </div>
             )}
+            <SourceDocumentsBlock sourceDocuments={sourceDocuments} />
           </>
+        ) : sourceDocuments.length > 0 ? (
+          <SourceDocumentsBlock sourceDocuments={sourceDocuments} />
         ) : (
           <div
             className={cn(
@@ -244,3 +253,31 @@ export const FolderCard = memo(function FolderCard({
     </div>
   )
 })
+
+/**
+ * Черновой блок «Из источника» — файлы из папки Google Drive, ещё не разложенные
+ * по документам/слотам. Показывается под сохранёнными документами папки.
+ * Перетаскивание в слоты/папки — следующий шаг (отображение дорабатывается).
+ */
+function SourceDocumentsBlock({ sourceDocuments }: { sourceDocuments: SourceDocument[] }) {
+  if (sourceDocuments.length === 0) return null
+  return (
+    <div className="mt-2 ml-1 border-t border-dashed border-muted-foreground/20 pt-2">
+      <div className="flex items-center gap-1.5 mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
+        <Cloud className="h-3 w-3" />
+        Из источника ({sourceDocuments.length})
+      </div>
+      <div className="flex flex-col gap-0.5">
+        {sourceDocuments.map((doc) => (
+          <div
+            key={doc.sourceDocumentId}
+            className="flex items-center gap-2 px-1.5 py-1 rounded text-sm text-muted-foreground/90 bg-muted/30"
+            title={doc.name}
+          >
+            <span className="truncate">{doc.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

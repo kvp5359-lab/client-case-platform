@@ -15,6 +15,7 @@ import {
   Upload,
   Inbox,
   FileDown,
+  Link as LinkIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -39,6 +40,7 @@ type DocumentsToolbarProps = {
   onKitlessDocument?: () => void
   onAddDocument?: (folderId: string) => void
   onOpenAddKitDialog?: () => void
+  onOpenCreateKitFromDrive?: () => void
   generateDocOpen: boolean
   setGenerateDocOpen: (open: boolean) => void
   projectId: string
@@ -59,6 +61,7 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
   onKitlessDocument,
   onAddDocument,
   onOpenAddKitDialog,
+  onOpenCreateKitFromDrive,
   generateDocOpen,
   setGenerateDocOpen,
   projectId,
@@ -183,7 +186,7 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
         </button>
       </div>
 
-      {onOpenAddKitDialog && (
+      {(onOpenAddKitDialog || onOpenCreateKitFromDrive) && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -194,10 +197,18 @@ export const DocumentsToolbar = memo(function DocumentsToolbar({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={onOpenAddKitDialog}>
-              <Plus className="h-4 w-4 mr-2" />
-              Добавить набор документов
-            </DropdownMenuItem>
+            {onOpenAddKitDialog && (
+              <DropdownMenuItem onClick={onOpenAddKitDialog}>
+                <Plus className="h-4 w-4 mr-2" />
+                Добавить набор документов
+              </DropdownMenuItem>
+            )}
+            {onOpenCreateKitFromDrive && (
+              <DropdownMenuItem onClick={onOpenCreateKitFromDrive}>
+                <LinkIcon className="h-4 w-4 mr-2" />
+                Из папки Google Drive
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setGenerateDocOpen(true)}>
               <FileText className="h-4 w-4 mr-2" />
