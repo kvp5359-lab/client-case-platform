@@ -6,7 +6,7 @@
  */
 
 import { memo, useMemo } from 'react'
-import { Folder, EyeOff, Cloud, Trash2 } from 'lucide-react'
+import { Folder, EyeOff, Cloud, Trash2, RefreshCw } from 'lucide-react'
 import { CollapsedSection } from './CollapsedSection'
 import { SourceDocumentRow } from '../SourceDocumentRow'
 import { SystemSectionTable } from '../SystemSectionTable'
@@ -20,6 +20,8 @@ type SourceSectionProps = {
   sourceNameById: Map<string, string>
   /** Удаляемые источники (отдельные, добавленные вручную) — id → true. */
   removableSourceIds?: Set<string>
+  /** id источника, который сейчас синхронизируется. */
+  syncingSourceId?: string | null
   isCollapsed: boolean
   isSyncing: boolean
   selectedDocuments: Set<string>
@@ -35,12 +37,14 @@ type SourceSectionProps = {
   onSourceDocDragStart: (e: React.DragEvent, file: SourceDocument) => void
   onSourceDocDragEnd: () => void
   onDeleteSource?: (sourceId: string) => void
+  onSyncSource?: (sourceId: string) => void
 }
 
 export const SourceSection = memo(function SourceSection({
   documents,
   sourceNameById,
   removableSourceIds,
+  syncingSourceId,
   isCollapsed,
   isSyncing,
   selectedDocuments,
@@ -54,6 +58,7 @@ export const SourceSection = memo(function SourceSection({
   onSourceDocDragStart,
   onSourceDocDragEnd,
   onDeleteSource,
+  onSyncSource,
 }: SourceSectionProps) {
   // Двухуровневая группировка: источник → папка → файлы.
   const sourceGroups = useMemo(() => {
@@ -102,11 +107,29 @@ export const SourceSection = memo(function SourceSection({
                 <Cloud className="h-3.5 w-3.5 text-gray-500 shrink-0" />
                 <span className="text-sm font-semibold text-gray-700 truncate">{sourceName}</span>
                 <span className="text-[11px] text-gray-400">{totalFiles}</span>
+                {sourceKey !== NO_SOURCE_KEY && onSyncSource && (
+                  <button
+                    type="button"
+                    onClick={() => onSyncSource(sourceKey)}
+                    disabled={syncingSourceId === sourceKey}
+                    className="ml-auto shrink-0 p-0.5 rounded text-muted-foreground/40 hover:text-muted-foreground hover:bg-accent transition-all md:opacity-0 md:group-hover/source:opacity-100 disabled:opacity-100"
+                    title="Синхронизировать источник"
+                  >
+                    <RefreshCw
+                      className={
+                        'h-3 w-3 ' + (syncingSourceId === sourceKey ? 'animate-spin' : '')
+                      }
+                    />
+                  </button>
+                )}
                 {removable && onDeleteSource && (
                   <button
                     type="button"
                     onClick={() => onDeleteSource(sourceKey)}
-                    className="ml-auto shrink-0 p-0.5 rounded text-muted-foreground/40 hover:text-destructive hover:bg-accent transition-all md:opacity-0 md:group-hover/source:opacity-100"
+                    className={
+                      'shrink-0 p-0.5 rounded text-muted-foreground/40 hover:text-destructive hover:bg-accent transition-all md:opacity-0 md:group-hover/source:opacity-100' +
+                      (sourceKey !== NO_SOURCE_KEY && onSyncSource ? '' : ' ml-auto')
+                    }
                     title="Удалить источник"
                   >
                     <Trash2 className="h-3 w-3" />

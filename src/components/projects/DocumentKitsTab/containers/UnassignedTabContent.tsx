@@ -31,6 +31,7 @@ import {
   useDocumentSourcesQuery,
   useAddDocumentSourceMutation,
   useDeleteDocumentSourceMutation,
+  useSyncDocumentSourceMutation,
 } from '@/hooks/documents/useSourceDocumentsQuery'
 import { GenerationCard } from '../components/GenerationCard'
 import { CreateGenerationDialog } from '@/components/documents/dialogs/CreateGenerationDialog'
@@ -109,8 +110,35 @@ export const UnassignedTabContent = memo(function UnassignedTabContent() {
   )
   const addSource = useAddDocumentSourceMutation()
   const deleteSource = useDeleteDocumentSourceMutation()
+  const syncSource = useSyncDocumentSourceMutation()
+  const [syncingSourceId, setSyncingSourceId] = useState<string | null>(null)
   const [addSourceOpen, setAddSourceOpen] = useState(false)
   const [newSourceLink, setNewSourceLink] = useState('')
+
+  const handleSyncSource = (sourceId: string) => {
+    const source = sources.find((s) => s.id === sourceId)
+    if (!source || syncingSourceId) return
+    setSyncingSourceId(sourceId)
+    const toastId = toast.loading('Проверяю источник…')
+    syncSource.mutate(
+      {
+        projectId,
+        workspaceId,
+        driveFolderId: source.drive_folder_id,
+        documentKitId: source.document_kit_id,
+        sourceName: source.name,
+      },
+      {
+        onSuccess: (r) =>
+          toast.success(
+            `Источник обновлён — файлов: ${r.filesFound}${r.deleted ? `, убрано: ${r.deleted}` : ''}`,
+            { id: toastId },
+          ),
+        onError: () => toast.error('Не удалось обновить источник', { id: toastId }),
+        onSettled: () => setSyncingSourceId(null),
+      },
+    )
+  }
 
   const handleAddSource = () => {
     if (!newSourceLink.trim() || addSource.isPending) return
@@ -336,6 +364,7 @@ export const UnassignedTabContent = memo(function UnassignedTabContent() {
           documents={sourceDocuments}
           sourceNameById={sourceNameById}
           removableSourceIds={removableSourceIds}
+          syncingSourceId={syncingSourceId}
           isCollapsed={sourceCollapsed}
           isSyncing={isSyncing}
           selectedDocuments={selectedDocuments}
@@ -349,6 +378,7 @@ export const UnassignedTabContent = memo(function UnassignedTabContent() {
           onSourceDocDragStart={handlers.onSourceDocDragStart}
           onSourceDocDragEnd={handlers.onSourceDocDragEnd}
           onDeleteSource={handleDeleteSource}
+          onSyncSource={handleSyncSource}
         />
       </div>
 

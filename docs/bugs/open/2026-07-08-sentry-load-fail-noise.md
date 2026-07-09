@@ -14,6 +14,7 @@ last-investigated: 2026-07-08
 
 - 2026-07-06 14:13 — «Не удалось загрузить проект» `/projects/238` (сразу после создания — см. [2026-07-06-project-load-fail-after-create](2026-07-06-project-load-fail-after-create.md))
 - 2026-07-08 14:52 — «Не удалось загрузить статью» `/projects/93?tab=forms` (проект «Dmitrii Rodionov», живой, создан месяц назад — issue `748d34fbb5e143a3a8c19a257de25843`)
+- 2026-07-09 09:49 — `TypeError: Failed to fetch` at `uploadSourceDocumentForSlot` `/projects/216?tab=documents` (`handled=yes`) — **загрузка файла** в слот оборвалась на сетевом уровне (не «загрузка данных», а upload). Тот же класс: транзиентный сетевой сбой, юзер видит ошибку и повторяет, файл не теряется.
 - (отдельно, НЕ шум — реальный краш) [2026-07-08-project-tasks-errorboundary-crash](2026-07-08-project-tasks-errorboundary-crash.md)
 
 ## Природа

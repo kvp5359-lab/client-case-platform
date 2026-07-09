@@ -48,6 +48,8 @@ async function fetchSourceDocuments(projectId: string): Promise<SourceDocumentsR
     webViewLink: doc.web_view_link || undefined,
     iconLink: doc.icon_link || undefined,
     parentFolderName: doc.parent_folder_name || undefined,
+    parentDriveFolderId: doc.parent_drive_folder_id || undefined,
+    sourceId: doc.source_id || undefined,
     sourceDocumentId: doc.id,
     isHidden: doc.is_hidden || undefined,
   }))
@@ -204,6 +206,39 @@ export function useSyncKitSourceMutation() {
         sourceFolderId: driveFolderId,
         documentKitId: kitId,
         groupByTopLevel: true,
+      }),
+    onSuccess: () => invalidateAll(),
+  })
+}
+
+/**
+ * Синхронизация конкретного источника (по записи document_sources): проверяет
+ * новые/удалённые файлы в его папке Drive. Наборный — с группировкой по папке
+ * первого уровня; отдельный — по ближайшей папке.
+ */
+export function useSyncDocumentSourceMutation() {
+  const invalidateAll = useInvalidateAllSourceViews()
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      workspaceId,
+      driveFolderId,
+      documentKitId,
+      sourceName,
+    }: {
+      projectId: string
+      workspaceId: string
+      driveFolderId: string
+      documentKitId: string | null
+      sourceName: string | null
+    }) =>
+      syncSourceDocumentsFromDrive({
+        projectId,
+        workspaceId,
+        sourceFolderId: driveFolderId,
+        documentKitId,
+        sourceName,
+        groupByTopLevel: !!documentKitId,
       }),
     onSuccess: () => invalidateAll(),
   })
