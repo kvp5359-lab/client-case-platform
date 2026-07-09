@@ -182,7 +182,7 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
 
   return (
     <tr
-      className={`group/doc border-b border-gray-100 hover:bg-gray-100/60 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50/60' : ''} ${isDragging ? 'opacity-40 bg-blue-50' : ''} ${isOver && dragOverPosition === 'top' ? 'border-t-2 border-t-blue-500 bg-blue-50/40' : ''} ${isOver && dragOverPosition === 'bottom' ? 'border-b-2 border-b-blue-500 bg-blue-50/40' : ''} ${isHighlightedCompress ? 'bg-orange-50/80 ring-1 ring-inset ring-orange-200' : ''}`}
+      className={`group/doc odd:bg-gray-50/60 hover:bg-gray-100/60 transition-colors cursor-pointer ${isSelected ? 'bg-blue-50/60' : ''} ${isDragging ? 'opacity-40 bg-blue-50' : ''} ${isOver && dragOverPosition === 'top' ? 'border-t-2 border-t-blue-500 bg-blue-50/40' : ''} ${isOver && dragOverPosition === 'bottom' ? 'border-b-2 border-b-blue-500 bg-blue-50/40' : ''} ${isHighlightedCompress ? 'bg-orange-50/80 ring-1 ring-inset ring-orange-200' : ''}`}
       draggable
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
@@ -293,7 +293,7 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
           Во время сжатия — анимация вместо размера, в том же месте. */}
       <td className="group/size py-0.5 pl-2 pr-1 text-right align-middle whitespace-nowrap w-[80px]">
         {compressingDocIds.has(document.id) ? (
-          <div className="flex items-center justify-end min-h-[20px] border-l border-gray-100 pl-2">
+          <div className="flex items-center justify-end min-h-[20px] pl-2">
             <span className="w-10 h-1 bg-orange-100 rounded-full overflow-hidden relative inline-block">
               <span className="absolute h-full w-1/2 bg-orange-500 rounded-full animate-[compress_1.5s_ease-in-out_infinite]" />
             </span>
@@ -301,7 +301,7 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
         ) : (
           hasFile && currentFile && (
           <div
-            className={`flex items-center justify-end gap-0.5 min-h-[20px] border-l border-gray-100 pl-2 text-[12px] tabular-nums ${sizeColorClass}`}
+            className={`flex items-center justify-end gap-0.5 min-h-[20px] pl-2 text-[12px] tabular-nums ${sizeColorClass}`}
           >
             {/* Слот слева от размера: зелёная «сжат» ИЛИ кнопка сжатия (по hover).
                 Одинаков у всех строк — не двигает размер. */}
@@ -332,7 +332,7 @@ export const DocumentItem = memo(function DocumentItem({ document, slotId }: Doc
       </td>
       {/* Дата загрузки */}
       <td className="py-0.5 pl-1 pr-1 md:pr-2.5 text-right align-middle whitespace-nowrap w-[80px]">
-        <div className="flex items-center justify-end min-h-[20px] border-l border-gray-100 pl-1.5 text-[12px] tabular-nums text-gray-400">
+        <div className="flex items-center justify-end min-h-[20px] pl-1.5 text-[12px] tabular-nums text-gray-400">
           {formatSmartDate(currentFile?.created_at ?? null)}
         </div>
       </td>

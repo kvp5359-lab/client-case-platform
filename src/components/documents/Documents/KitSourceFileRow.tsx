@@ -65,7 +65,7 @@ export function KitSourceFileRow({
         e.dataTransfer.effectAllowed = 'move'
       }}
       className={
-        'group/src border-b border-gray-100 cursor-grab active:cursor-grabbing hover:bg-gray-100/60 transition-colors ' +
+        'group/src odd:bg-gray-50/60 cursor-grab active:cursor-grabbing hover:bg-gray-100/60 transition-colors ' +
         (isHidden ? 'text-muted-foreground/40' : 'text-muted-foreground/90')
       }
       title={doc.name}
@@ -125,14 +125,14 @@ export function KitSourceFileRow({
       {/* Размер */}
       <td className="py-0.5 pl-2 pr-1 text-right align-middle whitespace-nowrap w-[80px]">
         <div
-          className={`flex items-center justify-end min-h-[20px] border-l border-gray-100 pl-2 text-[12px] tabular-nums ${sizeColorClass}`}
+          className={`flex items-center justify-end min-h-[20px] pl-2 text-[12px] tabular-nums ${sizeColorClass}`}
         >
           {formatSize(doc.size ?? null)}
         </div>
       </td>
       {/* Дата загрузки */}
       <td className="py-0.5 pl-1 pr-1 md:pr-2.5 text-right align-middle whitespace-nowrap w-[80px]">
-        <div className="flex items-center justify-end min-h-[20px] border-l border-gray-100 pl-1.5 text-[12px] tabular-nums text-gray-400">
+        <div className="flex items-center justify-end min-h-[20px] pl-1.5 text-[12px] tabular-nums text-gray-400">
           {uploadedAt ? formatSmartDate(uploadedAt) : ''}
         </div>
       </td>
