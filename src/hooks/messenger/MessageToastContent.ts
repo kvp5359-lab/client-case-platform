@@ -88,9 +88,11 @@ function buildAvatar(
   return createElement('div', { className: 'relative shrink-0' }, inner, badge)
 }
 
-/** Маппинг accent_color чата → Tailwind border-цвет.
- *  Держать синхронно с палитрой в threadConstants.ts (ACCENT_COLORS). */
-const ACCENT_BORDER: Record<string, string> = {
+/** Маппинг accent_color чата → Tailwind border-цвет (ручные тинты).
+ *  Тип `Record<ThreadAccentColor>` намеренный: добавление нового акцента в
+ *  палитру сломает сборку ЗДЕСЬ, пока не добавишь тинт — иначе новый цвет
+ *  молча упал бы в border-blue-400 (ловили 2026-07-03). Не менять на string. */
+const ACCENT_BORDER: Record<ThreadAccentColor, string> = {
   blue: 'border-blue-400',
   sky: 'border-sky-400',
   slate: 'border-stone-400',
@@ -128,7 +130,7 @@ export function buildToastContent(
   threadIcon?: string | null,
 ) {
   const borderColor = accentColor
-    ? (ACCENT_BORDER[accentColor] ?? 'border-blue-400')
+    ? (ACCENT_BORDER[accentColor as ThreadAccentColor] ?? 'border-blue-400')
     : channel === 'internal'
       ? 'border-gray-800'
       : 'border-blue-400'

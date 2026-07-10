@@ -1312,12 +1312,12 @@
     },
     {
       "name": "perf_traces_insert",
-      "def_md5": "391ee2508136c4c1d8b85cd53bff5a0d",
+      "def_md5": "c30833b77fb30adabc6068f6aac8a5a7",
       "table_name": "perf_traces"
     },
     {
       "name": "perf_traces_select_own",
-      "def_md5": "1057176cd55d8a6e2539e04346048cdf",
+      "def_md5": "7712f5d31490cdd5ce631caa1462852b",
       "table_name": "perf_traces"
     },
     {
