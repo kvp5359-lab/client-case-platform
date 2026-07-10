@@ -128,7 +128,7 @@ export function MessengerTabContent({
   const clearForwardBuffer = useSidePanelStore((s) => s.clearForwardBuffer)
   const insertContentRef = useRef<((html: string) => void) | null>(null)
   // Текущий зритель — клиент: ему не показываем внутреннюю подсветку «сотрудник».
-  const { isClientOnly } = useWorkspacePermissions({ workspaceId })
+  const { isClientOnly, can: canWs } = useWorkspacePermissions({ workspaceId })
   // Тред догружаем напрямую — нужен contact_participant_id (для personal-тредов
   // его нет в allThreads). React Query дедуплицирует с useProjectThreadById в TaskPanel.
   const { data: directThread } = useProjectThreadById(threadId, true)
@@ -575,10 +575,10 @@ export function MessengerTabContent({
         threadContactParticipantId={currentThread?.contact_participant_id ?? null}
         onReply={handleReply}
         onReact={handleReact}
-        onEdit={handlers.handleStartEdit}
+        onEdit={canWs('edit_own_message') ? handlers.handleStartEdit : undefined}
         onDelete={handleDelete}
         onQuote={state.setQuoteText}
-        onForward={handlers.handleForward}
+        onForward={canWs('forward_messages') ? handlers.handleForward : undefined}
         currentThreadId={threadId}
         onPublishDraft={(msg) => {
           // Публикация черновик-баббла = отправка. Для email требуем тему/получателя.

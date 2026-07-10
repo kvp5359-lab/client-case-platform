@@ -269,7 +269,8 @@ export const TaskListView = memo(function TaskListView({
   // Удаление задачи — только владельцу воркспейса. RLS на стороне БД пускает
   // любого с доступом к треду, но клиент гейтит UI чтобы не показывать кнопку
   // клиентам/исполнителям (иначе они тыкают и БД пропускает мягкое удаление).
-  const { isOwner: isWorkspaceOwner } = useWorkspacePermissions({ workspaceId })
+  const { isOwner: isWorkspaceOwner, can: canWs } = useWorkspacePermissions({ workspaceId })
+  const canCreateTask = canWs('create_tasks')
 
   const handleConfirmDelete = useCallback(() => {
     if (!deletingTask) return
@@ -364,6 +365,7 @@ export const TaskListView = memo(function TaskListView({
         onToggleFilters={() => setFiltersOpen((v) => !v)}
         presetPopoverOpen={presetPopoverOpen}
         onPresetPopoverChange={setPresetPopoverOpen}
+        canCreate={canCreateTask}
         onCreate={(kind, template) => {
           setCreateDefaultType(kind)
           setCreateTemplate(template ?? null)
@@ -423,10 +425,12 @@ export const TaskListView = memo(function TaskListView({
         <div className="rounded-lg border border-dashed p-12 text-center">
           <CheckSquare className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">Пока ничего нет</p>
-          <Button size="sm" variant="outline" className="mt-3" onClick={() => setCreateOpen(true)}>
-            <Plus className="w-4 h-4 mr-1.5" />
-            Создать
-          </Button>
+          {canCreateTask && (
+            <Button size="sm" variant="outline" className="mt-3" onClick={() => setCreateOpen(true)}>
+              <Plus className="w-4 h-4 mr-1.5" />
+              Создать
+            </Button>
+          )}
         </div>
       ) : filters.filteredTasks.length === 0 ? (
         <div className="py-8 text-center text-sm text-muted-foreground">

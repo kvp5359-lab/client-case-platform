@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils'
 import { DeadlinePopover } from './DeadlinePopover'
 import { AssigneesPopover } from './AssigneesPopover'
 import { TaskActionsMenu } from './TaskActionsMenu'
+import { useTaskActionPerms } from '@/hooks/permissions'
 import { RecurringRuleDialog } from '@/components/recurring/RecurringRuleDialog'
 import type { ProjectHeaderInfo, TaskItem } from './types'
 
@@ -90,6 +91,7 @@ export function TaskPanelTaskHeader({
 }: TaskPanelTaskHeaderProps) {
   const router = useRouter()
   const isTask = task.type === 'task'
+  const { canDeleteTask } = useTaskActionPerms(workspaceId)
   const ThreadIcon = getChatIconComponent(task.icon)
   const updateThread = useUpdateThread()
 
@@ -404,7 +406,7 @@ export function TaskPanelTaskHeader({
             isSubscribed={subscription.isSubscribed}
             onToggleSubscribe={subscription.setSubscribed}
             subscribePending={subscription.pending}
-            onRequestDelete={onRequestDelete}
+            onRequestDelete={canDeleteTask(task.created_by) ? onRequestDelete : undefined}
             triggerClassName="opacity-100"
             align="end"
           />

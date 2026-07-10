@@ -22,6 +22,7 @@ import { AssigneesPopover } from './AssigneesPopover'
 import { UnreadBadge } from './UnreadBadge'
 import { TaskActionsMenu } from './TaskActionsMenu'
 import type { TaskItem } from './types'
+import { useTaskActionPerms } from '@/hooks/permissions'
 
 type TaskRowProps = {
   task: TaskItem
@@ -73,6 +74,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
   onRequestDelete,
   isActive,
 }, ref) {
+  const { canDeleteTask, canChangeStatus } = useTaskActionPerms(workspaceId)
   const currentStatus = useMemo(
     () => statuses.find((s) => s.id === task.status_id) ?? null,
     [statuses, task.status_id],
@@ -205,14 +207,14 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
             Если onRequestDelete не передан — внутри сам решит, что показать. */}
         <TaskActionsMenu
           onOpen={onOpen}
-          statuses={statuses}
+          statuses={canChangeStatus ? statuses : []}
           currentStatusId={task.status_id}
-          onStatusChange={onStatusChange}
+          onStatusChange={canChangeStatus ? onStatusChange : undefined}
           deadline={task.deadline}
           onDeadlineSet={onDeadlineSet}
           onDeadlineClear={onDeadlineClear}
           deadlinePending={deadlinePending}
-          onRequestDelete={onRequestDelete}
+          onRequestDelete={canDeleteTask(task.created_by) ? onRequestDelete : undefined}
           triggerClassName="md:opacity-0 md:group-hover/row:opacity-100"
         />
       </div>

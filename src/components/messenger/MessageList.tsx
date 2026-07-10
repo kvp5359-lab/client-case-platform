@@ -9,6 +9,7 @@ import type { ThreadAuditEvent } from '@/hooks/messenger/useThreadAuditEvents'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useDeleteMessage } from '@/hooks/messenger/useDeleteMessage'
+import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 import { perfEnd } from '@/utils/perfTrace'
 import { wrapOrphanListItems } from '@/utils/messenger/listAwareCopy'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
@@ -136,7 +137,11 @@ export function MessageList({
     getDelayedExpiresAt,
     onCancelDelayed,
     currentThreadId,
+    workspaceId: ctxWorkspaceId,
   } = useMessengerContext()
+  const { can: canWs } = useWorkspacePermissions({ workspaceId: ctxWorkspaceId })
+  const canDeleteOwnMessage = canWs('delete_own_message')
+  const canDeleteAnyMessage = canWs('delete_any_message')
 
   // Скрываем оптимистические бабблы, если в кэше уже есть «реальный близнец»
   // (тот же автор + контент + has_attachments в окне ±60 сек). Иначе во время
@@ -644,7 +649,7 @@ export function MessageList({
                   text={msg.content}
                   time={msg.created_at}
                   messageId={msg.id}
-                  canDelete={isAdmin && !!currentThreadId}
+                  canDelete={(isAdmin || canDeleteAnyMessage) && !!currentThreadId}
                   onDelete={(id) => deleteMutation.mutateAsync(id)}
                 />
               ) : (
@@ -652,7 +657,7 @@ export function MessageList({
                   message={msg}
                   isOwn={isOwn}
                   showAvatar={isFirstInGroup}
-                  canDelete={isOwn || isAdmin}
+                  canDelete={(isOwn && canDeleteOwnMessage) || canDeleteAnyMessage}
                   isDelayedPending={isDelayedPending?.(msg.id)}
                   delayedExpiresAt={getDelayedExpiresAt?.(msg.id) ?? undefined}
                   onCancelDelayed={onCancelDelayed}

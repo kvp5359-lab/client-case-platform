@@ -7,6 +7,7 @@ import { StatusDropdown, type StatusOption } from '@/components/common/status-dr
 import { ParticipantAvatars, type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import { UnreadBadge } from '@/components/tasks/UnreadBadge'
 import { TaskActionsMenu } from '@/components/tasks/TaskActionsMenu'
+import { useTaskActionPerms } from '@/hooks/permissions'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { CardLayout, CardFieldId, CardFieldStyle, DisplayMode, VisibleField } from './types'
 import { getDeadlineAccentClass, formatDeadlineDisplay } from '@/utils/deadlineUtils'
@@ -103,6 +104,7 @@ function TaskField({
   rowHasRightAligned: boolean
 }) {
   const classes = fieldStyleToClasses(style)
+  const { canDeleteTask } = useTaskActionPerms(workspaceId)
 
   switch (fieldId) {
     case 'spacer':
@@ -205,7 +207,11 @@ function TaskField({
             onDeadlineClear={
               onDeadlineChange ? () => onDeadlineChange(task.id, null) : undefined
             }
-            onRequestDelete={onDeleteTask ? () => onDeleteTask(task) : undefined}
+            onRequestDelete={
+              onDeleteTask && canDeleteTask(task.created_by)
+                ? () => onDeleteTask(task)
+                : undefined
+            }
             align="end"
           />
         </div>

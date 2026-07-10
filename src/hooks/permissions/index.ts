@@ -7,3 +7,4 @@
 export { useWorkspacePermissions, type WorkspacePermissionsResult } from './useWorkspacePermissions'
 export { useProjectPermissions, type ProjectPermissionsResult } from './useProjectPermissions'
 export { useWorkspaceFeatures, type WorkspaceFeaturesResult } from './useWorkspaceFeatures'
+export { useTaskActionPerms } from './useTaskActionPerms'

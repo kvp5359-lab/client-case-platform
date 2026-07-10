@@ -27,6 +27,8 @@ type TaskListControlsProps = {
   onPresetPopoverChange: (open: boolean) => void
   onCreate: (kind: ThreadKind, template?: ThreadTemplate) => void
   onCreateGroup?: () => void
+  /** Можно ли создавать задачи (право роли). По умолчанию true. */
+  canCreate?: boolean
   threadTemplates: ThreadTemplate[]
   isProjectMode: boolean
   allAssignees: AvatarParticipant[]
@@ -46,6 +48,7 @@ export const TaskListControls = memo(function TaskListControls({
   onPresetPopoverChange,
   onCreate,
   onCreateGroup,
+  canCreate = true,
   threadTemplates,
   isProjectMode,
   allAssignees,
@@ -114,12 +117,14 @@ export const TaskListControls = memo(function TaskListControls({
             <List className="w-3.5 h-3.5" />
           </button>
         </div>
-        <CreateThreadButtonGroup
-          threadTemplates={threadTemplates}
-          onCreate={onCreate}
-          onCreateGroup={onCreateGroup}
-          primary="task"
-        />
+        {canCreate && (
+          <CreateThreadButtonGroup
+            threadTemplates={threadTemplates}
+            onCreate={onCreate}
+            onCreateGroup={onCreateGroup}
+            primary="task"
+          />
+        )}
       </div>
 
       {/* Фильтры (отдельная строка, сворачиваемые) */}
