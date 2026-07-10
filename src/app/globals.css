@@ -656,6 +656,20 @@ body[data-panel-open][data-panel-mode="push"] main {
   }
 }
 
+/* Строка фильтров поиска в треде: подписи типов появляются, когда контейнер
+   (боковая панель) достаточно широкий; на узкой панели — только иконки. */
+.thread-search-filters-cq {
+  container: thread-search-filters / inline-size;
+}
+.tsf-label {
+  display: none;
+}
+@container thread-search-filters (min-width: 470px) {
+  .tsf-label {
+    display: inline;
+  }
+}
+
 /* Композер: панель форматирования (B/I/U/S/цитата/списки) прячет кнопки по мере
    нехватки ширины РЯДА (container query — работает и в узкой десктоп-панели, не
    только на мобиле). Прячутся именно непоместившиеся, справа налево; все доступны

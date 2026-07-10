@@ -18,6 +18,7 @@ import { EmailLinkDialog } from './EmailLinkDialog'
 import { TypingIndicator } from './TypingIndicator'
 import { DocumentPickerDialog } from './DocumentPickerDialog'
 import { ChatToolbar } from './ChatToolbar'
+import { ThreadSearchOverlay } from './search/ThreadSearchOverlay'
 import { ReadUnreadButton } from './ReadUnreadButton'
 import {
   ComposerVisibilitySwitch,
@@ -99,7 +100,7 @@ export function MessengerTabContent({
   const queryClient = useQueryClient()
   const [telegramDialogOpen, setTelegramDialogOpen] = useState(false)
   const [emailDialogOpen, setEmailDialogOpen] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchOverlayOpen, setSearchOverlayOpen] = useState(false)
   const [jumpToMessageId, setJumpToMessageId] = useState<string | null>(null)
   const { user } = useAuth()
   // Режим видимости композера (Клиенту/Команде/Заметка/Только я) — сохраняется
@@ -412,7 +413,7 @@ export function MessengerTabContent({
   const handleJumpToMessage = useCallback(
     (messageId: string) => {
       state.setSearchQuery('')
-      setSearchOpen(false)
+      setSearchOverlayOpen(false)
       setJumpToMessageId(messageId)
     },
     [state],
@@ -498,15 +499,7 @@ export function MessengerTabContent({
 
   const toolbarContent = (
     <ChatToolbar
-      searchQuery={state.searchQuery}
-      onSearchChange={state.setSearchQuery}
-      searchOpen={searchOpen}
-      onSearchToggle={() => {
-        setSearchOpen(!searchOpen)
-        if (searchOpen) state.setSearchQuery('')
-      }}
-      resultCount={state.resultCount}
-      isSearching={state.isSearching}
+      onOpenSearch={() => setSearchOverlayOpen(true)}
       isEmailChat={state.isEmailChat}
       isLinked={state.isLinked}
       telegramChatTitle={state.telegramLink?.telegram_chat_title ?? null}
@@ -756,6 +749,17 @@ export function MessengerTabContent({
             currentStatusId: currentThread?.status_id ?? null,
           }}
         />
+
+        {/* Окно поиска+фильтров — оверлей поверх области чата. Лента под ним
+            остаётся живой, поэтому «перейти к сообщению» скроллит её. */}
+        {searchOverlayOpen && (
+          <ThreadSearchOverlay
+            threadId={threadId}
+            threadName={currentThread?.name}
+            onClose={() => setSearchOverlayOpen(false)}
+            onJump={handleJumpToMessage}
+          />
+        )}
       </div>
 
       <TelegramLinkDialog

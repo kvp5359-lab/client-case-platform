@@ -4,10 +4,9 @@
 
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Link2, Send, Camera, User, Users, Briefcase } from 'lucide-react'
+import { Link2, Send, Camera, User, Users, Briefcase, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getChatIconComponent } from './chatVisuals'
-import { MessageSearch } from './MessageSearch'
 import { TelegramLinkStatus } from './TelegramLinkStatus'
 
 const WhatsAppIcon = getChatIconComponent('whatsapp')
@@ -60,13 +59,8 @@ function ChannelBadgeIcon({
 }
 
 type ChatToolbarProps = {
-  // Search
-  searchQuery: string
-  onSearchChange: (q: string) => void
-  searchOpen: boolean
-  onSearchToggle: () => void
-  resultCount: number
-  isSearching: boolean
+  // Search — лупа открывает полноэкранное окно поиска+фильтров (оверлей области чата)
+  onOpenSearch: () => void
   // Email/Telegram
   isEmailChat: boolean
   isLinked: boolean
@@ -91,12 +85,7 @@ type ChatToolbarProps = {
 }
 
 export function ChatToolbar({
-  searchQuery,
-  onSearchChange,
-  searchOpen,
-  onSearchToggle,
-  resultCount,
-  isSearching,
+  onOpenSearch,
   isEmailChat,
   isLinked,
   telegramChatTitle,
@@ -168,14 +157,14 @@ export function ChatToolbar({
 
   return (
     <>
-      <MessageSearch
-        searchQuery={searchQuery}
-        onSearchChange={onSearchChange}
-        isOpen={searchOpen}
-        onToggle={onSearchToggle}
-        resultCount={resultCount}
-        isSearching={isSearching}
-      />
+      <button
+        type="button"
+        onClick={onOpenSearch}
+        aria-label="Поиск сообщений"
+        className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+      >
+        <Search className="h-3.5 w-3.5" />
+      </button>
       {/* Индикатор канала: inline на десктопе; на мобиле inline-копия скрыта
           (`hidden md:inline-flex`), а сам индикатор уходит порталом в выдвижную
           панель шапки (channelContainer). */}
