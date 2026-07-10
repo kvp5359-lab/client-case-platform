@@ -280,7 +280,7 @@ export function ProjectServicesSection({ projectId, workspaceId, currency, baseC
       </header>
       <div>
         {isLoading || services.length === 0 ? (
-          <EmptyState loading={isLoading} emptyText="Добавь первую услугу, чтобы начать учёт" />
+          <EmptyState loading={isLoading} emptyText="Добавь первую услугу, чтобы начать учёт" bordered />
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             {/* Формат «строка-квитанция» (как у Доходов/Расходов): название и

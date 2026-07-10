@@ -235,7 +235,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type, curre
       </header>
       <div>
         {isLoading || transactions.length === 0 ? (
-          <EmptyState loading={isLoading} emptyText={config.emptyText} />
+          <EmptyState loading={isLoading} emptyText={config.emptyText} bordered />
         ) : (
           <>
             {/* Формат «строка-квитанция» вместо широкой таблицы: контрагент и
