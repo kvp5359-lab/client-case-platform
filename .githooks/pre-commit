@@ -92,12 +92,21 @@ fi
 NEW_MIGRATIONS=$(git diff --cached --name-only --diff-filter=A \
   | grep -E '^supabase/migrations/[^/]+\.sql$' || true)
 BAD_NAMES=""
+DUP_NAMES=""
 while IFS= read -r M; do
   [ -z "$M" ] && continue
   BASE=$(basename "$M")
   # ок: ровно 14 цифр + '_' ; плохо: любой другой ведущий числовой префикс
   if ! echo "$BASE" | grep -qE '^[0-9]{14}_'; then
     BAD_NAMES="${BAD_NAMES}  • ${BASE}\n"
+  fi
+  # коллизия: тот же числовой префикс уже есть у ДРУГОГО файла миграций
+  PREFIX=$(echo "$BASE" | sed -E 's/_.*//')
+  if [ -n "$PREFIX" ]; then
+    OTHERS=$(ls supabase/migrations/ 2>/dev/null | grep -E "^${PREFIX}_" | grep -v -F "$BASE" || true)
+    if [ -n "$OTHERS" ]; then
+      DUP_NAMES="${DUP_NAMES}  • ${BASE} ↔ $(echo "$OTHERS" | tr '\n' ' ')\n"
+    fi
   fi
 done <<< "$NEW_MIGRATIONS"
 
@@ -107,6 +116,15 @@ if [ -n "$BAD_NAMES" ]; then
   printf "%b" "$BAD_NAMES"
   echo "   Переименуй в 14-значный таймстемп (напр. $(date -u +%Y%m%d%H%M%S)_описание.sql),"
   echo "   иначе порядок применения на чистой пересборке может разойтись с продом."
+  echo "   Это НЕ блокировка (обойти: git commit --no-verify)."
+  echo ""
+fi
+
+if [ -n "$DUP_NAMES" ]; then
+  echo ""
+  echo "⚠️  Коллизия префикса миграции (тот же таймстемп уже занят — частая беда при параллельных сессиях):"
+  printf "%b" "$DUP_NAMES"
+  echo "   Дай своей уникальный ПОЗДНИЙ таймстемп, иначе порядок применения неоднозначен."
   echo "   Это НЕ блокировка (обойти: git commit --no-verify)."
   echo ""
 fi
