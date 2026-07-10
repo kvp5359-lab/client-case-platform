@@ -53,11 +53,11 @@ export function ItemListTab({
     <div className="flex items-center shrink-0">
       <div
         className={cn(
-          'text-sm py-1 rounded-full transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer',
+          'text-sm font-medium py-1 rounded-md transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer',
           isActive ? 'pl-2.5 pr-1' : 'px-2.5',
           isActive
-            ? 'bg-amber-50 text-amber-700 font-medium shadow-[0_1px_4px_rgba(0,0,0,0.15)]'
-            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+            ? 'bg-background text-foreground shadow'
+            : 'text-muted-foreground hover:text-foreground',
         )}
         role="tab"
         tabIndex={0}

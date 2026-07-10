@@ -17,7 +17,9 @@
 
 import { useEffect, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { Plus, Kanban, ListChecks, FolderOpen } from 'lucide-react'
+import { Plus, Kanban, ListChecks, FolderOpen, Menu } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useOverflowTabs } from '@/hooks/useOverflowTabs'
 import { toast } from 'sonner'
 import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
@@ -108,6 +110,13 @@ export default function BoardsPage() {
   // Закрываем боковую панель при входе на страницу.
   useEffect(() => { closePanel() }, [closePanel])
 
+  // Push-режим правой панели (как на странице задач проекта): при открытой панели
+  // <main> отжимается влево, ряд вкладок сужается и overflow-бутерброд реагирует.
+  useEffect(() => {
+    document.body.setAttribute('data-panel-mode', 'push')
+    return () => document.body.removeAttribute('data-panel-mode')
+  }, [])
+
   // ── Разбор активной вкладки из роута ──
   // Доски — голый uuid/short_id; списки — с префиксом list-.
   const legacyBoardFromQuery = searchParams.get('board')
@@ -194,6 +203,27 @@ export default function BoardsPage() {
     )
   }
 
+  // Вкладки досок и списков — единый ряд с overflow-бутербродом (общий механизм
+  // useOverflowTabs, тот же, что у вкладок проекта). Хук ДО раннего return ниже.
+  const tabItems = useMemo(
+    () => [
+      ...(boards ?? []).map((b) => ({ id: `board:${b.id}`, kind: 'board' as const, board: b })),
+      ...itemLists.map((l) => ({ id: `list:${l.id}`, kind: 'list' as const, list: l })),
+    ],
+    [boards, itemLists],
+  )
+  const activeTabId = activeBoard
+    ? `board:${activeBoard.id}`
+    : activeList
+      ? `list:${activeList.id}`
+      : null
+  const {
+    rowRef: tabsRowRef,
+    measureRef: tabsMeasureRef,
+    visible: visibleTabs,
+    hidden: hiddenTabs,
+  } = useOverflowTabs({ items: tabItems, activeId: activeTabId, reservePx: 72, activeExtraPx: 28 })
+
   if (!workspaceId || !user) return null
 
   const isEmpty = !isLoading && (boards?.length ?? 0) === 0 && itemLists.length === 0
@@ -215,10 +245,32 @@ export default function BoardsPage() {
           </div>
         )}
 
-        {/* Строка вкладок */}
+        {/* Строка вкладок — overflow-бутерброд вместо горизонтального скролла. */}
         <div className="flex items-center px-3 py-2 shrink-0">
-          <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none scroll-fade-right">
-            <div className="flex items-center gap-1 bg-muted rounded-full p-1 w-fit group/tabs">
+          <div ref={tabsRowRef} className="relative flex-1 min-w-0 flex items-center gap-2 group/tabs">
+            {/* Скрытый ряд-клон для замера ширин (все вкладки). */}
+            <div
+              ref={tabsMeasureRef}
+              aria-hidden
+              className="absolute left-0 top-0 -z-10 flex items-center opacity-0 pointer-events-none"
+            >
+              {tabItems.map((it) => (
+                <span
+                  key={it.id}
+                  data-tab-id={it.id}
+                  className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm px-2.5 py-1"
+                >
+                  {it.kind === 'board' ? (
+                    <Kanban className="h-3.5 w-3.5" />
+                  ) : (
+                    <ListChecks className="h-3.5 w-3.5" />
+                  )}
+                  {it.kind === 'board' ? it.board.name : it.list.name}
+                </span>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1 w-fit max-w-full">
               {isLoading ? (
                 <div className="flex items-center gap-1">
                   <Skeleton className="h-6 w-20 rounded-full" />
@@ -227,69 +279,108 @@ export default function BoardsPage() {
                 </div>
               ) : (
                 <>
-                  {boards?.map((board) => (
-                    <BoardTab
-                      key={board.id}
-                      board={board}
-                      isActive={activeBoard?.id === board.id}
-                      isPinned={isBoardPinned(board.id)}
-                      canPin={isOwner}
-                      hasBoardFilter={(() => {
-                        const f = normalizeBoardGlobalFilter(board.global_filter)
-                        return f.project.rules.length > 0 || f.thread.rules.length > 0
-                      })()}
-                      workspaceId={workspaceId}
-                      canManageSections={canManageShared}
-                      onSelect={() => navigateToBoard(board.id)}
-                      onEdit={() => { navigateToBoard(board.id); editDialog.open() }}
-                      onEditFilter={() => { navigateToBoard(board.id); filterDialog.open() }}
-                      onCreateFunnel={() => { navigateToBoard(board.id); funnelDialog.open() }}
-                      onDelete={() => handleDeleteBoard(board)}
-                      onAddList={() => { navigateToBoard(board.id); createListColumnDialog.open() }}
-                      onTogglePin={() => toggleBoardPin(board.id)}
-                    />
-                  ))}
-                  {itemLists.map((list) => {
-                    const canManage = list.owner_user_id === user.id || list.owner_user_id === null
-                    return (
-                      <ItemListTab
-                        key={list.id}
-                        list={list}
-                        isActive={activeList?.id === list.id}
-                        isPinned={isListPinned(list.id)}
-                        canPin={canManageShared}
-                        canManage={canManage}
+                  {visibleTabs.map((it) =>
+                    it.kind === 'board' ? (
+                      <BoardTab
+                        key={it.id}
+                        board={it.board}
+                        isActive={activeBoard?.id === it.board.id}
+                        isPinned={isBoardPinned(it.board.id)}
+                        canPin={isOwner}
+                        hasBoardFilter={(() => {
+                          const f = normalizeBoardGlobalFilter(it.board.global_filter)
+                          return f.project.rules.length > 0 || f.thread.rules.length > 0
+                        })()}
                         workspaceId={workspaceId}
                         canManageSections={canManageShared}
-                        onSelect={() => navigateToList(list.id)}
-                        onEditSettings={() => { navigateToList(list.id); settingsListDialog.open() }}
-                        onDelete={() => handleDeleteList(list)}
-                        onTogglePin={() => toggleListPin(list.id)}
+                        onSelect={() => navigateToBoard(it.board.id)}
+                        onEdit={() => { navigateToBoard(it.board.id); editDialog.open() }}
+                        onEditFilter={() => { navigateToBoard(it.board.id); filterDialog.open() }}
+                        onCreateFunnel={() => { navigateToBoard(it.board.id); funnelDialog.open() }}
+                        onDelete={() => handleDeleteBoard(it.board)}
+                        onAddList={() => { navigateToBoard(it.board.id); createListColumnDialog.open() }}
+                        onTogglePin={() => toggleBoardPin(it.board.id)}
                       />
-                    )
-                  })}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className="p-1 rounded-full shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all opacity-100 md:opacity-0 md:group-hover/tabs:opacity-100"
-                        title="Добавить"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      <DropdownMenuItem onClick={createBoardDialog.open}>
-                        <Kanban className="h-3.5 w-3.5 mr-2" /> Новая доска
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={createItemListDialog.open}>
-                        <ListChecks className="h-3.5 w-3.5 mr-2" /> Новый список
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    ) : (
+                      <ItemListTab
+                        key={it.id}
+                        list={it.list}
+                        isActive={activeList?.id === it.list.id}
+                        isPinned={isListPinned(it.list.id)}
+                        canPin={canManageShared}
+                        canManage={it.list.owner_user_id === user.id || it.list.owner_user_id === null}
+                        workspaceId={workspaceId}
+                        canManageSections={canManageShared}
+                        onSelect={() => navigateToList(it.list.id)}
+                        onEditSettings={() => { navigateToList(it.list.id); settingsListDialog.open() }}
+                        onDelete={() => handleDeleteList(it.list)}
+                        onTogglePin={() => toggleListPin(it.list.id)}
+                      />
+                    ),
+                  )}
+
+                  {/* Бутерброд с невлезшими вкладками (клик = переход). */}
+                  {hiddenTabs.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          title="Ещё вкладки"
+                          aria-label="Ещё вкладки"
+                          className="ml-0.5 shrink-0 h-7 w-8 flex items-center justify-center rounded-md bg-background shadow text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <Menu className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="max-h-[70vh] overflow-y-auto">
+                        {hiddenTabs.map((it) => (
+                          <DropdownMenuItem
+                            key={it.id}
+                            onClick={() =>
+                              it.kind === 'board'
+                                ? navigateToBoard(it.board.id)
+                                : navigateToList(it.list.id)
+                            }
+                            className={cn(activeTabId === it.id && 'bg-accent text-accent-foreground')}
+                          >
+                            {it.kind === 'board' ? (
+                              <Kanban className="h-3.5 w-3.5 mr-2" />
+                            ) : (
+                              <ListChecks className="h-3.5 w-3.5 mr-2" />
+                            )}
+                            {it.kind === 'board' ? it.board.name : it.list.name}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </>
               )}
             </div>
+
+            {/* «+» — ВНЕ серой плашки: плашка заканчивается на бутерброде, а
+                кнопка добавления появляется отдельно по наведению на ряд. */}
+            {!isLoading && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="p-1 rounded-md shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted transition-all opacity-100 md:opacity-0 md:group-hover/tabs:opacity-100"
+                    title="Добавить"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={createBoardDialog.open}>
+                    <Kanban className="h-3.5 w-3.5 mr-2" /> Новая доска
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={createItemListDialog.open}>
+                    <ListChecks className="h-3.5 w-3.5 mr-2" /> Новый список
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
 

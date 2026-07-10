@@ -13,7 +13,7 @@
  * изменении ширины (в т.ч. при открытии боковой панели).
  */
 
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { Menu, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -23,6 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useOverflowTabs } from '@/hooks/useOverflowTabs'
 
 export type TabModule = {
   id: string
@@ -34,9 +35,7 @@ export type TabModule = {
 
 // Резерв ширины под кнопку-бутерброд (32) + зазоры.
 const RESERVE_PX = 44
-// Ширина «⋮»-меню активной вкладки (renderTabExtra). Клон-замер его НЕ включает,
-// поэтому у активной вкладки реальная ширина больше — учитываем это в подсчёте,
-// иначе число видимых вкладок скачет при переключении на вкладку с «⋮».
+// Ширина «⋮»-меню активной вкладки (renderTabExtra), которой нет в клоне.
 const ACTIVE_EXTRA_PX = 34
 
 export function ProjectModuleTabBar({
@@ -51,45 +50,12 @@ export function ProjectModuleTabBar({
   /** Инлайн-элемент у активной вкладки (напр. «⋮»-меню Задач/Анкет). */
   renderTabExtra?: (id: string) => ReactNode
 }) {
-  const rowRef = useRef<HTMLDivElement>(null)
-  const measureRef = useRef<HTMLDivElement>(null)
-  const [visibleCount, setVisibleCount] = useState(modules.length)
-
-  const modulesKey = modules.map((m) => m.id).join(',')
-
-  useLayoutEffect(() => {
-    const row = rowRef.current
-    const measure = measureRef.current
-    if (!row || !measure) return
-    const compute = () => {
-      const avail = row.clientWidth - RESERVE_PX
-      const kids = Array.from(measure.children) as HTMLElement[]
-      let sum = 0
-      let fit = 0
-      for (const k of kids) {
-        // У активной вкладки в реальном ряду есть «⋮»-меню (renderTabExtra),
-        // которого нет в клоне — прибавляем его ширину, чтобы подсчёт совпал.
-        const w = k.offsetWidth + (k.dataset.tabId === activeTab ? ACTIVE_EXTRA_PX : 0)
-        if (sum + w > avail) break
-        sum += w
-        fit++
-      }
-      setVisibleCount(Math.max(1, fit))
-    }
-    compute()
-    const ro = new ResizeObserver(compute)
-    ro.observe(row)
-    return () => ro.disconnect()
-    // Перезамер при смене набора вкладок и активной (её ширина с «⋮» иная).
-  }, [modulesKey, activeTab])
-
-  // Гарантируем, что активная вкладка видима в ряду: если она за порогом
-  // видимости — заменяем ею последний видимый слот.
-  const activeIndex = modules.findIndex((m) => m.id === activeTab)
-  let visible = modules.slice(0, visibleCount)
-  if (activeIndex >= 0 && activeIndex >= visibleCount) {
-    visible = [...modules.slice(0, Math.max(0, visibleCount - 1)), modules[activeIndex]]
-  }
+  const { rowRef, measureRef, visible } = useOverflowTabs({
+    items: modules,
+    activeId: activeTab,
+    reservePx: RESERVE_PX,
+    activeExtraPx: ACTIVE_EXTRA_PX,
+  })
 
   return (
     <div ref={rowRef} className="pb-3 flex items-center gap-1.5 project-tabs-cq relative">
