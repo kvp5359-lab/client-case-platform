@@ -11,6 +11,11 @@
       "table_name": "ai_usage_monthly"
     },
     {
+      "name": "article_share_links_select",
+      "def_md5": "edca38d6702bd2aef263daf8d20a4976",
+      "table_name": "article_share_links"
+    },
+    {
       "name": "audit_logs_select",
       "def_md5": "ed77ecb7517b105fb183d065a2bddfad",
       "table_name": "audit_logs"
@@ -474,6 +479,26 @@
       "name": "document_kits_access",
       "def_md5": "c26d33adfe1014f3f34f54f250d90f0b",
       "table_name": "document_kits"
+    },
+    {
+      "name": "Users can delete document_sources in their workspace",
+      "def_md5": "63f40d2b1529a481efbab079f62904c0",
+      "table_name": "document_sources"
+    },
+    {
+      "name": "Users can insert document_sources in their workspace",
+      "def_md5": "1e802b57591b0ed34d3d2061b0321c74",
+      "table_name": "document_sources"
+    },
+    {
+      "name": "Users can update document_sources in their workspace",
+      "def_md5": "91f2fa60f8092aebeffcf4af29072477",
+      "table_name": "document_sources"
+    },
+    {
+      "name": "Users can view document_sources in their workspace",
+      "def_md5": "326b47e7a3d98c4469f97762d7f103e7",
+      "table_name": "document_sources"
     },
     {
       "name": "document_templates_access",
@@ -944,6 +969,26 @@
       "name": "kav_access",
       "def_md5": "76e96683935a8c533033cb8ab013b8c2",
       "table_name": "knowledge_article_versions"
+    },
+    {
+      "name": "knowledge_article_views_delete",
+      "def_md5": "e11b889d77494649e228613121f13cea",
+      "table_name": "knowledge_article_views"
+    },
+    {
+      "name": "knowledge_article_views_insert",
+      "def_md5": "a2eb928096af51b7c356ec6d119c3cc8",
+      "table_name": "knowledge_article_views"
+    },
+    {
+      "name": "knowledge_article_views_select",
+      "def_md5": "6c0b3e4e82a075b00555ba8bfb29cb56",
+      "table_name": "knowledge_article_views"
+    },
+    {
+      "name": "knowledge_article_views_update",
+      "def_md5": "84b20b9550513d08464faef080a145d3",
+      "table_name": "knowledge_article_views"
     },
     {
       "name": "knowledge_articles_delete",
@@ -1521,6 +1566,26 @@
       "table_name": "project_services"
     },
     {
+      "name": "project_task_groups_delete",
+      "def_md5": "0047ebace74619a90bf4051a7b1123b4",
+      "table_name": "project_task_groups"
+    },
+    {
+      "name": "project_task_groups_insert",
+      "def_md5": "7f9e9098e962f66113db69cbea65d71e",
+      "table_name": "project_task_groups"
+    },
+    {
+      "name": "project_task_groups_select",
+      "def_md5": "9c13694fe7307dc5d4cfffeb6ec17833",
+      "table_name": "project_task_groups"
+    },
+    {
+      "name": "project_task_groups_update",
+      "def_md5": "d7d9ec2e16d4e42d082a8ae8b6504de4",
+      "table_name": "project_task_groups"
+    },
+    {
       "name": "project_tg_chats_insert",
       "def_md5": "a66bbe8357697a83b7365e03fc2d6098",
       "table_name": "project_telegram_chats"
@@ -1604,6 +1669,36 @@
       "name": "pts_write",
       "def_md5": "5b5764e134e166a6d0d70a446697386b",
       "table_name": "project_template_statuses"
+    },
+    {
+      "name": "template_task_groups_delete",
+      "def_md5": "087c05605de3b103879910af3598b2b8",
+      "table_name": "project_template_task_groups"
+    },
+    {
+      "name": "template_task_groups_insert",
+      "def_md5": "95ce07dcc7d43e5842768b7fccefe37a",
+      "table_name": "project_template_task_groups"
+    },
+    {
+      "name": "template_task_groups_select",
+      "def_md5": "95c5b411be0d4e3baf2e5e29a98db8a5",
+      "table_name": "project_template_task_groups"
+    },
+    {
+      "name": "template_task_groups_update",
+      "def_md5": "ff305fdab3ded0c256f155c124ae8c3f",
+      "table_name": "project_template_task_groups"
+    },
+    {
+      "name": "ptta_select",
+      "def_md5": "552083ce7a7706dc9f968ea606939a3e",
+      "table_name": "project_template_thread_assignees"
+    },
+    {
+      "name": "ptta_write",
+      "def_md5": "7244b0efccb8c0397c13931ddf646b39",
+      "table_name": "project_template_thread_assignees"
     },
     {
       "name": "pttt_select",
@@ -1914,6 +2009,26 @@
       "name": "Users can view source_documents in their workspace",
       "def_md5": "326b47e7a3d98c4469f97762d7f103e7",
       "table_name": "source_documents"
+    },
+    {
+      "name": "sur_insert_own",
+      "def_md5": "810ae91ec99ee16efd30c4a9cbf3aed7",
+      "table_name": "source_update_reads"
+    },
+    {
+      "name": "sur_select_own",
+      "def_md5": "bf9aaf2886de3c93fce26cba8e1e792c",
+      "table_name": "source_update_reads"
+    },
+    {
+      "name": "sur_update_own",
+      "def_md5": "d99a1ee9eddcc103bd51f5fae3ef4235",
+      "table_name": "source_update_reads"
+    },
+    {
+      "name": "suc_select_all",
+      "def_md5": "7d20977507b7d6a8182e91e985fadf80",
+      "table_name": "source_updates_config"
     },
     {
       "name": "statuses_delete",
@@ -2319,46 +2434,6 @@
       "name": "Authenticated users can view workspaces",
       "def_md5": "a56527180561248474cf6e5853e0a2eb",
       "table_name": "workspaces"
-    },
-    {
-      "name": "project_task_groups_delete",
-      "def_md5": "0047ebace74619a90bf4051a7b1123b4",
-      "table_name": "project_task_groups"
-    },
-    {
-      "name": "project_task_groups_insert",
-      "def_md5": "7f9e9098e962f66113db69cbea65d71e",
-      "table_name": "project_task_groups"
-    },
-    {
-      "name": "project_task_groups_select",
-      "def_md5": "9c13694fe7307dc5d4cfffeb6ec17833",
-      "table_name": "project_task_groups"
-    },
-    {
-      "name": "project_task_groups_update",
-      "def_md5": "d7d9ec2e16d4e42d082a8ae8b6504de4",
-      "table_name": "project_task_groups"
-    },
-    {
-      "name": "template_task_groups_delete",
-      "def_md5": "087c05605de3b103879910af3598b2b8",
-      "table_name": "project_template_task_groups"
-    },
-    {
-      "name": "template_task_groups_insert",
-      "def_md5": "95ce07dcc7d43e5842768b7fccefe37a",
-      "table_name": "project_template_task_groups"
-    },
-    {
-      "name": "template_task_groups_select",
-      "def_md5": "95c5b411be0d4e3baf2e5e29a98db8a5",
-      "table_name": "project_template_task_groups"
-    },
-    {
-      "name": "template_task_groups_update",
-      "def_md5": "ff305fdab3ded0c256f155c124ae8c3f",
-      "table_name": "project_template_task_groups"
     }
   ],
   "triggers": [
@@ -2896,6 +2971,11 @@
       "name": "prevent_impersonation_writes",
       "def_md5": "62b2990f7fec0e2aedb66e9c958a5a50",
       "table_name": "knowledge_article_versions"
+    },
+    {
+      "name": "trg_knowledge_article_views_touch_updated_at",
+      "def_md5": "cb55e717c35ced59c73158d4c9d06ee1",
+      "table_name": "knowledge_article_views"
     },
     {
       "name": "prevent_impersonation_writes",
@@ -3935,6 +4015,11 @@
       "body_md5": "ff021ca8fad17338d659510f7c860956"
     },
     {
+      "args": "p_article_id uuid, p_project_id uuid",
+      "name": "article_available_in_project",
+      "body_md5": "2a351e21477c90806d8277886e798f5b"
+    },
+    {
       "args": "",
       "name": "auto_advance_project_status",
       "body_md5": "122883c4b95638fbaec0dab1be686f6d"
@@ -4190,6 +4275,11 @@
       "body_md5": "dd32afa0cb769716e7004d0ff0c37131"
     },
     {
+      "args": "p_article_id uuid, p_project_id uuid",
+      "name": "ensure_article_share_link",
+      "body_md5": "55b76940f71417dd284bf941b1e2ce57"
+    },
+    {
       "args": "p_workspace_id uuid",
       "name": "export_workspace_data",
       "body_md5": "75c1a9dc3dda7c13ade193b8cea88fd6"
@@ -4342,7 +4432,7 @@
     {
       "args": "",
       "name": "get_admin_permissions",
-      "body_md5": "b210ebc93d625f5b64a476a5280753ae"
+      "body_md5": "0b06da68b25600ca082db23fcc1c2cbe"
     },
     {
       "args": "p_article_id uuid",
@@ -4372,7 +4462,7 @@
     {
       "args": "",
       "name": "get_client_ws_permissions",
-      "body_md5": "05b7f468ccd55f2950025f38ddc06a9e"
+      "body_md5": "36f5e3eb56f3c89eabf46037aca03622"
     },
     {
       "args": "p_document_id uuid",
@@ -4387,7 +4477,7 @@
     {
       "args": "",
       "name": "get_employee_permissions",
-      "body_md5": "f3e12630cb0935565652067cfe95859a"
+      "body_md5": "6708de474ecd037503392e7c09895206"
     },
     {
       "args": "p_project_id uuid",
@@ -4422,7 +4512,7 @@
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_inbox_thread_aggregates",
-      "body_md5": "f929c32922f650c580a7648922848055"
+      "body_md5": "538cb980b799e363c3f8ad4d7babb97d"
     },
     {
       "args": "p_workspace_id uuid, p_user_id uuid, p_thread_id uuid",
@@ -4447,12 +4537,17 @@
     {
       "args": "p_workspace_id uuid, p_user_id uuid, p_thread_ids uuid[]",
       "name": "get_inbox_threads_v3_for",
-      "body_md5": "cb5adef68d349a0e29e247fa306216ac"
+      "body_md5": "2700cad8d0a1a1fcef9ca4b9b8a15d57"
     },
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_inbox_unread_threads",
       "body_md5": "cede30f78e46d5b91f008de05d04695a"
+    },
+    {
+      "args": "p_workspace_id uuid",
+      "name": "get_my_executor_project_ids",
+      "body_md5": "2bb3b8f5cf8a2cbf0d7c58ecb01b7b04"
     },
     {
       "args": "p_workspace_id uuid",
@@ -4467,7 +4562,7 @@
     {
       "args": "",
       "name": "get_owner_permissions",
-      "body_md5": "287765794bd31d24de2cbb26a15348f5"
+      "body_md5": "b39bfe9e0c4fd5b6d5c5392d78797af6"
     },
     {
       "args": "p_workspace_id uuid, p_target_user_id uuid",
@@ -4520,6 +4615,11 @@
       "body_md5": "1992513009731b21123136e6875093cd"
     },
     {
+      "args": "p_project_id uuid",
+      "name": "get_project_shareable_resources",
+      "body_md5": "c2a0bfe37c43a206b50ee4f8194d6ea1"
+    },
+    {
       "args": "p_workspace_id uuid, p_period_start timestamp with time zone, p_period_end timestamp with time zone",
       "name": "get_projects_with_activity",
       "body_md5": "0aa990c6c4e39b77e1e73561eb8cd056"
@@ -4528,6 +4628,11 @@
       "args": "p_workspace_id uuid, p_limit integer",
       "name": "get_recently_viewed",
       "body_md5": "e4ce1b807f8343b236c5253ed45c73eb"
+    },
+    {
+      "args": "p_token text",
+      "name": "get_shared_article",
+      "body_md5": "da5195f47adf84d9fa2d4dad5acd6c0c"
     },
     {
       "args": "p_entity_type text, p_uuid uuid",
@@ -4540,9 +4645,19 @@
       "body_md5": "cf46d4bf3d59b1039b9a186d77cd8718"
     },
     {
+      "args": "p_workspace_id uuid",
+      "name": "get_source_update_unread_projects",
+      "body_md5": "d9399dcecff0f3d62ffd3b0038f5b976"
+    },
+    {
       "args": "p_thread_id uuid",
       "name": "get_thread_email_address",
       "body_md5": "d83446eee97dcf81704d2e88db76e759"
+    },
+    {
+      "args": "p_thread_id uuid",
+      "name": "get_thread_senders",
+      "body_md5": "8cda577e22101a1bbaf783073f3d469c"
     },
     {
       "args": "p_thread_id uuid",
@@ -4597,7 +4712,7 @@
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_workspace_threads",
-      "body_md5": "254a6d93b1edd965f53e370372afa8d5"
+      "body_md5": "8e6a1527b5fb4626ef8c0a8537be4cb1"
     },
     {
       "args": "p_workspace_id uuid",
@@ -4800,6 +4915,16 @@
       "body_md5": "4c70f7cfca4af01100f717b81c245c51"
     },
     {
+      "args": "p_workspace_id uuid",
+      "name": "mark_all_source_updates_read",
+      "body_md5": "3f66d06569933a4800fc483a603fd81d"
+    },
+    {
+      "args": "p_project_id uuid",
+      "name": "mark_source_updates_read",
+      "body_md5": "ab920449f6e32b9068f7986287af3ef9"
+    },
+    {
       "args": "",
       "name": "mark_thread_read_on_final_status",
       "body_md5": "cb7c1e85506ff570e7778baf1335a93f"
@@ -4877,7 +5002,7 @@
     {
       "args": "p_participant_id uuid, p_thread_id uuid",
       "name": "recompute_thread_unread_for",
-      "body_md5": "5714e71156f321f3045a9a911a27b3ae"
+      "body_md5": "1bc682957c39ea6e469981870f73e397"
     },
     {
       "args": "p_thread_id uuid",
@@ -4900,6 +5025,11 @@
       "body_md5": "13ffc1e0ac7f1e2e60fb7a0a0a72011f"
     },
     {
+      "args": "p_row_id uuid, p_bot_key text, p_msg_id bigint",
+      "name": "record_telegram_bot_msg_id",
+      "body_md5": "2f7f603f9bdb7168c5ce6b42c77050fa"
+    },
+    {
       "args": "p_after timestamp with time zone, p_freq text, p_byweekday integer[], p_bymonthday integer, p_fire_time time without time zone, p_timezone text, p_starts_on date",
       "name": "recurring_next_occurrence",
       "body_md5": "5006617ab8872f7301be0d164d9ac50e"
@@ -4918,6 +5048,11 @@
       "args": "p_thread_id uuid",
       "name": "refresh_thread_unread_pairs",
       "body_md5": "09583060b6443f39ae0d60a699a80ecd"
+    },
+    {
+      "args": "p_article_id uuid, p_project_id uuid",
+      "name": "regenerate_article_share_link",
+      "body_md5": "a4bf5e62b23c7505b46bb61221cd8d7f"
     },
     {
       "args": "",
@@ -5006,13 +5141,23 @@
     },
     {
       "args": "",
+      "name": "run_source_sync",
+      "body_md5": "5fe7629292536d479c9af1ef2f4c57c4"
+    },
+    {
+      "args": "",
       "name": "scan_dispatch_failures",
       "body_md5": "7c2076b51a7da950fd8dcdc41847d156"
     },
     {
+      "args": "p_thread_id uuid, p_query text, p_want_files boolean, p_want_images boolean, p_want_links boolean, p_want_audio boolean, p_sender_participant_id uuid, p_limit integer",
+      "name": "search_thread_messages",
+      "body_md5": "bffd8c66b561055a43bacc31825a41a4"
+    },
+    {
       "args": "",
       "name": "seed_read_status_on_assignee",
-      "body_md5": "ff138bc57d70cef6a64dfaa4a0f73e60"
+      "body_md5": "daf2a2b1f1175674c95b8f95cabca1ca"
     },
     {
       "args": "",
@@ -5233,6 +5378,11 @@
       "args": "",
       "name": "touch_item_lists_updated_at",
       "body_md5": "9bf6a6e99bb480005bd7a4ff924e73cb"
+    },
+    {
+      "args": "",
+      "name": "touch_knowledge_article_views_updated_at",
+      "body_md5": "2851503b2e851635d880a2b6738d648a"
     },
     {
       "args": "",
