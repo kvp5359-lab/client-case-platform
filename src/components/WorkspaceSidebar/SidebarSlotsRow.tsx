@@ -105,7 +105,13 @@ function SingleSlot({
   toggleListPin,
   workspaceId,
 }: { slot: SidebarSlot } & SidebarSlotsRowProps) {
-  const badge = computeBadge(slot.badge_mode)
+  // Пункт «Обновления источников» всегда показывает бейдж «число проектов с
+  // новым» — не завязан на настраиваемый badge_mode слота (форсим режим).
+  const effectiveBadgeMode =
+    slot.type === 'nav' && navKeyFromSlotId(slotRef(slot)) === 'source_updates'
+      ? 'source_updates'
+      : slot.badge_mode
+  const badge = computeBadge(effectiveBadgeMode)
   const searchParams = useSearchParams()
 
   if (slot.type === 'quickaction') {

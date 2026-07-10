@@ -24,6 +24,7 @@ import { useSidebarData } from './WorkspaceSidebar/useSidebarData'
 import { WorkspaceSidebarCompact } from './WorkspaceSidebar/WorkspaceSidebarCompact'
 import { useSidebarResize } from './WorkspaceSidebar/useSidebarResize'
 import { useSidebarInboxCounts } from '@/hooks/messenger/useFilteredInbox'
+import { useSourceUpdatesUnread } from '@/hooks/documents/useSourceDocumentsQuery'
 import { supabase } from '@/lib/supabase'
 import { CreateProjectDialog } from '@/components/projects/CreateProjectDialog'
 import { SendFailuresIndicator } from '@/components/messenger/SendFailuresIndicator'
@@ -245,6 +246,15 @@ export function WorkspaceSidebarFull({
   const { data: sidebarSettings } = useWorkspaceSidebarSettings(workspaceId)
   const { data: taskCounts } = useMyTaskCounts(workspaceId)
 
+  // Бейдж «Обновления источников» = число ДОСТУПНЫХ проектов с новыми файлами
+  // (пересекаем результат RPC с проектами, которые реально видит пользователь).
+  const { data: sourceUpdatesUnread = [] } = useSourceUpdatesUnread(workspaceId)
+  const sourceUpdatesProjectCount = useMemo(() => {
+    if (sourceUpdatesUnread.length === 0) return 0
+    const accessible = new Set(projects.map((p) => p.id))
+    return sourceUpdatesUnread.filter((u) => accessible.has(u.projectId)).length
+  }, [sourceUpdatesUnread, projects])
+
   // Закреплённые доски — настройка на уровне воркспейса (внутри slots).
   const { togglePin: toggleBoardPin } = usePinnedBoards(workspaceId)
   const { togglePin: toggleListPin } = usePinnedItemLists(workspaceId)
@@ -309,6 +319,8 @@ export function WorkspaceSidebarFull({
         return formatBadgeCount(unreadThreadsCount)
       case 'unread_personal_dialogs':
         return formatBadgeCount(unreadPersonalDialogsCount)
+      case 'source_updates':
+        return formatBadgeCount(sourceUpdatesProjectCount)
       case 'disabled':
       default:
         return undefined

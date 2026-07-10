@@ -4,6 +4,7 @@ import { corsHeadersFor } from "../_shared/edge.ts";
 import { ensureValidAccessToken } from "../_shared/googleDriveToken.ts";
 import { isValidGoogleDriveId, isValidUUID } from "../_shared/validation.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
+import { getDriveFolderName, listDriveFilesRecursive } from "../_shared/googleDriveFiles.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -92,116 +93,10 @@ serve(async (req) => {
       expires_at: tokenData.expires_at,
     });
 
-    // Типы Google Drive API
-    interface DriveFile {
-      id: string;
-      name: string;
-      mimeType: string;
-      size?: string;
-      createdTime?: string;
-      modifiedTime?: string;
-      webViewLink?: string;
-      iconLink?: string;
-      parents?: string[];
-      parentFolderName?: string;
-      // В режиме groupByTopLevel — id подпапки ПЕРВОГО уровня, к которой относим
-      // файл (для точной привязки к папке набора). "" — файл в корне.
-      parentFolderId?: string;
-    }
-
-    // Рекурсивная функция для получения всех файлов из папки и подпапок (Z8-20, Z8-21)
-    const MAX_DEPTH = 5;
-    const MAX_FILES = 500;
-    // groupByTopLevel: файл относим к подпапке ПЕРВОГО уровня (её имени), даже
-    // если он лежит во вложенной подпапке. Корневые файлы получают "" (пусто).
-    // Нужно для «набора из папки Drive», где папки набора = подпапки 1-го уровня.
-    // Без флага — поведение как раньше: имя ближайшей папки (проектный источник).
-    const getAllFilesRecursively = async (
-      parentFolderId: string,
-      parentFolderName: string = "",
-      depth: number = 0,
-      topLevelName: string | null = null,
-      topLevelId: string | null = null,
-    ): Promise<DriveFile[]> => {
-      if (depth >= MAX_DEPTH) return [];
-      const allFiles: DriveFile[] = [];
-
-      // Получаем содержимое папки (файлы и подпапки)
-      const response = await fetch(
-        `https://www.googleapis.com/drive/v3/files?q='${parentFolderId}'+in+parents+and+trashed=false&fields=files(id,name,mimeType,size,createdTime,modifiedTime,webViewLink,iconLink,parents)&supportsAllDrives=true&includeItemsFromAllDrives=true`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Google Drive API error:", errorText);
-        throw new Error("Failed to get files from Google Drive");
-      }
-
-      const data = await response.json();
-      const items = data.files || [];
-
-      // Разделяем файлы и папки
-      const files = items.filter((item: DriveFile) => item.mimeType !== 'application/vnd.google-apps.folder');
-      const folders = items.filter((item: DriveFile) => item.mimeType === 'application/vnd.google-apps.folder');
-
-      // Добавляем файлы с информацией о родительской папке
-      for (const file of files) {
-        const label = groupByTopLevel
-          ? (depth === 0 ? "" : topLevelName ?? "")
-          : (parentFolderName || "Корневая папка");
-        allFiles.push({
-          ...file,
-          parentFolderName: label,
-          parentFolderId: groupByTopLevel ? (depth === 0 ? "" : topLevelId ?? "") : undefined,
-        });
-      }
-
-      // Рекурсивно обходим подпапки (с лимитом глубины и файлов)
-      for (const folder of folders) {
-        if (allFiles.length >= MAX_FILES) break;
-        // На первом уровне фиксируем подпапку как top-level (имя+id); глубже — сохраняем.
-        const nextTopLevel = groupByTopLevel
-          ? (depth === 0 ? folder.name : topLevelName)
-          : null;
-        const nextTopLevelId = groupByTopLevel
-          ? (depth === 0 ? folder.id : topLevelId)
-          : null;
-        const subFiles = await getAllFilesRecursively(
-          folder.id,
-          folder.name,
-          depth + 1,
-          nextTopLevel,
-          nextTopLevelId,
-        );
-        allFiles.push(...subFiles);
-      }
-
-      return allFiles;
-    };
-
-    // Получаем название корневой папки
-    let rootFolderName: string | null = null;
-    try {
-      const folderResponse = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${folderId}?fields=name&supportsAllDrives=true`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      if (folderResponse.ok) {
-        const folderData = await folderResponse.json();
-        rootFolderName = folderData.name || null;
-      }
-    } catch {
-      // Не критично — название папки необязательно
-    }
-
-    // Получаем все файлы рекурсивно
-    const allFiles = await getAllFilesRecursively(folderId);
+    // Рекурсивный обход папки и подпапок + имя корневой папки — общий helper
+    // (тот же, что использует серверная авто-проверка sync-source-documents).
+    const allFiles = await listDriveFilesRecursive(accessToken, folderId, !!groupByTopLevel);
+    const rootFolderName = await getDriveFolderName(accessToken, folderId);
 
     return new Response(
       JSON.stringify({

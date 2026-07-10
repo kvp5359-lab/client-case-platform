@@ -8,14 +8,18 @@
  */
 
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
-import { useCallback } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   getSourceDocumentsByProject,
   getSourceDocumentsByKit,
   getDocumentSourcesByProject,
-  getDocumentSourcesByWorkspace,
+  getSyncableSources,
   getWorkspaceSourceUpdates,
+  getSourceUpdateUnreadProjects,
+  getMyExecutorProjectIds,
+  markSourceUpdatesReadForProject,
+  markAllSourceUpdatesRead,
   ensureDocumentSource,
   deleteDocumentSource,
   toggleSourceDocumentHidden,
@@ -302,44 +306,131 @@ export function useWorkspaceSourceUpdatesQuery(workspaceId: string | undefined) 
 }
 
 /**
- * Синхронизация ВСЕХ источников воркспейса (по всем проектам). Для кнопки
- * «Проверить источники» на странице обновлений. Сбойный источник пропускается.
+ * Ручная проверка источников воркспейса «Проверить источники» — с живым
+ * прогрессом. Перебирает ТОЛЬКО источники проектов «в работе» (не в финальном
+ * статусе), параллельно (пул из CONCURRENCY), отдаёт `progress` {done,total}.
+ * Сбойный источник пропускается, остальные синхронизируются.
  */
-export function useSyncWorkspaceSourcesMutation() {
+const SYNC_CONCURRENCY = 5
+
+export function useSyncWorkspaceSources() {
   const queryClient = useQueryClient()
   const invalidateAll = useInvalidateAllSourceViews()
-  return useMutation({
-    mutationFn: async (workspaceId: string) => {
-      const sources = await getDocumentSourcesByWorkspace(workspaceId)
-      let filesFound = 0
-      let deleted = 0
-      let synced = 0
-      for (const s of sources) {
-        try {
-          const r = await syncSourceDocumentsFromDrive({
-            projectId: s.project_id,
-            workspaceId,
-            sourceFolderId: s.drive_folder_id,
-            documentKitId: s.document_kit_id,
-            sourceName: s.name,
-            groupByTopLevel: !!s.document_kit_id,
-          })
-          filesFound += r.filesFound
-          deleted += r.deleted
-          synced += 1
-        } catch {
-          // пропускаем сбойный источник, остальные синхронизируем
+  const [isRunning, setIsRunning] = useState(false)
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const runningRef = useRef(false)
+
+  const run = useCallback(
+    async (workspaceId: string) => {
+      if (runningRef.current) return
+      runningRef.current = true
+      setIsRunning(true)
+      try {
+        const sources = await getSyncableSources(workspaceId)
+        const total = sources.length
+        setProgress({ done: 0, total })
+        if (total === 0) {
+          toast.info('Активных источников для проверки нет')
+          return
         }
+
+        let done = 0
+        let filesFound = 0
+        let deleted = 0
+        let synced = 0
+        let cursor = 0
+        const worker = async () => {
+          while (cursor < sources.length) {
+            const s = sources[cursor++]
+            try {
+              const r = await syncSourceDocumentsFromDrive({
+                projectId: s.project_id,
+                workspaceId,
+                sourceFolderId: s.drive_folder_id,
+                documentKitId: s.document_kit_id,
+                sourceName: s.name,
+                groupByTopLevel: !!s.document_kit_id,
+              })
+              filesFound += r.filesFound
+              deleted += r.deleted
+              synced += 1
+            } catch {
+              // пропускаем сбойный источник
+            }
+            done += 1
+            setProgress({ done, total })
+          }
+        }
+        await Promise.all(Array.from({ length: Math.min(SYNC_CONCURRENCY, total) }, worker))
+
+        queryClient.invalidateQueries({
+          queryKey: googleDriveKeys.workspaceSourceUpdates(workspaceId),
+        })
+        queryClient.invalidateQueries({ queryKey: googleDriveKeys.sourceUpdatesUnreadAll() })
+        invalidateAll()
+        toast.success(
+          `Проверено источников: ${synced}/${total}. Новых файлов: ${filesFound}` +
+            (deleted ? `, убрано: ${deleted}` : ''),
+        )
+      } catch {
+        toast.error('Не удалось обновить источники')
+      } finally {
+        runningRef.current = false
+        setIsRunning(false)
+        setProgress(null)
       }
-      return { total: sources.length, synced, filesFound, deleted }
     },
-    onSuccess: (_r, workspaceId) => {
-      queryClient.invalidateQueries({
-        queryKey: googleDriveKeys.workspaceSourceUpdates(workspaceId),
-      })
-      invalidateAll()
+    [queryClient, invalidateAll],
+  )
+
+  return { run, isRunning, progress }
+}
+
+/**
+ * Непрочитанные обновления источников по проектам (для бейджа сайдбара и
+ * кнопок «Прочитать» на странице обновлений). Только проекты-исполнителя.
+ */
+export function useSourceUpdatesUnread(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: googleDriveKeys.sourceUpdatesUnread(workspaceId ?? ''),
+    queryFn: () => getSourceUpdateUnreadProjects(workspaceId!),
+    enabled: !!workspaceId,
+    staleTime: STALE_TIME.MEDIUM,
+  })
+}
+
+/** Проекты, где пользователь — исполнитель ИЛИ администратор (скоуп ленты и
+ *  счётчика «Обновления источников»). */
+export function useMyExecutorProjectIds(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: googleDriveKeys.executorProjectIds(workspaceId ?? ''),
+    queryFn: () => getMyExecutorProjectIds(workspaceId!),
+    enabled: !!workspaceId,
+    staleTime: STALE_TIME.MEDIUM,
+  })
+}
+
+/** Отметить прочитанными обновления одного проекта. */
+export function useMarkSourceUpdatesReadMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (projectId: string) => markSourceUpdatesReadForProject(projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: googleDriveKeys.sourceUpdatesUnreadAll() })
     },
-    onError: () => toast.error('Не удалось обновить источники'),
+    onError: () => toast.error('Не удалось отметить прочитанным'),
+  })
+}
+
+/** Отметить прочитанными обновления всех проектов воркспейса. */
+export function useMarkAllSourceUpdatesReadMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (workspaceId: string) => markAllSourceUpdatesRead(workspaceId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: googleDriveKeys.sourceUpdatesUnreadAll() })
+    },
+    onError: () => toast.error('Не удалось отметить всё прочитанным'),
   })
 }
 

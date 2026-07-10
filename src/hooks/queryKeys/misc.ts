@@ -38,6 +38,14 @@ export const googleDriveKeys = {
     ['google-drive', 'workspace-source-updates', workspaceId] as const,
   /** Broad-префикс для сброса ленты обновлений источников любого воркспейса. */
   workspaceSourceUpdatesAll: () => ['google-drive', 'workspace-source-updates'] as const,
+  /** Непрочитанные обновления источников по проектам (бейдж сайдбара + кнопки). */
+  sourceUpdatesUnread: (workspaceId: string) =>
+    ['google-drive', 'source-updates-unread', workspaceId] as const,
+  /** Broad-префикс для сброса непрочитанного обновлений источников. */
+  sourceUpdatesUnreadAll: () => ['google-drive', 'source-updates-unread'] as const,
+  /** Проекты воркспейса, где пользователь — исполнитель (скоуп ленты обновлений). */
+  executorProjectIds: (workspaceId: string) =>
+    ['google-drive', 'executor-project-ids', workspaceId] as const,
   destinationDocuments: (exportFolderId: string, workspaceId: string) =>
     ['google-drive', 'destination-documents', exportFolderId, workspaceId] as const,
 }

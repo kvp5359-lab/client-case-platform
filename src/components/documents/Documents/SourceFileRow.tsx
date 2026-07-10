@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from 'react'
-import { Check, Loader2, Eye, EyeOff, SquareArrowOutUpRight } from 'lucide-react'
+import { Check, Loader2, Eye, EyeOff, SquareArrowOutUpRight, FileText } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { formatSize } from '@/utils/files/formatSize'
 import { formatSmartDate } from '@/utils/format/dateFormat'
 import type { SourceDocument } from '@/types/documents'
@@ -27,6 +28,8 @@ export function SourceFileRow({
   folderLabel,
   draggable = true,
   dateDisplay = 'date',
+  spacious = false,
+  striped = false,
 }: {
   doc: SourceDocument
   /** Порог «жёлтый» (МБ). null → без подсветки. */
@@ -43,6 +46,12 @@ export function SourceFileRow({
   draggable?: boolean
   /** Правая колонка: умная дата (`formatSmartDate`) или время `HH:MM`. */
   dateDisplay?: 'date' | 'time'
+  /** «Просторный» вид для ленты воркспейса: больше воздуха, иконка файла,
+   *  чище текст. По умолчанию — плотный (лоток набора). */
+  spacious?: boolean
+  /** Zebra-подложка этой строки (в spacious зебра управляется извне — из-за
+   *  подзаголовков папок нельзя полагаться на CSS `odd:`). */
+  striped?: boolean
 }) {
   const [isAccepting, setIsAccepting] = useState(false)
   const uploadedAt = doc.createdTime || doc.modifiedTime
@@ -89,23 +98,43 @@ export function SourceFileRow({
             }
           : undefined
       }
-      className={
-        'group/src odd:bg-gray-50/60 hover:bg-gray-100/60 transition-colors ' +
-        (draggable ? 'cursor-grab active:cursor-grabbing ' : '') +
-        (isHidden ? 'text-muted-foreground/40' : 'text-muted-foreground/90')
-      }
+      className={cn(
+        'group/src transition-colors',
+        spacious
+          ? cn('hover:bg-gray-100/60', striped && 'bg-gray-50/60')
+          : 'odd:bg-gray-50/60 hover:bg-gray-100/60',
+        draggable && 'cursor-grab active:cursor-grabbing',
+        isHidden ? 'text-muted-foreground/40' : 'text-muted-foreground/90',
+      )}
       title={doc.name}
     >
-      {/* Пустая колонка чекбокса — для выравнивания с документами набора */}
-      <td className="py-0.5 pl-0 pr-0.5 w-0 align-middle" />
+      {/* Пустая колонка чекбокса — для выравнивания с документами набора.
+          В просторном виде даёт левый воздух до имени файла. */}
+      <td className={cn('align-middle w-0', spacious ? 'py-0.5 pl-4 pr-0' : 'py-0.5 pl-0 pr-0.5')} />
       {/* Имя (+ папка) + действия */}
-      <td className="py-0.5 pl-0.5 pr-1 text-gray-500 align-middle">
-        <div className="flex items-center gap-2 min-w-0" style={{ minHeight: 20 }}>
-          <span className="truncate min-w-0 text-[15px] leading-tight text-gray-400 pointer-events-none">
+      <td className={cn('align-middle text-gray-500', spacious ? 'py-0.5 pl-0 pr-2' : 'py-0.5 pl-0.5 pr-1')}>
+        <div
+          className="flex items-center gap-2 min-w-0"
+          style={{ minHeight: spacious ? 16 : 20 }}
+        >
+          {spacious && (
+            <FileText className="h-4 w-4 shrink-0 text-muted-foreground/35 pointer-events-none" />
+          )}
+          <span
+            className={cn(
+              'truncate min-w-0 leading-tight pointer-events-none',
+              spacious ? 'text-[15px] text-foreground/80' : 'text-[15px] text-gray-400',
+            )}
+          >
             {doc.name}
           </span>
           {folderLabel && (
-            <span className="shrink-0 max-w-[40%] truncate text-[12px] text-gray-400/80 pointer-events-none">
+            <span
+              className={cn(
+                'shrink-0 max-w-[40%] truncate text-[12px] pointer-events-none',
+                spacious ? 'text-muted-foreground/60' : 'text-gray-400/80',
+              )}
+            >
               · {folderLabel}
             </span>
           )}
@@ -124,10 +153,10 @@ export function SourceFileRow({
             type="button"
             onClick={() => onToggleHidden(doc.sourceDocumentId, isHidden)}
             disabled={togglingHidden}
-            className={
-              'shrink-0 p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted transition-opacity ' +
-              (isHidden ? 'opacity-100' : 'opacity-0 group-hover/src:opacity-100')
-            }
+            className={cn(
+              'shrink-0 p-0.5 rounded text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted transition-opacity',
+              isHidden ? 'opacity-100' : 'opacity-0 group-hover/src:opacity-100',
+            )}
             title={isHidden ? 'Показать файл' : 'Скрыть файл'}
             aria-label={isHidden ? 'Показать файл' : 'Скрыть файл'}
           >
@@ -152,16 +181,35 @@ export function SourceFileRow({
         </div>
       </td>
       {/* Размер */}
-      <td className="py-0.5 pl-2 pr-1 text-right align-middle whitespace-nowrap w-[80px]">
+      <td
+        className={cn(
+          'text-right align-middle whitespace-nowrap w-[80px]',
+          spacious ? 'py-0.5 pl-2 pr-1' : 'py-0.5 pl-2 pr-1',
+        )}
+      >
         <div
-          className={`flex items-center justify-end min-h-[20px] pl-2 text-[12px] tabular-nums ${sizeColorClass}`}
+          className={cn(
+            'flex items-center justify-end pl-2 text-[12px] tabular-nums',
+            spacious ? 'min-h-[16px]' : 'min-h-[20px]',
+            sizeColorClass,
+          )}
         >
           {formatSize(doc.size ?? null)}
         </div>
       </td>
       {/* Дата загрузки / время */}
-      <td className="py-0.5 pl-1 pr-1 md:pr-2.5 text-right align-middle whitespace-nowrap w-[80px]">
-        <div className="flex items-center justify-end min-h-[20px] pl-1.5 text-[12px] tabular-nums text-gray-400">
+      <td
+        className={cn(
+          'text-right align-middle whitespace-nowrap w-[80px]',
+          spacious ? 'py-0.5 pl-1 pr-4' : 'py-0.5 pl-1 pr-1 md:pr-2.5',
+        )}
+      >
+        <div
+          className={cn(
+            'flex items-center justify-end pl-1.5 text-[12px] tabular-nums text-gray-400',
+            spacious ? 'min-h-[16px]' : 'min-h-[20px]',
+          )}
+        >
           {uploadedAt ? (dateDisplay === 'time' ? timeLabel(uploadedAt) : formatSmartDate(uploadedAt)) : ''}
         </div>
       </td>

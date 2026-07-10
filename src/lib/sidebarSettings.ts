@@ -52,6 +52,9 @@ export type SidebarBadgeMode =
   | 'unread_messages'
   | 'unread_threads'
   | 'unread_personal_dialogs'
+  // Число проектов с новыми файлами в источниках. Не выбирается в палитре
+  // (нет в BADGE_MODES) — форсится для пункта «Обновления источников».
+  | 'source_updates'
 
 export type SidebarBadgeColor =
   | 'default'

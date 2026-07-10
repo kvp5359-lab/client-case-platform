@@ -60,6 +60,9 @@ export async function ensureDocumentSource(params: {
 
   if (existing?.id) return existing.id
 
+  // Кто подключил источник — нужно серверной авто-проверке для выбора токена.
+  const { data: auth } = await supabase.auth.getUser()
+
   const { data: created, error } = await supabase
     .from('document_sources')
     .insert({
@@ -68,6 +71,7 @@ export async function ensureDocumentSource(params: {
       drive_folder_id: driveFolderId,
       document_kit_id: documentKitId,
       name,
+      connected_by_user_id: auth?.user?.id ?? null,
     })
     .select('id')
     .single()
@@ -165,21 +169,96 @@ export async function getWorkspaceSourceUpdates(
   })
 }
 
-/** Все источники (папки Drive) воркспейса — для массовой синхронизации. */
-export async function getDocumentSourcesByWorkspace(
+/**
+ * Проекты с непрочитанными обновлениями источников для текущего пользователя.
+ * `unreadCount` — число новых файлов в проекте (для строки), бейдж считает
+ * проекты. Доступ по ролям досекается на клиенте (пересечение с accessible).
+ */
+export type SourceUpdateUnreadProject = { projectId: string; unreadCount: number }
+
+export async function getSourceUpdateUnreadProjects(
   workspaceId: string,
-): Promise<DocumentSourceRow[]> {
+): Promise<SourceUpdateUnreadProject[]> {
+  const { data, error } = await supabase.rpc('get_source_update_unread_projects', {
+    p_workspace_id: workspaceId,
+  })
+  if (error) {
+    logger.error('Ошибка загрузки непрочитанных обновлений источников:', error)
+    throw new DocumentError('Не удалось загрузить непрочитанные обновления', error)
+  }
+  return (data ?? []).map((r) => ({ projectId: r.project_id, unreadCount: r.unread_count }))
+}
+
+/** Отметить прочитанными обновления одного проекта. */
+export async function markSourceUpdatesReadForProject(projectId: string): Promise<void> {
+  const { error } = await supabase.rpc('mark_source_updates_read', { p_project_id: projectId })
+  if (error) throw new DocumentError('Не удалось отметить прочитанным', error)
+}
+
+/** Отметить прочитанными обновления всех проектов воркспейса. */
+export async function markAllSourceUpdatesRead(workspaceId: string): Promise<void> {
+  const { error } = await supabase.rpc('mark_all_source_updates_read', {
+    p_workspace_id: workspaceId,
+  })
+  if (error) throw new DocumentError('Не удалось отметить всё прочитанным', error)
+}
+
+/**
+ * Проекты воркспейса, где текущий пользователь — исполнитель ИЛИ администратор
+ * проекта (project_roles содержит 'Исполнитель' или 'Администратор'). Раздел
+ * «Обновления источников» показывает и считает файлы только по этим проектам
+ * (клиенты/участники/прочие — нет).
+ */
+export async function getMyExecutorProjectIds(workspaceId: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc('get_my_executor_project_ids', {
+    p_workspace_id: workspaceId,
+  })
+  if (error) {
+    logger.error('Ошибка загрузки проектов-исполнителя:', error)
+    throw new DocumentError('Не удалось загрузить проекты', error)
+  }
+  return (data ?? []).map((r) => r.project_id)
+}
+
+/**
+ * Источники, которые нужно перебирать при ручной проверке: только проекты
+ * «в работе» (статус НЕ финальный; проект без статуса тоже считается в работе)
+ * и не удалённые. Финальные проекты (Завершён/Отменён) не сканируем — экономим
+ * время и запросы к Google Drive.
+ */
+export async function getSyncableSources(workspaceId: string): Promise<DocumentSourceRow[]> {
+  // Финальные статусы проектов воркспейса.
+  const { data: finals } = await supabase
+    .from('statuses')
+    .select('id')
+    .eq('workspace_id', workspaceId)
+    .eq('entity_type', 'project')
+    .eq('is_final', true)
+  const finalIds = new Set((finals ?? []).map((s) => s.id))
+
+  // Проекты «в работе» (нет финального статуса).
+  const { data: projs } = await supabase
+    .from('projects')
+    .select('id, status_id')
+    .eq('workspace_id', workspaceId)
+    .eq('is_deleted', false)
+  const inWorkIds = (projs ?? [])
+    .filter((p) => !p.status_id || !finalIds.has(p.status_id))
+    .map((p) => p.id)
+
+  if (inWorkIds.length === 0) return []
+
   const { data, error } = await supabase
     .from('document_sources')
     .select('*')
     .eq('workspace_id', workspaceId)
+    .in('project_id', inWorkIds)
     .order('created_at', { ascending: true })
-
   if (error) {
-    logger.error('Ошибка загрузки источников воркспейса:', error)
-    throw new DocumentError('Не удалось загрузить источники воркспейса', error)
+    logger.error('Ошибка загрузки источников «в работе»:', error)
+    throw new DocumentError('Не удалось загрузить источники', error)
   }
-  return data || []
+  return data ?? []
 }
 
 /**
@@ -456,38 +535,45 @@ export async function syncSourceDocumentsFromDrive(params: {
     // 3. Удаление файлов, которых больше нет в Google Drive (batch, N+1 fix).
     // Ограничиваем скоупом источника (по source_id), чтобы синк одного источника
     // не сносил файлы другого.
-    const googleDriveFileIds = new Set(files.map((file) => file.id))
+    // ⚠️ ТОЛЬКО при НЕПУСТОМ листинге. Пустой ответ неотличим от «нет доступа к
+    // папке у токена» — по нему удалять нельзя, иначе зеркало папки стирается
+    // целиком (регресс при ручном синке чужих папок).
+    let deletedCount = 0
+    if (files.length > 0) {
+      const googleDriveFileIds = new Set(files.map((file) => file.id))
 
-    const { data: existingSourceDocs, error: fetchError } = await supabase
-      .from('source_documents')
-      .select('id, google_drive_file_id')
-      .eq('source_id', sourceId)
-
-    if (fetchError) {
-      throw new DocumentError('Ошибка получения списка документов из БД', fetchError)
-    }
-
-    const docsToDelete = (existingSourceDocs || []).filter(
-      (doc) => !googleDriveFileIds.has(doc.google_drive_file_id),
-    )
-
-    if (docsToDelete.length > 0) {
-      const idsToDelete = docsToDelete.map((d) => d.id)
-
-      // Batch DELETE вместо цикла (ON DELETE SET NULL обработает связи в documents)
-      const { error: deleteError } = await supabase
+      const { data: existingSourceDocs, error: fetchError } = await supabase
         .from('source_documents')
-        .delete()
-        .in('id', idsToDelete)
+        .select('id, google_drive_file_id')
+        .eq('source_id', sourceId)
 
-      if (deleteError) {
-        logger.error('Ошибка удаления устаревших документов:', deleteError)
+      if (fetchError) {
+        throw new DocumentError('Ошибка получения списка документов из БД', fetchError)
       }
+
+      const docsToDelete = (existingSourceDocs || []).filter(
+        (doc) => !googleDriveFileIds.has(doc.google_drive_file_id),
+      )
+
+      if (docsToDelete.length > 0) {
+        const idsToDelete = docsToDelete.map((d) => d.id)
+
+        // Batch DELETE вместо цикла (ON DELETE SET NULL обработает связи в documents)
+        const { error: deleteError } = await supabase
+          .from('source_documents')
+          .delete()
+          .in('id', idsToDelete)
+
+        if (deleteError) {
+          logger.error('Ошибка удаления устаревших документов:', deleteError)
+        }
+      }
+      deletedCount = docsToDelete.length
     }
 
     return {
       filesFound: files.length,
-      deleted: docsToDelete.length,
+      deleted: deletedCount,
       folderName,
     }
   } catch (error) {

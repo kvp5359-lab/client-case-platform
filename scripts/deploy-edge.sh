@@ -33,6 +33,7 @@ NO_JWT_FUNCTIONS=(
   telegram-mtproto-delete
   telegram-business-delete
   wazzup-delete
+  sync-source-documents
 )
 
 needs_no_jwt() {
