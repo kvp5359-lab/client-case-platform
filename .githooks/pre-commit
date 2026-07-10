@@ -85,4 +85,30 @@ if [ -n "$MSG_TOUCHED" ] && [ -z "$LEDGER_TOUCHED" ]; then
   echo ""
 fi
 
+# ── Имена миграций: полный таймстемп YYYYMMDDHHMMSS_, не дата-только ──────────
+# Дата-только префикс (20260701_foo.sql) сортируется неоднозначно относительно
+# файлов того же дня с временем (20260701HHMMSS_) под `supabase db push` → на
+# чистой пересборке порядок применения расходится с продом (ловили баг 2026-07-01).
+NEW_MIGRATIONS=$(git diff --cached --name-only --diff-filter=A \
+  | grep -E '^supabase/migrations/[^/]+\.sql$' || true)
+BAD_NAMES=""
+while IFS= read -r M; do
+  [ -z "$M" ] && continue
+  BASE=$(basename "$M")
+  # ок: ровно 14 цифр + '_' ; плохо: любой другой ведущий числовой префикс
+  if ! echo "$BASE" | grep -qE '^[0-9]{14}_'; then
+    BAD_NAMES="${BAD_NAMES}  • ${BASE}\n"
+  fi
+done <<< "$NEW_MIGRATIONS"
+
+if [ -n "$BAD_NAMES" ]; then
+  echo ""
+  echo "🕐 Новые миграции без полного таймстемпа YYYYMMDDHHMMSS_ :"
+  printf "%b" "$BAD_NAMES"
+  echo "   Переименуй в 14-значный таймстемп (напр. $(date -u +%Y%m%d%H%M%S)_описание.sql),"
+  echo "   иначе порядок применения на чистой пересборке может разойтись с продом."
+  echo "   Это НЕ блокировка (обойти: git commit --no-verify)."
+  echo ""
+fi
+
 exit 0

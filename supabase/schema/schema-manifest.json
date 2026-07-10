@@ -3856,6 +3856,11 @@
     },
     {
       "args": "",
+      "name": "_schema_invariants",
+      "body_md5": "dcf800eb5ac853e86dacf62638503c9c"
+    },
+    {
+      "args": "",
       "name": "add_creator_as_admin",
       "body_md5": "4ef2ead2abcd6392b8135b48e117ee0e"
     },

@@ -1,8 +1,9 @@
 name: Ops Checks
 
-# Проверки устойчивости (не блокируют деплой, только сигнализируют):
-#  - дрейф функций repo↔prod (сверка с supabase/schema/functions-manifest.json)
-#  - здоровье каналов мессенджера (застрявшие отправки, сбои, Gmail watch)
+# Проверки устойчивости:
+#  - дрейф функций/триггеров/RLS repo↔prod (сверка с supabase/schema/schema-manifest.json).
+#    На PR к миграциям/схеме — БЛОКИРУЕТ (--strict). По расписанию/dispatch — только сигнал.
+#  - здоровье каналов мессенджера (застрявшие отправки, сбои, Gmail watch) — сигнал.
 # Требует секрет SUPABASE_SERVICE_ROLE_KEY (Settings → Secrets → Actions).
 # URL берётся из уже существующего NEXT_PUBLIC_SUPABASE_URL.
 
@@ -27,7 +28,14 @@ jobs:
           cache: npm
       - run: npm install --legacy-peer-deps
       - name: Проверка дрейфа функций
-        run: node scripts/db-drift-check.mjs
+        run: node scripts/db-drift-check.mjs ${{ github.event_name == 'pull_request' && '--strict' || '' }}
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Инварианты хрупких мест БД — валит всегда при нарушении (блокирует PR, «краснит» daily):
+      # правила формулы непрочитанного + совпадение колонок get_workspace_threads↔board_filtered.
+      - name: Инварианты БД
+        run: node scripts/check-db-invariants.mjs
         env:
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
