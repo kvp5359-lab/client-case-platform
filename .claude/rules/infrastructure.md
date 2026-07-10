@@ -60,7 +60,7 @@ app/  →  page-components/  →  components/  →  hooks/ ─┐
 - **Хуки**: общие/кросс-фичевые — в `src/hooks/`; строго фиче-локальные можно colocate в `<feature>/hooks/`, но слой `hooks/` НЕ зависит от `components/`.
 - **Кросс-фичевое UI** (фильтр-примитивы, общие контексты) — в `src/components/filters/`, `src/components/shared/`, не во внутренностях конкретной фичи.
 - **Доступ к БД — через сервисы (T2 аудита, лечится постепенно).** Чтения/записи доменных сущностей — в `src/services/<module>`; хук = React Query + вызов сервиса; **`supabase.from/rpc` не звать прямо в `.tsx`-компоненте** (иначе компонент не протестировать без мока supabase в render-тесте, и нет единого места правки query-shape/ошибок при смене схемы). Не кампания — стягивать inline-`from` в сервисы органически при правках файла.
-- **Известный остаток T1** (НЕ доделано, нужна сессия с UI-тестом): движок документов физически в двух слоях (`components/documents/` + `page-components/ProjectPage/components/Documents/`), и 7 файлов `components/` импортят внутренности `page-components/ProjectPage/`. См. [`docs/audit/2026-06-13-architecture-maintainability.md`](../../docs/audit/2026-06-13-architecture-maintainability.md) T1.
+- **T1 — в основном закрыт (проверено 2026-07-10):** движок документов **консолидирован** в один слой `components/documents/` (81 файл); `page-components/ProjectPage/components/Documents/` **больше не существует**. Связь `components/ → page-components/` схлопнута до ~2 ленивых импортов (code-splitting) + 1 статического — не тесная связность. Остаточная гигиена слоёв: ~11 импортов `hooks/ → @/components` (осиротевшие общие типы — `chatSettingsTypes`, `threadConstants`, `chatVisuals`, `riskLevels`, `BoardProject`, `EmailChip`; спускать в `src/types/`/`src/lib/`) и 24 `.tsx` с inline `supabase.from/rpc` (T2, органически). Слои `services/`/`store/` — 0 нарушений. Историю см. [`docs/audit/2026-06-13-architecture-maintainability.md`](../../docs/audit/2026-06-13-architecture-maintainability.md).
 - **Приватная часть**: `src/app/(app)/` — защищена цепочкой middleware (`src/proxy.ts`, см. [`gotchas.md`](./gotchas.md#файл-middleware--srcproxyts-не-middlewarets)) → server-side `(app)/layout.tsx` → клиентский `ProtectedRoute` → RLS в БД.
 
 ## Supabase
@@ -194,8 +194,25 @@ ORDER BY id DESC LIMIT 10;
 ## Деплой
 
 - **Репозиторий**: https://github.com/kvp5359-lab/client-case-platform
-- **CI/CD**: GitHub Actions — build Docker → push GHCR → deploy на VPS via SSH.
-- **Workflow**: `.github/workflows/deploy.yml` (push в main или manual dispatch).
+- **CI/CD**: GitHub Actions. **Автоматически деплоится ТОЛЬКО Next-приложение.** Edge Functions, миграции БД и `mtproto-service` — **вручную** (см. ниже + `pre-push` хук напоминает).
+
+**GitHub Actions workflows (`.github/workflows/`):**
+
+| Workflow | Триггер | Что делает |
+|----------|---------|-----------|
+| `deploy.yml` | push в main / dispatch | `quality` (lint + `npm test` — **жёсткий гейт**, при падении деплоя нет) → build Docker → push GHCR → blue/green deploy на VPS по SSH (retry на сетевой таймаут). **Только Next-приложение.** |
+| `ci.yml` | push/PR в main | Проверочная сборка: `npm install` → eslint (non-blocking, `|| true`) → `npm run build`. |
+| `db-drift.yml` («Ops Checks») | ежедневно 05:00 UTC + PR к `supabase/migrations/**` или `supabase/schema/**` + dispatch | `db-drift-check.mjs` (дрейф функций repo↔prod) + `channel-health.mjs` (здоровье каналов). **Не блокирует** (сигнал). Требует секрет `SUPABASE_SERVICE_ROLE_KEY`. |
+| `smoke-channels.yml` («Smoke Channels») | ежедневно 06:00 UTC + dispatch | `smoke-matrix.mjs --confirm` — реальная отправка по всем каналам в allowlist-треды (`smoke_test_threads`). Требует `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SMOKE_BOT_PASSWORD`. |
+
+**Ручной деплой (CI НЕ катит):**
+- **Edge Functions** — `scripts/deploy-edge.sh <name>` (сам ставит `--no-verify-jwt` из списка `NO_JWT_FUNCTIONS`). Карантин — со смоком.
+- **Миграции** — `supabase db push` (после — при правке функций/триггеров/RLS обновить эталон дрейфа `db-drift-check.mjs --update` и закоммитить).
+- **mtproto-service** — rsync + docker build на VPS (см. раздел mtproto-service).
+
+**Git-хуки (`.githooks/`, активация `git config core.hooksPath .githooks`)** — оба НЕ блокируют:
+- `pre-commit` — предупреждает о файлах >500 строк + напоминает обновить `messenger-ledger.md`, если тронут мессенджер.
+- `pre-push` — напоминает сверить дрейф (если менялись миграции) и задеплоить вручную edge/mtproto (CI их не катит).
 
 ### VPS (продакшен)
 
@@ -294,7 +311,7 @@ npm run test:coverage
   SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node scripts/channel-health.mjs
   ```
   Гоняется в CI `Ops Checks` ежедневно рядом с детектором дрейфа.
-- **Send-смок** (реальная отправка по каналу) сюда НЕ входит — рискует задеть клиентов. Проводит владелец вручную на выделенном тест-чате (см. `docs/deploy-backlog.md`).
+- **Send-смок** (реальная отправка) в `channel-health` НЕ входит — он read-only. Полная смок-матрица с реальной отправкой автоматизирована **отдельным** workflow `smoke-channels.yml` (ежедневно 06:00 UTC, только в allowlist-треды — клиентов не задевает). См. ниже.
 
 ### Смок-тест каналов (send-тест, требует настройки владельцем)
 
@@ -306,6 +323,7 @@ npm run test:coverage
 ### Смок-матрица каналов (полная — все каналы × комбинации)
 
 - **`scripts/smoke-matrix.mjs`** — по каждому allowlist-треду гоняет: текст, ответ-цитата, файл, файл+текст, альбом, реакция, правка, удаление (где канал поддерживает — реакция на своё есть только у Wazzup, правка у TG-группы, удаление у TG-группы/MTProto). Проверяет доставку/результат. Ничего не чистит.
+- **Автоматизирована:** workflow `smoke-channels.yml` запускает её `--confirm` **ежедневно 06:00 UTC** + вручную (`workflow_dispatch`). Весь канальный слой прогоняется end-to-end каждый день без участия человека. Локальный ручной запуск ниже — для отладки.
 - **Смок-бот:** вложения MTProto/email фронт шлёт через edge как юзер, поэтому раннер логинится под тех-пользователем `smoke-bot@clientcase.internal` (участник ТОЛЬКО тест-проекта, роль «Исполнитель» — blast-radius ограничен тест-тредами). Для TG-группы/Wazzup вложения идут через `dispatch_message_to_channels(force)`.
 - Запуск: `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… SUPABASE_ANON_KEY=… SMOKE_BOT_PASSWORD=… node scripts/smoke-matrix.mjs --confirm`. Без бот-пароля файлы MTProto/email пропускаются (текст/ответ/файлы TG-WA работают).
 - allowlist тест-тредов — `smoke_test_threads`; RPC `smoke_send_test`/`smoke_send_file` (проверяют allowlist на сервере).

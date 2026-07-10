@@ -7670,6 +7670,7 @@ export type Database = {
       }
       document_sources: {
         Row: {
+          connected_by_user_id: string | null
           created_at: string
           document_kit_id: string | null
           drive_folder_id: string
@@ -7680,6 +7681,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          connected_by_user_id?: string | null
           created_at?: string
           document_kit_id?: string | null
           drive_folder_id: string
@@ -7690,6 +7692,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          connected_by_user_id?: string | null
           created_at?: string
           document_kit_id?: string | null
           drive_folder_id?: string
@@ -9506,6 +9509,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_source_update_unread_projects: {
+        Args: { p_workspace_id: string }
+        Returns: { project_id: string; unread_count: number }[]
+      }
+      get_my_executor_project_ids: {
+        Args: { p_workspace_id: string }
+        Returns: { project_id: string }[]
+      }
+      mark_source_updates_read: { Args: { p_project_id: string }; Returns: undefined }
+      mark_all_source_updates_read: { Args: { p_workspace_id: string }; Returns: undefined }
       _board_compile_condition: {
         Args: { p_entity: string; p_node: Json }
         Returns: string
@@ -10935,6 +10948,27 @@ export type Database = {
       next_short_id: {
         Args: { p_entity_type: string; p_workspace_id: string }
         Returns: number
+      }
+      search_thread_messages: {
+        // Ручной оверрайд (см. миграции 20260710140000 / 20260710160000). Поиск
+        // сообщений треда с фильтрами файлы/картинки/ссылки/отправитель. Держать.
+        Args: {
+          p_thread_id: string
+          p_query?: string
+          p_want_files?: boolean
+          p_want_images?: boolean
+          p_want_links?: boolean
+          p_want_audio?: boolean
+          p_sender_participant_id?: string | null
+          p_limit?: number
+        }
+        Returns: { id: string }[]
+      }
+      get_thread_senders: {
+        // Ручной оверрайд (см. миграцию 20260710160000). Список отправителей
+        // треда для селектора фильтра поиска. Держать при регенерации.
+        Args: { p_thread_id: string }
+        Returns: { participant_id: string; name: string; avatar_url: string | null }[]
       }
       publish_scheduled_message: {
         Args: { p_message_id: string }
