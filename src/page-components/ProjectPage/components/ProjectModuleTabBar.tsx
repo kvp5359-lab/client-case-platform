@@ -32,10 +32,12 @@ export type TabModule = {
   iconOnly?: boolean
 }
 
-// Резерв ширины под кнопку-бутерброд (32) + зазоры + небольшой запас на «⋮»-меню
-// активной вкладки. Меньше значение — плотнее ряд (пустоту заполняет «частичная»
-// вкладка с обрезкой).
-const RESERVE_PX = 52
+// Резерв ширины под кнопку-бутерброд (32) + зазоры.
+const RESERVE_PX = 44
+// Ширина «⋮»-меню активной вкладки (renderTabExtra). Клон-замер его НЕ включает,
+// поэтому у активной вкладки реальная ширина больше — учитываем это в подсчёте,
+// иначе число видимых вкладок скачет при переключении на вкладку с «⋮».
+const ACTIVE_EXTRA_PX = 34
 
 export function ProjectModuleTabBar({
   modules,
@@ -52,9 +54,6 @@ export function ProjectModuleTabBar({
   const rowRef = useRef<HTMLDivElement>(null)
   const measureRef = useRef<HTMLDivElement>(null)
   const [visibleCount, setVisibleCount] = useState(modules.length)
-  // Ширина (px) для «частичной» последней вкладки, что занимает остаток места
-  // с обрезанным названием. null — последняя вкладка целая.
-  const [partialWidth, setPartialWidth] = useState<number | null>(null)
 
   const modulesKey = modules.map((m) => m.id).join(',')
 
@@ -68,36 +67,28 @@ export function ProjectModuleTabBar({
       let sum = 0
       let fit = 0
       for (const k of kids) {
-        if (sum + k.offsetWidth > avail) break
-        sum += k.offsetWidth
+        // У активной вкладки в реальном ряду есть «⋮»-меню (renderTabExtra),
+        // которого нет в клоне — прибавляем его ширину, чтобы подсчёт совпал.
+        const w = k.offsetWidth + (k.dataset.tabId === activeTab ? ACTIVE_EXTRA_PX : 0)
+        if (sum + w > avail) break
+        sum += w
         fit++
       }
-      const remaining = avail - sum
-      // Остаток заполняем следующей вкладкой с обрезкой, если он ощутимый
-      // (хватает на иконку + пару букв).
-      const showPartial = fit < kids.length && remaining >= 56
-      setVisibleCount(Math.max(1, fit + (showPartial ? 1 : 0)))
-      setPartialWidth(showPartial ? remaining : null)
+      setVisibleCount(Math.max(1, fit))
     }
     compute()
     const ro = new ResizeObserver(compute)
     ro.observe(row)
     return () => ro.disconnect()
-    // modulesKey меняется при смене набора вкладок → перезамер.
-  }, [modulesKey])
+    // Перезамер при смене набора вкладок и активной (её ширина с «⋮» иная).
+  }, [modulesKey, activeTab])
 
   // Гарантируем, что активная вкладка видима в ряду: если она за порогом
-  // видимости — заменяем ею последний видимый слот (целиком, без обрезки).
+  // видимости — заменяем ею последний видимый слот.
   const activeIndex = modules.findIndex((m) => m.id === activeTab)
   let visible = modules.slice(0, visibleCount)
-  let truncateLast = partialWidth != null
   if (activeIndex >= 0 && activeIndex >= visibleCount) {
     visible = [...modules.slice(0, Math.max(0, visibleCount - 1)), modules[activeIndex]]
-    truncateLast = false
-  }
-  // Если «частичной» оказалась активная вкладка — показываем её целиком.
-  if (truncateLast && visible[visible.length - 1]?.id === activeTab) {
-    truncateLast = false
   }
 
   return (
@@ -113,6 +104,7 @@ export function ProjectModuleTabBar({
           return (
             <span
               key={m.id}
+              data-tab-id={m.id}
               className="inline-flex items-center gap-1 md:gap-2 whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium"
             >
               <Icon className="w-4 h-4" />
@@ -123,21 +115,17 @@ export function ProjectModuleTabBar({
       </div>
 
       <TabsList className="min-w-0 justify-start overflow-hidden">
-        {visible.map((m, i) => {
+        {visible.map((m) => {
           const Icon = m.icon
-          const partial = truncateLast && i === visible.length - 1
           return (
             <TabsTrigger
               key={m.id}
               value={m.id}
-              className={cn('flex items-center gap-1 md:gap-2', partial ? 'min-w-0' : 'shrink-0')}
-              style={partial ? { maxWidth: partialWidth ?? undefined } : undefined}
+              className="flex items-center gap-1 md:gap-2 shrink-0"
               title={m.label}
             >
               <Icon className="w-4 h-4 shrink-0" />
-              {!m.iconOnly && (
-                <span className={partial ? 'truncate min-w-0' : 'whitespace-nowrap'}>{m.label}</span>
-              )}
+              {!m.iconOnly && <span className="whitespace-nowrap">{m.label}</span>}
               {renderTabExtra?.(m.id)}
             </TabsTrigger>
           )
