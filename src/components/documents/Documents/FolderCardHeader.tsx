@@ -6,6 +6,7 @@
 
 import { useState } from 'react'
 import { HelpCircle, Loader2, MoreHorizontal, Pencil, Plus, Trash2, Upload } from 'lucide-react'
+import { MutedPill } from '@/components/common/MutedPill'
 import { useQuery } from '@tanstack/react-query'
 import { CommentBadge } from '@/components/comments'
 import { cn } from '@/lib/utils'
@@ -68,11 +69,7 @@ export function FolderCardHeader({
         <div className="flex items-center gap-2 w-full">
           <div className="text-sm font-medium tracking-tight text-brand-500 flex items-center gap-2 min-w-0">
             <span className="truncate">{folder.name}</span>
-            {isEmpty && (
-              <span className="shrink-0 text-[11px] font-normal text-gray-400 bg-gray-100 rounded px-1.5 py-0.5">
-                нет документов
-              </span>
-            )}
+            {isEmpty && <MutedPill>нет документов</MutedPill>}
             {hasDescription && (
               <button
                 className="p-0 flex-shrink-0 hover:bg-transparent"

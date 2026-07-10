@@ -17,6 +17,7 @@ import {
   ChevronDown, ChevronRight, Plus, MoreHorizontal, Trash2, Eye, EyeOff, Ban, GripVertical, Pencil,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { MutedPill } from '@/components/common/MutedPill'
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
@@ -39,6 +40,15 @@ type Props = {
   onMoveUp?: () => void
   onMoveDown?: () => void
   renderChild: (item: MergedItem) => React.ReactNode
+}
+
+/** Русское склонение: 1 задача, 2 задачи, 5 задач. */
+function taskWord(n: number): string {
+  const m10 = n % 10
+  const m100 = n % 100
+  if (m10 === 1 && m100 !== 11) return 'задача'
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return 'задачи'
+  return 'задач'
 }
 
 export function PlanGroupContainer({
@@ -74,7 +84,9 @@ export function PlanGroupContainer({
       // dnd-kit добавлял scaleX/scaleY → визуальное сплющивание при drag'е.
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        'group/plangroup relative mt-4 mb-1 rounded-lg border border-border/70 bg-muted/20',
+        // Вид как у старых разделителей: без фона/рамки, только отступ сверху и
+        // крупный жирный заголовок. Кнопки и перетаскивание группы сохранены.
+        'group/plangroup relative mt-3 mb-1',
         isDragging && 'opacity-60 z-10',
       )}
     >
@@ -92,13 +104,8 @@ export function PlanGroupContainer({
         </button>
       )}
 
-      {/* Заголовок группы — плашка темнее тела группы */}
-      <div
-        className={cn(
-          'flex items-center gap-1.5 px-2 py-1.5 bg-muted',
-          collapsed ? 'rounded-lg' : 'rounded-t-lg',
-        )}
-      >
+      {/* Заголовок группы — как разделитель: без плашки, крупный жирный текст */}
+      <div className="flex items-center gap-1.5 px-2 py-1">
         <button
           type="button"
           onClick={onToggleCollapse}
@@ -118,7 +125,7 @@ export function PlanGroupContainer({
               if (e.key === 'Enter') commitName()
               if (e.key === 'Escape') { setDraft(group.name); setEditing(false) }
             }}
-            className="flex-1 min-w-0 bg-transparent text-base font-semibold outline-none border-b border-border focus:border-foreground"
+            className="flex-1 min-w-0 bg-transparent text-lg font-semibold outline-none border-b border-border focus:border-foreground"
           />
         ) : (
           <div className="flex flex-1 min-w-0 items-center gap-1">
@@ -126,7 +133,7 @@ export function PlanGroupContainer({
               type="button"
               onClick={onToggleCollapse}
               className={cn(
-                'min-w-0 truncate text-left text-base font-semibold',
+                'min-w-0 truncate text-left text-lg font-semibold',
                 accentText,
                 !accentText && 'hover:text-foreground',
               )}
@@ -134,6 +141,9 @@ export function PlanGroupContainer({
             >
               {group.name || 'Без названия'}
             </button>
+            {collapsed && count > 0 && (
+              <MutedPill variant="accent" className="ml-1.5">{count} {taskWord(count)}</MutedPill>
+            )}
             {canEdit && (
               <button
                 type="button"
@@ -151,14 +161,15 @@ export function PlanGroupContainer({
         {/* «+» — слева от индикаторов: на десктопе появляется по наведению на СВОЮ
             группу (display-toggle, места в покое не занимает), на тач виден всегда. */}
         {canEdit && (
-          <Button
-            variant="ghost" size="icon"
-            className="h-6 w-6 text-muted-foreground inline-flex md:hidden md:group-hover/plangroup:inline-flex"
+          <button
+            type="button"
             onClick={onAddTask}
+            className="shrink-0 inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors md:hidden md:group-hover/plangroup:inline-flex"
             title="Добавить задачу в группу"
           >
-            <Plus className="h-4 w-4" />
-          </Button>
+            <Plus className="h-3.5 w-3.5" />
+            Новая задача
+          </button>
         )}
 
         {/* Индикатор «скрыта от клиента» — виден только команде (клиент группу не увидит вовсе). */}
@@ -166,7 +177,9 @@ export function PlanGroupContainer({
           <EyeOff className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Скрыта от клиента" />
         )}
 
-        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{count}</span>
+        {!collapsed && (
+          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{count}</span>
+        )}
 
         {canEdit && (
           <>
@@ -232,7 +245,7 @@ export function PlanGroupContainer({
 
       {/* Содержимое — droppable-зона + сортировка внутри группы */}
       {!collapsed && (
-        <div ref={setNodeRef} className={cn('pt-1 pb-1 rounded-b-lg', isOver && 'bg-accent/40')}>
+        <div ref={setNodeRef} className={cn('pb-1', isOver && 'bg-accent/40')}>
           <SortableContext items={childIds} strategy={verticalListSortingStrategy}>
             {count === 0 ? (
               <div className="px-3 py-3 text-xs text-muted-foreground">

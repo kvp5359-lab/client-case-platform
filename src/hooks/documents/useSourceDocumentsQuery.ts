@@ -14,6 +14,8 @@ import {
   getSourceDocumentsByProject,
   getSourceDocumentsByKit,
   getDocumentSourcesByProject,
+  getDocumentSourcesByWorkspace,
+  getWorkspaceSourceUpdates,
   ensureDocumentSource,
   deleteDocumentSource,
   toggleSourceDocumentHidden,
@@ -161,6 +163,7 @@ export function useInvalidateAllSourceViews() {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: googleDriveKeys.sourceDocumentsAll() }),
         queryClient.invalidateQueries({ queryKey: googleDriveKeys.kitSourceDocumentsAll() }),
+        queryClient.invalidateQueries({ queryKey: googleDriveKeys.workspaceSourceUpdatesAll() }),
       ]),
     [queryClient],
   )
@@ -282,6 +285,61 @@ export function useSyncAllSourcesMutation() {
       return { total: sources.length, synced, filesFound, deleted }
     },
     onSuccess: () => invalidateAll(),
+  })
+}
+
+/**
+ * Лента файлов из источников по всему воркспейсу («Обновления источников»).
+ * Плоский список, сортировка/группировка — на стороне страницы.
+ */
+export function useWorkspaceSourceUpdatesQuery(workspaceId: string | undefined) {
+  return useQuery({
+    queryKey: googleDriveKeys.workspaceSourceUpdates(workspaceId ?? ''),
+    queryFn: () => getWorkspaceSourceUpdates(workspaceId!),
+    enabled: !!workspaceId,
+    staleTime: STALE_TIME.MEDIUM,
+  })
+}
+
+/**
+ * Синхронизация ВСЕХ источников воркспейса (по всем проектам). Для кнопки
+ * «Проверить источники» на странице обновлений. Сбойный источник пропускается.
+ */
+export function useSyncWorkspaceSourcesMutation() {
+  const queryClient = useQueryClient()
+  const invalidateAll = useInvalidateAllSourceViews()
+  return useMutation({
+    mutationFn: async (workspaceId: string) => {
+      const sources = await getDocumentSourcesByWorkspace(workspaceId)
+      let filesFound = 0
+      let deleted = 0
+      let synced = 0
+      for (const s of sources) {
+        try {
+          const r = await syncSourceDocumentsFromDrive({
+            projectId: s.project_id,
+            workspaceId,
+            sourceFolderId: s.drive_folder_id,
+            documentKitId: s.document_kit_id,
+            sourceName: s.name,
+            groupByTopLevel: !!s.document_kit_id,
+          })
+          filesFound += r.filesFound
+          deleted += r.deleted
+          synced += 1
+        } catch {
+          // пропускаем сбойный источник, остальные синхронизируем
+        }
+      }
+      return { total: sources.length, synced, filesFound, deleted }
+    },
+    onSuccess: (_r, workspaceId) => {
+      queryClient.invalidateQueries({
+        queryKey: googleDriveKeys.workspaceSourceUpdates(workspaceId),
+      })
+      invalidateAll()
+    },
+    onError: () => toast.error('Не удалось обновить источники'),
   })
 }
 

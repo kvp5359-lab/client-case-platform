@@ -286,7 +286,7 @@ export default function ProjectsPage() {
               refetch()
               createDialog.close()
               if (activeWorkspaceId) {
-                router.push(`/workspaces/${activeWorkspaceId}/projects/${project.id}`)
+                router.push(`/workspaces/${activeWorkspaceId}/projects/${project.id}?tab=settings`)
               }
             }}
           />

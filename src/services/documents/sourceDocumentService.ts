@@ -97,6 +97,91 @@ export type SyncResult = {
   folderName?: string | null
 }
 
+/** Файл источника в ленте «Обновления источников» воркспейса (плоская запись). */
+export type WorkspaceSourceUpdate = {
+  id: string
+  googleDriveFileId: string
+  name: string
+  mimeType: string | null
+  fileSize: number | null
+  createdTime: string | null
+  modifiedTime: string | null
+  syncedAt: string | null
+  webViewLink: string | null
+  parentFolderName: string | null
+  projectId: string
+  projectName: string | null
+  documentKitId: string | null
+  sourceId: string | null
+  sourceName: string | null
+}
+
+/**
+ * Все файлы из привязанных источников воркспейса (нескрытые), с именами проекта
+ * и источника. Для страницы «Обновления источников» — лента по свежести.
+ * Отсеиваются файлы удалённых проектов (projects.is_deleted = true).
+ */
+export async function getWorkspaceSourceUpdates(
+  workspaceId: string,
+): Promise<WorkspaceSourceUpdate[]> {
+  const { data, error } = await supabase
+    .from('source_documents')
+    .select(
+      'id, google_drive_file_id, name, mime_type, file_size, created_time, modified_time, synced_at, web_view_link, parent_folder_name, project_id, document_kit_id, source_id, projects!inner(name, is_deleted), document_sources(name)',
+    )
+    .eq('workspace_id', workspaceId)
+    .eq('is_hidden', false)
+    .eq('projects.is_deleted', false)
+    .order('created_time', { ascending: false, nullsFirst: false })
+
+  if (error) {
+    logger.error('Ошибка загрузки обновлений источников:', error)
+    throw new DocumentError('Не удалось загрузить обновления источников', error)
+  }
+
+  return (data || []).map((row) => {
+    // PostgREST отдаёт вложенные связи объектом или массивом в зависимости от кардинальности.
+    const project = Array.isArray(row.projects) ? row.projects[0] : row.projects
+    const source = Array.isArray(row.document_sources)
+      ? row.document_sources[0]
+      : row.document_sources
+    return {
+      id: row.id,
+      googleDriveFileId: row.google_drive_file_id,
+      name: row.name,
+      mimeType: row.mime_type,
+      fileSize: row.file_size,
+      createdTime: row.created_time,
+      modifiedTime: row.modified_time,
+      syncedAt: row.synced_at,
+      webViewLink: row.web_view_link,
+      parentFolderName: row.parent_folder_name,
+      projectId: row.project_id,
+      projectName: project?.name ?? null,
+      documentKitId: row.document_kit_id,
+      sourceId: row.source_id,
+      sourceName: source?.name ?? null,
+    }
+  })
+}
+
+/** Все источники (папки Drive) воркспейса — для массовой синхронизации. */
+export async function getDocumentSourcesByWorkspace(
+  workspaceId: string,
+): Promise<DocumentSourceRow[]> {
+  const { data, error } = await supabase
+    .from('document_sources')
+    .select('*')
+    .eq('workspace_id', workspaceId)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    logger.error('Ошибка загрузки источников воркспейса:', error)
+    throw new DocumentError('Не удалось загрузить источники воркспейса', error)
+  }
+  return data || []
+}
+
 /**
  * Получение ВСЕХ документов-источников проекта (правая панель «Из источника»).
  * Показываются все источники — и привязанные к наборам, и отдельные. Наборные

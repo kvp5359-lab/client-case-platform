@@ -33,6 +33,11 @@ export const googleDriveKeys = {
     ['google-drive', 'kit-source-documents', kitId] as const,
   /** Broad-префикс для сброса лотков всех наборов проекта. */
   kitSourceDocumentsAll: () => ['google-drive', 'kit-source-documents'] as const,
+  /** Лента файлов из источников по всему воркспейсу («Обновления источников»). */
+  workspaceSourceUpdates: (workspaceId: string) =>
+    ['google-drive', 'workspace-source-updates', workspaceId] as const,
+  /** Broad-префикс для сброса ленты обновлений источников любого воркспейса. */
+  workspaceSourceUpdatesAll: () => ['google-drive', 'workspace-source-updates'] as const,
   destinationDocuments: (exportFolderId: string, workspaceId: string) =>
     ['google-drive', 'destination-documents', exportFolderId, workspaceId] as const,
 }

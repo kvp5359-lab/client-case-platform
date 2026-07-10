@@ -21,6 +21,7 @@ import {
   CalendarDays,
   BarChart3,
   Wallet,
+  FolderSync,
   type LucideIcon,
 } from 'lucide-react'
 import type { WorkspacePermission } from '@/types/permissions'
@@ -37,6 +38,7 @@ export type SidebarNavKey =
   | 'templates'
   | 'digests'
   | 'reports'
+  | 'source_updates'
   | 'finance'
   | 'settings'
 
@@ -206,6 +208,13 @@ export const SIDEBAR_NAV_ITEMS: Record<SidebarNavKey, SidebarItemMeta> = {
     path: 'reports',
     hasAccess: ({ isClientOnly }) => !isClientOnly,
   },
+  source_updates: {
+    key: 'source_updates',
+    label: 'Обновления источников',
+    icon: FolderSync,
+    path: 'source-updates',
+    hasAccess: ({ isClientOnly }) => !isClientOnly,
+  },
   finance: {
     key: 'finance',
     label: 'Финансы',
@@ -236,6 +245,7 @@ export const SIDEBAR_NAV_KEYS: SidebarNavKey[] = [
   'templates',
   'digests',
   'reports',
+  'source_updates',
   'finance',
   'settings',
 ]

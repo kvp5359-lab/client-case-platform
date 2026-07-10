@@ -594,7 +594,7 @@ export function WorkspaceSidebarFull({
         onSuccess={(project) => {
           refreshProjects()
           createProjectDialog.close()
-          if (workspaceId) router.push(`/workspaces/${workspaceId}/projects/${project.id}`)
+          if (workspaceId) router.push(`/workspaces/${workspaceId}/projects/${project.id}?tab=settings`)
         }}
       />
       </QuickActionsProvider>

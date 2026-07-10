@@ -171,7 +171,7 @@ export function QuickActionsProvider({
         defaultTemplateId={projectDialog.templateId}
         onSuccess={(project) => {
           setProjectDialog({ open: false, templateId: null })
-          if (workspaceId) router.push(`/workspaces/${workspaceId}/projects/${project.id}`)
+          if (workspaceId) router.push(`/workspaces/${workspaceId}/projects/${project.id}?tab=settings`)
         }}
       />
 

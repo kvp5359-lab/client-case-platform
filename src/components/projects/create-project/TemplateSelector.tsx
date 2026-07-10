@@ -19,13 +19,15 @@ type TemplateSelectorProps = {
   onChange: (value: string) => void
   templates: ProjectTemplate[]
   disabled?: boolean
+  /** Раскрыть список сразу при монтировании (при открытии диалога создания). */
+  autoOpen?: boolean
 }
 
-export function TemplateSelector({ value, onChange, templates, disabled }: TemplateSelectorProps) {
+export function TemplateSelector({ value, onChange, templates, disabled, autoOpen }: TemplateSelectorProps) {
   return (
     <div className="space-y-2">
       <Label htmlFor="template">Тип проекта</Label>
-      <Select value={value} onValueChange={onChange} disabled={disabled}>
+      <Select value={value} onValueChange={onChange} disabled={disabled} defaultOpen={autoOpen}>
         <SelectTrigger id="template">
           <SelectValue placeholder="Выберите тип проекта (необязательно)" />
         </SelectTrigger>

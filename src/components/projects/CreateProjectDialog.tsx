@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext'
 import { useWorkspaceLimitStatus } from '@/hooks/useWorkspaceUsage'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Alert } from '@/components/ui/alert'
 import { createProjectFromTemplate } from '@/services/projects/createProjectFromTemplate'
 import { toast } from 'sonner'
@@ -15,6 +15,10 @@ import { Loader2 } from 'lucide-react'
 import { TemplateSelector } from './create-project/TemplateSelector'
 import { TemplateItemsList } from './create-project/TemplateItemsList'
 import { useProjectTemplateContent } from './create-project/useProjectTemplateContent'
+import { ParticipantsPicker } from '@/components/participants/ParticipantsPicker'
+import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
+import { useTemplateTaskGroups } from '@/hooks/plan/useTemplateTaskGroups'
+import { SYSTEM_PROJECT_ROLES } from '@/types/permissions'
 import { projectTemplateKeys } from '@/hooks/queryKeys'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
@@ -38,6 +42,7 @@ export function CreateProjectDialog({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [templateId, setTemplateId] = useState<string>('')
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedDocKitIds, setSelectedDocKitIds] = useState<Set<string>>(new Set())
@@ -46,6 +51,8 @@ export function CreateProjectDialog({
   const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set())
   const { workspaceId: currentWorkspaceId } = useWorkspaceContext()
   const { atLimit } = useWorkspaceLimitStatus(currentWorkspaceId)
+  // Участники воркспейса для пикера «Исполнители» (тот же формат PickerParticipant).
+  const { data: workspaceParticipants = [] } = useWorkspaceParticipants(currentWorkspaceId)
 
   const activeTemplateId = templateId && templateId !== 'none' ? templateId : undefined
 
@@ -75,28 +82,35 @@ export function CreateProjectDialog({
   const { docKitTemplates, formTemplates, scopedThreadTemplates, planContentBlocks } =
     useProjectTemplateContent(activeTemplateId, currentWorkspaceId, open)
 
+  // Группы задач шаблона — чтобы в списке «Задачи и чаты» показывать группы,
+  // как в редакторе шаблона (а не плоским списком).
+  const { groups: templateTaskGroups } = useTemplateTaskGroups(activeTemplateId, currentWorkspaceId)
+
+  // Массово отметить/снять все задачи, чаты и блоки состава шаблона.
+  const toggleAllTasks = (select: boolean) => {
+    setSelectedTaskIds(select ? new Set(scopedThreadTemplates.map((t) => t.id)) : new Set())
+    setSelectedBlockIds(select ? new Set(planContentBlocks.map((b) => b.id)) : new Set())
+  }
+
   const docKitKey = docKitTemplates.map((t) => t.id).join(',')
   const formKey = formTemplates.map((t) => t.id).join(',')
   const threadKey = scopedThreadTemplates.map((t) => t.id).join(',')
   const blockKey = planContentBlocks.map((b) => b.id).join(',')
 
+  // По умолчанию все чекбоксы состава шаблона СНЯТЫ — пользователь сам отмечает,
+  // что создавать вместе с проектом (есть кнопка «выбрать все задачи и чаты»).
+  // Эффекты на смену шаблона просто сбрасывают выбор в пустой.
   useEffect(() => {
-    setSelectedDocKitIds(new Set(docKitTemplates.map((t) => t.id)))
-    setSelectedFormIds(new Set(formTemplates.map((t) => t.id)))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setSelectedDocKitIds(new Set())
+    setSelectedFormIds(new Set())
   }, [docKitKey, formKey])
 
   useEffect(() => {
-    // По умолчанию — все шаблоны задач и чатов отмечены, пользователь может
-    // снять галочки с тех, что не нужны для конкретного проекта.
-    setSelectedTaskIds(new Set(scopedThreadTemplates.map((t) => t.id)))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setSelectedTaskIds(new Set())
   }, [threadKey])
 
   useEffect(() => {
-    // Заголовки/текст шаблона по умолчанию включены.
-    setSelectedBlockIds(new Set(planContentBlocks.map((b) => b.id)))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setSelectedBlockIds(new Set())
   }, [blockKey])
 
   useEffect(() => {
@@ -104,6 +118,7 @@ export function CreateProjectDialog({
       setName('')
       setDescription('')
       setTemplateId('')
+      setAssigneeIds([])
       setError(null)
       setSelectedDocKitIds(new Set())
       setSelectedFormIds(new Set())
@@ -195,6 +210,22 @@ export function CreateProjectDialog({
       if (kitFormFailures > 0) {
         toast.warning(`Проект создан, но ${kitFormFailures} набор(ов) не удалось создать`)
       }
+      // Исполнители — вторым шагом: createProjectFromTemplate участников не создаёт.
+      // Новый проект пуст, поэтому просто insert выбранных с ролью «Исполнитель».
+      if (assigneeIds.length > 0) {
+        const { error: partErr } = await supabase.from('project_participants').insert(
+          assigneeIds.map((pid) => ({
+            project_id: projectId,
+            participant_id: pid,
+            project_roles: [SYSTEM_PROJECT_ROLES.EXECUTOR],
+          })),
+        )
+        if (partErr) {
+          // Проект уже создан — не валим весь флоу, просто предупреждаем.
+          console.error('Не удалось добавить исполнителей в проект:', partErr)
+          toast.warning('Проект создан, но исполнителей добавить не удалось')
+        }
+      }
       onSuccess({ id: projectId })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Произошла ошибка')
@@ -203,84 +234,108 @@ export function CreateProjectDialog({
     }
   }
 
-  const hasLinkedItems =
-    docKitTemplates.length > 0 ||
-    formTemplates.length > 0 ||
-    scopedThreadTemplates.length > 0 ||
-    planContentBlocks.length > 0
 
   if (!open) return null
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background rounded-lg shadow-lg max-w-md w-full p-6">
-        <h2 className="text-2xl font-bold mb-4">Создать проект</h2>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-background rounded-lg shadow-lg w-full max-w-3xl p-6 max-h-[90vh] flex flex-col">
+        <h2 className="text-2xl font-bold mb-4 shrink-0">Создать проект</h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <Alert variant="destructive">{error}</Alert>}
+        <form onSubmit={handleSubmit} className="flex flex-1 min-h-0 flex-col">
+          {error && <Alert variant="destructive" className="mb-4 shrink-0">{error}</Alert>}
 
-          {namePrefix ? (
-            // Поле с серым префиксом слева: рамка как у Input, внутри —
-            // нередактируемый префикс + borderless input.
-            <div className="flex items-center h-12 w-full rounded-md border border-input bg-transparent px-3 shadow-sm transition-colors focus-within:ring-1 focus-within:ring-ring">
-              <span className="text-xl font-semibold text-muted-foreground/50 shrink-0 mr-1 select-none">
-                {namePrefix}
-              </span>
+          <div className="grid gap-x-6 gap-y-4 md:grid-cols-2 flex-1 min-h-0 overflow-y-auto pr-1">
+            {/* Левая колонка: тип, название/описание, исполнители */}
+            <div className="space-y-4">
+              <TemplateSelector
+                value={templateId}
+                onChange={setTemplateId}
+                templates={projectTemplates}
+                disabled={isLoading}
+                autoOpen
+              />
+
+              {/* Название + описание в единой рамке — тот же стиль, что у тредов
+                  (ChatSettingsDialog): название сверху, разделитель, описание снизу. */}
+              <div className="space-y-1.5">
+                <Label htmlFor="name">Название</Label>
+                <div className="rounded-md border border-input bg-background overflow-hidden transition-shadow focus-within:shadow-[0_2px_8px_rgba(0,0,0,0.10)]">
+            {namePrefix ? (
+              <div className="flex items-center pl-3">
+                <span className="text-[17px] font-semibold text-muted-foreground/50 shrink-0 mr-1 select-none">
+                  {namePrefix}
+                </span>
+                <input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Название проекта"
+                  disabled={isLoading}
+                  className="flex-1 min-w-0 h-10 pr-2 py-1 text-[17px] font-semibold bg-transparent outline-none placeholder:text-muted-foreground/40 placeholder:font-normal disabled:opacity-50"
+                />
+              </div>
+            ) : (
               <input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Название проекта"
                 disabled={isLoading}
-                className="flex-1 min-w-0 bg-transparent text-xl font-semibold outline-none placeholder:text-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full h-10 px-3 py-1 text-[17px] font-semibold bg-transparent outline-none placeholder:text-muted-foreground/40 placeholder:font-normal disabled:opacity-50"
+              />
+            )}
+            <div className="h-px bg-border mx-2" />
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Краткое описание проекта"
+              disabled={isLoading}
+              rows={2}
+                  className="w-full resize-none bg-transparent px-3 py-2 text-sm leading-snug outline-none placeholder:text-muted-foreground/40 max-h-64 overflow-y-auto disabled:opacity-50"
+                />
+                </div>
+              </div>
+
+              {/* Исполнители — общий ParticipantsPicker (как в настройках проекта). */}
+              <div className="space-y-1.5">
+                <Label>Исполнители</Label>
+                <ParticipantsPicker
+                  participants={workspaceParticipants}
+                  selectedIds={assigneeIds}
+                  onChange={setAssigneeIds}
+                  placeholder="Выберите участников..."
+                />
+              </div>
+            </div>
+
+            {/* Правая колонка: состав шаблона — видна всегда; при пустом составе
+                TemplateItemsList показывает подсказку выбрать тип проекта. */}
+            <div className="space-y-1.5 min-w-0">
+              <Label>Будут созданы вместе с проектом</Label>
+              <TemplateItemsList
+                docKitTemplates={docKitTemplates}
+                formTemplates={formTemplates}
+                threads={scopedThreadTemplates}
+                planBlocks={planContentBlocks}
+                taskGroups={templateTaskGroups}
+                selectedDocKitIds={selectedDocKitIds}
+                selectedFormIds={selectedFormIds}
+                selectedThreadIds={selectedTaskIds}
+                selectedBlockIds={selectedBlockIds}
+                onToggleDocKit={toggleDocKit}
+                onToggleForm={toggleForm}
+                onToggleThread={toggleTask}
+                onToggleBlock={toggleBlock}
+                onToggleAllTasks={toggleAllTasks}
+                disabled={isLoading}
+                title=""
               />
             </div>
-          ) : (
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Название проекта"
-              disabled={isLoading}
-              className="!text-xl font-semibold !h-12 placeholder:text-muted-foreground/50"
-            />
-          )}
+          </div>
 
-          <Input
-            id="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Краткое описание проекта"
-            disabled={isLoading}
-            className="placeholder:text-muted-foreground/50"
-          />
-
-          <TemplateSelector
-            value={templateId}
-            onChange={setTemplateId}
-            templates={projectTemplates}
-            disabled={isLoading}
-          />
-
-          {activeTemplateId && hasLinkedItems && (
-            <TemplateItemsList
-              docKitTemplates={docKitTemplates}
-              formTemplates={formTemplates}
-              threads={scopedThreadTemplates}
-              planBlocks={planContentBlocks}
-              selectedDocKitIds={selectedDocKitIds}
-              selectedFormIds={selectedFormIds}
-              selectedThreadIds={selectedTaskIds}
-              selectedBlockIds={selectedBlockIds}
-              onToggleDocKit={toggleDocKit}
-              onToggleForm={toggleForm}
-              onToggleThread={toggleTask}
-              onToggleBlock={toggleBlock}
-              disabled={isLoading}
-            />
-          )}
-
-          <div className="flex gap-3 justify-end">
+          <div className="flex gap-3 justify-end mt-4 shrink-0">
             <Button
               type="button"
               variant="outline"
