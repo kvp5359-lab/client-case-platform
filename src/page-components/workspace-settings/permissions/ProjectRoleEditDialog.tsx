@@ -1,18 +1,20 @@
 /**
- * Диалог редактирования роли Проекта
+ * Диалог редактирования роли Проекта.
+ * Модули — сеткой тумблеров, действия — компактными группами. Всё из реестра.
  */
 
 import { useState } from 'react'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
-import { Users, Settings, FileText, FolderOpen } from 'lucide-react'
+import { Users } from 'lucide-react'
 import type { Database } from '@/types/database'
 import type { ProjectModuleAccess, ProjectPermissions } from '@/types/permissions'
 import { fromSupabaseJson, toSupabaseJson } from '@/utils/supabaseJson'
-import { MODULE_LABELS } from './constants'
-import { ModulePermissionsSection } from './ModulePermissionsSection'
+import {
+  PROJECT_MODULE_DEFS,
+  PROJECT_ACTION_GROUPS,
+  type ProjectActionModule,
+} from '@/lib/permissions/registry'
 import { RoleEditDialogBase } from './RoleEditDialogBase'
+import { PermissionGroup, PermissionToggleRow, ModuleToggle } from './PermissionControls'
 
 type ProjectRole = Database['public']['Tables']['project_roles']['Row']
 
@@ -61,28 +63,16 @@ function ProjectRoleEditDialogContent({
   const [permissions, setPermissions] = useState<ProjectPermissions>(
     fromSupabaseJson<ProjectPermissions>(role.permissions),
   )
-  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({})
 
-  const handleModuleAccessChange = (key: keyof ProjectModuleAccess, value: boolean) => {
-    setModuleAccess({ ...moduleAccess, [key]: value })
+  const setModule = (key: keyof ProjectModuleAccess, value: boolean) => {
+    setModuleAccess((prev) => ({ ...prev, [key]: value }))
   }
 
-  const handlePermissionChange = (
-    module: keyof ProjectPermissions,
-    permission: string,
-    value: boolean,
-  ) => {
-    setPermissions({
-      ...permissions,
-      [module]: {
-        ...permissions[module],
-        [permission]: value,
-      },
-    })
-  }
-
-  const toggleModule = (module: string) => {
-    setExpandedModules((prev) => ({ ...prev, [module]: !prev[module] }))
+  const setAction = (module: ProjectActionModule, key: string, value: boolean) => {
+    setPermissions((prev) => ({
+      ...prev,
+      [module]: { ...prev[module], [key]: value },
+    }))
   }
 
   const handleSave = () => {
@@ -110,93 +100,53 @@ function ProjectRoleEditDialogContent({
       onDescriptionChange={setDescription}
       isSystem={role.is_system}
     >
-      {/* Доступ к модулям */}
-      <div className="space-y-4">
-        <h4 className="font-medium">Доступ к модулям</h4>
-        <div className="grid gap-2">
-          {Object.entries(MODULE_LABELS).map(([key, { label, icon: Icon }]) => {
-            const modKey = key as keyof ProjectModuleAccess
-            return (
-              <div
-                key={key}
-                className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/50"
-              >
-                <Checkbox
-                  id={`mod-${key}`}
-                  checked={moduleAccess[modKey]}
-                  onCheckedChange={(checked) =>
-                    handleModuleAccessChange(modKey, checked as boolean)
-                  }
-                />
-                <Icon className="h-4 w-4 text-muted-foreground" />
-                <Label htmlFor={`mod-${key}`} className="flex-1 cursor-pointer">
-                  {label}
-                </Label>
-              </div>
-            )
-          })}
+      <div className="space-y-5">
+        {/* Видимость модулей */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <span>Доступ к модулям — что видно</span>
+            <span className="flex-1 h-px bg-border" />
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {PROJECT_MODULE_DEFS.map((def) => (
+              <ModuleToggle
+                key={def.key}
+                checked={moduleAccess[def.key] === true}
+                onChange={(v) => setModule(def.key, v)}
+                label={def.label}
+                icon={def.icon}
+              />
+            ))}
+          </div>
         </div>
-      </div>
 
-      <Separator />
-
-      {/* Разрешения внутри модулей */}
-      <div className="space-y-4">
-        <h4 className="font-medium">Разрешения внутри модулей</h4>
-
-        {permissions.settings && (
-          <ModulePermissionsSection
-            title="Настройки"
-            icon={Settings}
-            expanded={expandedModules.settings}
-            onToggle={() => toggleModule('settings')}
-            permissions={[
-              { key: 'edit_project_info', label: 'Редактировать информацию', value: permissions.settings.edit_project_info },
-              { key: 'manage_project_participants', label: 'Управлять участниками', value: permissions.settings.manage_project_participants },
-              { key: 'manage_google_drive', label: 'Настройка Google Drive', value: permissions.settings.manage_google_drive },
-              { key: 'delete_project', label: 'Удалить проект', value: permissions.settings.delete_project },
-            ]}
-            onChange={(key, value) => handlePermissionChange('settings', key, value)}
-          />
-        )}
-
-        {permissions.forms && (
-          <ModulePermissionsSection
-            title="Анкеты"
-            icon={FileText}
-            expanded={expandedModules.forms}
-            onToggle={() => toggleModule('forms')}
-            permissions={[
-              { key: 'add_forms', label: 'Добавлять анкеты', value: permissions.forms.add_forms },
-              { key: 'fill_forms', label: 'Заполнять анкеты', value: permissions.forms.fill_forms },
-              { key: 'edit_own_form_answers', label: 'Редактировать свои ответы', value: permissions.forms.edit_own_form_answers },
-              { key: 'view_others_form_answers', label: 'Видеть ответы других', value: permissions.forms.view_others_form_answers },
-            ]}
-            onChange={(key, value) => handlePermissionChange('forms', key, value)}
-          />
-        )}
-
-        {permissions.documents && (
-          <ModulePermissionsSection
-            title="Документы"
-            icon={FolderOpen}
-            expanded={expandedModules.documents}
-            onToggle={() => toggleModule('documents')}
-            permissions={[
-              { key: 'add_documents', label: 'Добавлять документы', value: permissions.documents.add_documents },
-              { key: 'view_documents', label: 'Просматривать документы', value: permissions.documents.view_documents },
-              { key: 'edit_documents', label: 'Редактировать документы', value: permissions.documents.edit_documents },
-              { key: 'download_documents', label: 'Скачивать документы', value: permissions.documents.download_documents },
-              { key: 'move_documents', label: 'Перемещать документы', value: permissions.documents.move_documents },
-              { key: 'delete_documents', label: 'Удалять документы', value: permissions.documents.delete_documents },
-              { key: 'compress_pdf', label: 'Сжимать PDF', value: permissions.documents.compress_pdf },
-              { key: 'view_document_technical_info', label: 'Техническая информация', value: permissions.documents.view_document_technical_info },
-              { key: 'create_folders', label: 'Создавать секции', value: permissions.documents.create_folders },
-              { key: 'add_document_kits', label: 'Добавлять наборы', value: permissions.documents.add_document_kits },
-            ]}
-            onChange={(key, value) => handlePermissionChange('documents', key, value)}
-          />
-        )}
+        {/* Действия внутри модулей */}
+        {PROJECT_ACTION_GROUPS.map((grp) => {
+          const modulePerms = permissions[grp.module] as Record<string, boolean> | undefined
+          if (!modulePerms) return null
+          const Icon = grp.icon
+          return (
+            <PermissionGroup
+              key={grp.module}
+              title={
+                <span className="flex items-center gap-1.5">
+                  <Icon className="h-3.5 w-3.5" />
+                  {grp.label} — действия
+                </span>
+              }
+            >
+              {grp.actions.map((a) => (
+                <PermissionToggleRow
+                  key={a.key}
+                  checked={modulePerms[a.key] === true}
+                  onChange={(v) => setAction(grp.module, a.key, v)}
+                  label={a.label}
+                  danger={a.danger}
+                />
+              ))}
+            </PermissionGroup>
+          )
+        })}
       </div>
     </RoleEditDialogBase>
   )

@@ -11,6 +11,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useWorkspaceContext } from '../../contexts/WorkspaceContext'
 import { permissionKeys, STALE_TIME } from '../queryKeys'
 import { SYSTEM_WORKSPACE_ROLES, type WorkspacePermission, type WorkspacePermissions } from '../../types/permissions'
+import { emptyWorkspacePermissions, WORKSPACE_PERMISSION_KEYS } from '@/lib/permissions/registry'
 import { fromSupabaseJson } from '@/utils/supabaseJson'
 
 type UseWorkspacePermissionsOptions = {
@@ -105,30 +106,15 @@ export function useWorkspacePermissions(
 
     const userRolesData = rolesData.filter((role) => userRoles.includes(role.name))
 
-    // Начинаем со всех false
-    const merged: WorkspacePermissions = {
-      manage_workspace_settings: false,
-      delete_workspace: false,
-      manage_participants: false,
-      manage_roles: false,
-      manage_templates: false,
-      manage_statuses: false,
-      manage_features: false,
-      create_projects: false,
-      view_all_projects: false,
-      edit_all_projects: false,
-      delete_all_projects: false,
-      view_knowledge_base: false,
-      manage_knowledge_base: false,
-      view_workspace_digest: false,
-    }
+    // Начинаем со всех false (список ключей — из реестра)
+    const merged: WorkspacePermissions = emptyWorkspacePermissions()
 
     // Объединяем по принципу ИЛИ
     for (const role of userRolesData) {
       const rolePerms = role.permissions
       if (!rolePerms || typeof rolePerms !== 'object' || Array.isArray(rolePerms)) continue
-      const perms = fromSupabaseJson<WorkspacePermissions>(rolePerms)
-      for (const key of Object.keys(merged) as WorkspacePermission[]) {
+      const perms = fromSupabaseJson<Partial<WorkspacePermissions>>(rolePerms)
+      for (const key of WORKSPACE_PERMISSION_KEYS as WorkspacePermission[]) {
         if (perms[key]) {
           merged[key] = true
         }

@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext'
 import { createQueryWrapper } from '@/test/testUtils'
 import type { WorkspacePermissions } from '@/types/permissions'
+import { emptyWorkspacePermissions } from '@/lib/permissions/registry'
 
 // Тип для мока supabase.from()
 type SupabaseFrom = ReturnType<typeof supabase.from>
@@ -29,20 +30,7 @@ function makeRole(
   overrides: Record<string, unknown> = {},
 ) {
   const defaultPerms: WorkspacePermissions = {
-    manage_workspace_settings: false,
-    delete_workspace: false,
-    manage_participants: false,
-    manage_roles: false,
-    manage_templates: false,
-    manage_statuses: false,
-    manage_features: false,
-    create_projects: false,
-    view_all_projects: false,
-    edit_all_projects: false,
-    delete_all_projects: false,
-    view_knowledge_base: false,
-    manage_knowledge_base: false,
-    view_workspace_digest: false,
+    ...emptyWorkspacePermissions(),
     ...permissions,
   }
   return {

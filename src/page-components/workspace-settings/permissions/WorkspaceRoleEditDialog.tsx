@@ -1,16 +1,20 @@
 /**
- * Диалог редактирования роли Workspace
+ * Диалог редактирования роли Workspace.
+ * Права рисуются группами из единого реестра.
  */
 
 import { useState } from 'react'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
 import { Shield } from 'lucide-react'
 import type { Database } from '@/types/database'
-import type { WorkspacePermissions } from '@/types/permissions'
+import type { WorkspacePermission, WorkspacePermissions } from '@/types/permissions'
 import { fromSupabaseJson, toSupabaseJson } from '@/utils/supabaseJson'
-import { WORKSPACE_PERMISSION_LABELS } from './constants'
+import {
+  WORKSPACE_PERM_GROUPS,
+  WORKSPACE_PERMISSION_DEFS,
+  emptyWorkspacePermissions,
+} from '@/lib/permissions/registry'
 import { RoleEditDialogBase } from './RoleEditDialogBase'
+import { PermissionGroup, PermissionToggleRow } from './PermissionControls'
 
 type WorkspaceRole = Database['public']['Tables']['workspace_roles']['Row']
 
@@ -53,20 +57,17 @@ function WorkspaceRoleEditDialogContent({
 }) {
   const [name, setName] = useState(role.name)
   const [description, setDescription] = useState(role.description || '')
-  const [permissions, setPermissions] = useState<WorkspacePermissions>(
-    fromSupabaseJson<WorkspacePermissions>(role.permissions),
-  )
+  const [permissions, setPermissions] = useState<WorkspacePermissions>({
+    ...emptyWorkspacePermissions(),
+    ...fromSupabaseJson<Partial<WorkspacePermissions>>(role.permissions),
+  })
 
-  const handlePermissionChange = (key: keyof WorkspacePermissions, value: boolean) => {
-    setPermissions({ ...permissions, [key]: value })
+  const setPerm = (key: WorkspacePermission, value: boolean) => {
+    setPermissions((prev) => ({ ...prev, [key]: value }))
   }
 
   const handleSave = () => {
-    onSave({
-      name,
-      description,
-      permissions: toSupabaseJson(permissions),
-    })
+    onSave({ name, description, permissions: toSupabaseJson(permissions) })
   }
 
   return (
@@ -86,37 +87,28 @@ function WorkspaceRoleEditDialogContent({
       isSystem={role.is_system}
     >
       <div className="space-y-4">
-        <h4 className="font-medium">Разрешения</h4>
-        <div className="grid gap-3">
-          {Object.entries(WORKSPACE_PERMISSION_LABELS).map(([key, { label, description }]) => {
-            const permKey = key as keyof WorkspacePermissions
-            const isDisabled = permKey === 'delete_workspace' && !role.is_owner
-
-            return (
-              <div
-                key={key}
-                className={`flex items-start gap-3 p-3 rounded-lg border ${
-                  isDisabled ? 'opacity-50 bg-muted' : 'hover:bg-accent/50'
-                }`}
-              >
-                <Checkbox
-                  id={key}
-                  checked={permissions[permKey]}
-                  onCheckedChange={(checked) =>
-                    handlePermissionChange(permKey, checked as boolean)
-                  }
-                  disabled={isDisabled}
-                />
-                <div className="flex-1">
-                  <Label htmlFor={key} className="font-medium cursor-pointer">
-                    {label}
-                  </Label>
-                  <p className="text-sm text-muted-foreground">{description}</p>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+        {WORKSPACE_PERM_GROUPS.map((group) => {
+          const defs = WORKSPACE_PERMISSION_DEFS.filter((d) => d.group === group.id)
+          if (defs.length === 0) return null
+          return (
+            <PermissionGroup key={group.id} title={group.label}>
+              {defs.map((def) => {
+                const disabled = !!def.ownerOnly && !role.is_owner
+                return (
+                  <PermissionToggleRow
+                    key={def.key}
+                    checked={permissions[def.key]}
+                    onChange={(v) => setPerm(def.key, v)}
+                    label={def.label}
+                    description={def.description}
+                    danger={def.danger}
+                    disabled={disabled}
+                  />
+                )
+              })}
+            </PermissionGroup>
+          )
+        })}
       </div>
     </RoleEditDialogBase>
   )

@@ -143,54 +143,56 @@ export function PermissionsTab() {
         </p>
 
         {active === 'workspace' && (
-          <div className="space-y-3">
+          <div className="space-y-1.5">
             {workspaceRoles?.map((role) => {
               const Icon = getRoleIcon(role)
               return (
                 <div
                   key={role.id}
-                  className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                  className="group flex items-center gap-3 px-3 py-2 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center"
-                      style={{
-                        backgroundColor: `color-mix(in srgb, ${safeCssColor(role.color)} 12%, transparent)`,
-                      }}
-                    >
-                      <Icon className="h-5 w-5" style={{ color: safeCssColor(role.color) }} />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{role.name}</span>
-                        {role.is_owner && (
-                          <Badge variant="outline" className="text-xs">
-                            Владелец
-                          </Badge>
-                        )}
-                        {role.is_system && !role.is_owner && (
-                          <Badge variant="secondary" className="text-xs">
-                            Системная
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{role.description}</p>
-                    </div>
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                    style={{
+                      backgroundColor: `color-mix(in srgb, ${safeCssColor(role.color)} 12%, transparent)`,
+                    }}
+                  >
+                    <Icon className="h-3.5 w-3.5" style={{ color: safeCssColor(role.color) }} />
                   </div>
+                  <span className="font-medium text-sm shrink-0">{role.name}</span>
+                  {role.is_owner && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
+                      Владелец
+                    </Badge>
+                  )}
+                  {role.is_system && !role.is_owner && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
+                      Системная
+                    </Badge>
+                  )}
+                  <span className="text-[12px] text-muted-foreground truncate">
+                    {role.description}
+                  </span>
 
-                  <div className="flex items-center gap-2">
+                  <div className="ml-auto flex items-center gap-0.5 shrink-0">
                     {!role.is_owner && (
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
+                        className="h-7 w-7 opacity-0 group-hover:opacity-100"
                         onClick={() => setEditingWorkspaceRole(role)}
                       >
-                        <Edit2 className="h-4 w-4" />
+                        <Edit2 className="h-3.5 w-3.5" />
                       </Button>
                     )}
                     {!role.is_system && (
-                      <Button variant="ghost" size="sm" className="text-destructive" disabled>
-                        <Trash2 className="h-4 w-4" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive"
+                        disabled
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     )}
                   </div>
@@ -198,7 +200,7 @@ export function PermissionsTab() {
               )
             })}
 
-            <Button variant="outline" className="w-full mt-4" disabled>
+            <Button variant="outline" className="w-full mt-3" disabled>
               <Plus className="h-4 w-4 mr-2" />
               Добавить роль (скоро)
             </Button>
@@ -206,48 +208,49 @@ export function PermissionsTab() {
         )}
 
         {active === 'project' && (
-          <div className="space-y-3">
+          <div className="space-y-1.5">
             {projectRoles?.map((role) => (
               <div
                 key={role.id}
-                className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                className="group flex items-center gap-3 px-3 py-2 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center"
-                    style={{
-                      backgroundColor: `color-mix(in srgb, ${safeCssColor(role.color)} 12%, transparent)`,
-                    }}
-                  >
-                    <Users className="h-5 w-5" style={{ color: safeCssColor(role.color) }} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{role.name}</span>
-                      {role.is_system && (
-                        <Badge variant="secondary" className="text-xs">
-                          Системная
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">{role.description}</p>
-                  </div>
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                  style={{
+                    backgroundColor: `color-mix(in srgb, ${safeCssColor(role.color)} 12%, transparent)`,
+                  }}
+                >
+                  <Users className="h-3.5 w-3.5" style={{ color: safeCssColor(role.color) }} />
                 </div>
+                <span className="font-medium text-sm shrink-0">{role.name}</span>
+                {role.is_system && (
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
+                    Системная
+                  </Badge>
+                )}
+                <span className="text-[12px] text-muted-foreground truncate">
+                  {role.description}
+                </span>
 
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setEditingProjectRole(role)}>
-                    <Edit2 className="h-4 w-4" />
+                <div className="ml-auto flex items-center gap-0.5 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 opacity-0 group-hover:opacity-100"
+                    onClick={() => setEditingProjectRole(role)}
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
                   </Button>
                   {!role.is_system && (
-                    <Button variant="ghost" size="sm" className="text-destructive" disabled>
-                      <Trash2 className="h-4 w-4" />
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" disabled>
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   )}
                 </div>
               </div>
             ))}
 
-            <Button variant="outline" className="w-full mt-4" disabled>
+            <Button variant="outline" className="w-full mt-3" disabled>
               <Plus className="h-4 w-4 mr-2" />
               Добавить роль (скоро)
             </Button>

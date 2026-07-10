@@ -25,26 +25,32 @@ export type WorkspacePermission =
   | 'view_knowledge_base' // Просматривать базу знаний
   | 'manage_knowledge_base' // Создавать, редактировать, удалять статьи
   | 'view_workspace_digest' // Видеть страницу «Дневник» в воркспейсе и пакетные сводки
+  // --- Доступ к разделам ---
+  | 'view_inbox' // Раздел «Входящие»
+  | 'view_tasks_page' // Общая страница «Задачи»
+  | 'view_calendar' // Раздел «Календарь»
+  | 'view_boards' // Раздел «Доски и списки»
+  | 'view_reports' // Раздел «Отчёты»
+  | 'view_source_updates' // Раздел «Обновления источников»
+  | 'view_finance' // Раздел «Финансы»
+  // --- Действия с задачами ---
+  | 'create_tasks' // Создавать задачи
+  | 'edit_any_task' // Редактировать любую (чужую) задачу
+  | 'change_task_status' // Менять статус задачи
+  | 'manage_task_assignees' // Назначать исполнителей
+  | 'delete_own_task' // Удалять свою задачу
+  | 'delete_any_task' // Удалять любую задачу
+  // --- Действия с чатами ---
+  | 'edit_own_message' // Редактировать своё сообщение
+  | 'forward_messages' // Пересылать сообщения
+  | 'react_messages' // Ставить реакции
+  | 'delete_own_message' // Удалять своё сообщение
+  | 'delete_any_message' // Удалять любое сообщение
 
 /**
  * Объект разрешений workspace
  */
-export type WorkspacePermissions = {
-  manage_workspace_settings: boolean
-  delete_workspace: boolean
-  manage_participants: boolean
-  manage_roles: boolean
-  manage_templates: boolean
-  manage_statuses: boolean
-  manage_features: boolean
-  create_projects: boolean
-  view_all_projects: boolean
-  edit_all_projects: boolean
-  delete_all_projects: boolean
-  view_knowledge_base: boolean
-  manage_knowledge_base: boolean
-  view_workspace_digest: boolean
-}
+export type WorkspacePermissions = Record<WorkspacePermission, boolean>
 
 // =====================================================
 // Модули проекта
