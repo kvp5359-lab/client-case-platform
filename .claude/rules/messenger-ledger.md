@@ -46,6 +46,13 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-07-10 — Права роли Workspace: гейт действий сообщений (не баг, фича) ⏳ ЖДЁТ ДЕПЛОЯ ФРОНТА
+- **Контекст:** доработка механизма прав. Новые ключи роли Workspace `delete_own_message`/`delete_any_message`/`edit_own_message`/`forward_messages` (+ задачи/разделы). Реестр — `src/lib/permissions/registry.ts`; backfill ролей — миграция `20260710120000_role_permissions_sections_and_thread_actions.sql` (в проде).
+- **Тронуто в мессенджере (ТОЛЬКО UI-гейт, канальной логики НЕ касался):** `MessageList` — `canDelete` бабла/сервис-сообщения теперь `(isOwn && delete_own_message) || delete_any_message` (было `isOwn || isAdmin`); `MessengerTabContent` — `onEdit`/`onForward` в `MessengerProvider` передаются только при `edit_own_message`/`forward_messages`. Реакции НЕ гейтятся (`onReact` — обязательный тип; низкий приоритет).
+- **Дефолты без регрессии:** staff (Владелец/Админ/Сотрудник) — права `true`; клиент — только свои (`edit_own`/`delete_own`/`react` true, `delete_any`/`forward` false). Поведение сохранено, но теперь ограничиваемо.
+- **Грабли:** удаление/редактирование/пересылка сообщения гейтятся правом роли Workspace (не `isAdmin`/`isOwn`). Это UI-гейт (прячет пункт меню), НЕ защита в БД/edge — для жёсткой защиты добавлять проверку на стороне канала. Реакции открыты.
+- **Проверки:** tsc 0, eslint 0, 853 теста. Смок после деплоя фронта: роль без `delete_any_message` не удаляет чужое; без `edit_own_message` нет «Редактировать»; без `forward_messages` нет «Переслать».
+
 ### 2026-07-07 — Удалённый тред залипал во «Входящих» (материализованный путь не фильтровал is_deleted) ⭐ БД В ПРОДЕ, ⏳ ФРОНТ ЖДЁТ ДЕПЛОЯ
 - **Симптом (прод):** удалённый (`is_deleted=true`) email-тред продолжал висеть во «Входящих» (вкладка «Непрочитанные» + бейдж), его нельзя было ни открыть, ни убрать — **даже после F5**.
 - **Метод — ЗАМЕР (не гадал):** прямые вызовы RPC на проде. `get_inbox_threads_v2` тред **не** отдаёт, а `get_inbox_unread_threads` и `get_inbox_thread_aggregates` — **отдают**. Тред `is_deleted=true`, но остался в `thread_inbox_meta` (1) и `thread_unread_state` (unread>0).
