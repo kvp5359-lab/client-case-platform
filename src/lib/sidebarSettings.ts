@@ -135,7 +135,8 @@ export const SIDEBAR_NAV_ITEMS: Record<SidebarNavKey, SidebarItemMeta> = {
     label: 'Входящие',
     icon: Inbox,
     path: 'inbox',
-    hasAccess: ({ isClientOnly }) => !isClientOnly,
+    hasAccess: ({ isClientOnly, hasPermission }) =>
+      !isClientOnly && hasPermission('view_inbox'),
   },
   inbox_unmatched: {
     key: 'inbox_unmatched',
@@ -150,21 +151,24 @@ export const SIDEBAR_NAV_ITEMS: Record<SidebarNavKey, SidebarItemMeta> = {
     label: 'Задачи',
     icon: CheckSquare,
     path: 'tasks',
-    hasAccess: ({ isClientOnly }) => !isClientOnly,
+    hasAccess: ({ isClientOnly, hasPermission }) =>
+      !isClientOnly && hasPermission('view_tasks_page'),
   },
   calendar: {
     key: 'calendar',
     label: 'Календарь',
     icon: CalendarDays,
     path: 'calendar',
-    hasAccess: ({ isClientOnly }) => !isClientOnly,
+    hasAccess: ({ isClientOnly, hasPermission }) =>
+      !isClientOnly && hasPermission('view_calendar'),
   },
   boards: {
     key: 'boards',
     label: 'Доски и списки',
     icon: Kanban,
     path: 'boards',
-    hasAccess: ({ isClientOnly }) => !isClientOnly,
+    hasAccess: ({ isClientOnly, hasPermission }) =>
+      !isClientOnly && hasPermission('view_boards'),
   },
   knowledge_base: {
     key: 'knowledge_base',
@@ -206,22 +210,24 @@ export const SIDEBAR_NAV_ITEMS: Record<SidebarNavKey, SidebarItemMeta> = {
     label: 'Отчёты',
     icon: BarChart3,
     path: 'reports',
-    hasAccess: ({ isClientOnly }) => !isClientOnly,
+    hasAccess: ({ isClientOnly, hasPermission }) =>
+      !isClientOnly && hasPermission('view_reports'),
   },
   source_updates: {
     key: 'source_updates',
     label: 'Обновления источников',
     icon: FolderSync,
     path: 'source-updates',
-    hasAccess: ({ isClientOnly }) => !isClientOnly,
+    hasAccess: ({ isClientOnly, hasPermission }) =>
+      !isClientOnly && hasPermission('view_source_updates'),
   },
   finance: {
     key: 'finance',
     label: 'Финансы',
     icon: Wallet,
     path: 'finance',
-    hasAccess: ({ isClientOnly, isOwner, hasPermission }) =>
-      !isClientOnly && (isOwner || hasPermission('manage_workspace_settings')),
+    hasAccess: ({ isClientOnly, hasPermission }) =>
+      !isClientOnly && hasPermission('view_finance'),
   },
   settings: {
     key: 'settings',
