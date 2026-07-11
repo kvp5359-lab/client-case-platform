@@ -34,6 +34,16 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'pps.whatsapp.net',
       },
+      {
+        // Публичные файлы R2 (аватары через custom-домен)
+        protocol: 'https',
+        hostname: 'cdn.clientcase.app',
+      },
+      {
+        // Приватные файлы R2 через presigned-ссылки (на случай next/image по прямому URL)
+        protocol: 'https',
+        hostname: '*.r2.cloudflarestorage.com',
+      },
     ],
   },
 }

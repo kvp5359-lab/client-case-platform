@@ -40,7 +40,9 @@ const r2 = new AwsClient({
 })
 
 function objectUrl(bucket: string, path: string): string {
-  const key = path.replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/")
+  // filter(Boolean) схлопывает пустые сегменты (`<ws>//<msg>` из личных диалогов
+  // без проекта) — как rclone при копировании. Запись/чтение по одному ключу.
+  const key = path.replace(/^\/+/, "").split("/").filter(Boolean).map(encodeURIComponent).join("/")
   return `${R2_ENDPOINT}/${bucket}/${key}`
 }
 

@@ -86,7 +86,10 @@ function workspaceOf(path: string): string | null {
 }
 
 function objectUrl(bucket: string, path: string): string {
-  const key = path.replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/");
+  // filter(Boolean) схлопывает пустые сегменты (напр. `<ws>//<msg>` из личных
+  // диалогов без проекта): rclone при копировании тоже схлопнул `//`→`/`, и
+  // запись через r2Upload обязана класть по тому же ключу.
+  const key = path.replace(/^\/+/, "").split("/").filter(Boolean).map(encodeURIComponent).join("/");
   return `${R2_ENDPOINT}/${bucket}/${key}`;
 }
 

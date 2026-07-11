@@ -52,7 +52,10 @@ function client(): AwsClient {
 }
 
 function objectUrl(bucket: string, path: string): string {
-  const key = path.replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/");
+  // filter(Boolean) схлопывает пустые сегменты (`<ws>//<msg>` из личных диалогов
+  // без проекта) — как это сделал rclone при копировании. Запись и чтение должны
+  // класть/читать по одному ключу.
+  const key = path.replace(/^\/+/, "").split("/").filter(Boolean).map(encodeURIComponent).join("/");
   return `${R2_ENDPOINT}/${bucket}/${key}`;
 }
 
