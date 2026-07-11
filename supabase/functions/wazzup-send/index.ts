@@ -24,7 +24,9 @@ import {
 } from "../_shared/edge.ts";
 import { markMessageSent, markMessageFailed } from "../_shared/messageSendStatus.ts";
 import { stripHtmlBasic } from "../_shared/channelText.ts";
-import { STORAGE_BUCKETS, storageCreateSignedUrl } from "../_shared/storage.ts";
+import { signAttachmentToken } from "../_shared/attachmentToken.ts";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 
 interface RequestBody {
   message_id: string;
@@ -158,16 +160,22 @@ Deno.serve(async (req: Request) => {
 
     for (let i = 0; i < attachments.length; i++) {
       const att = attachments[i];
-      const { data: signed } = await storageCreateSignedUrl(service, STORAGE_BUCKETS.files, att.storage_path as string, 60 * 60);
-
-      if (!signed?.signedUrl) {
-        console.warn("[wazzup-send] signed url failed for", att.storage_path);
-        continue;
-      }
+      // Wazzup сам скачивает файл по contentUri. R2 presigned-ссылку его
+      // content-store забрать не может (много query-параметров подписи), поэтому
+      // отдаём ссылку на attachment-proxy — токен в пути, файл отдаётся из R2.
+      const token = await signAttachmentToken({
+        p: att.storage_path as string,
+        ct: (att.mime_type as string | null) ?? undefined,
+        fn: (att.file_name as string | null) ?? undefined,
+        exp: Math.floor(Date.now() / 1000) + 60 * 60,
+      });
+      // Имя файла — последним сегментом URL: Wazzup показывает именно его.
+      const fnamePart = att.file_name ? `/${encodeURIComponent(att.file_name as string)}` : "";
+      const contentUri = `${SUPABASE_URL}/functions/v1/attachment-proxy/${token}${fnamePart}`;
 
       const payload: Record<string, unknown> = {
         ...baseRequest,
-        contentUri: signed.signedUrl,
+        contentUri,
       };
       // Если текста не было — quotedMessageId уйдёт с первым файлом.
       if (i === 0 && !text.trim() && quotedMessageId) {

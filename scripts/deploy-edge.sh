@@ -26,6 +26,7 @@ NO_JWT_FUNCTIONS=(
   telegram-edit-message
   wazzup-webhook
   wazzup-send
+  attachment-proxy
   gmail-webhook
   email-internal-send
   impersonate-start
