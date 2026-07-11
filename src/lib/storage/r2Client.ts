@@ -5,8 +5,10 @@
  * edge-функцию `storage-r2` (она проверяет доступ и выдаёт presigned-ссылку),
  * после чего браузер качает/льёт файл ПРЯМО в R2 по этой ссылке.
  *
- * Возвращаемые формы совпадают с Supabase Storage (`{ data, error }`), чтобы
- * `index.ts` мог прозрачно ветвиться, а вызывающий код не менялся.
+ * Возвращаемые формы совпадают с Supabase Storage (`{ data, error }`), причём
+ * это ДИСКРИМИНИРОВАННОЕ объединение (error===null ⇒ data не null) — чтобы
+ * `index.ts` мог прозрачно ветвиться, а вызывающий код (`if (error) …; data.x`)
+ * типизировался без правок.
  */
 
 import { supabase } from '@/lib/supabase'
@@ -17,7 +19,9 @@ const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 /** База публичного домена R2 (напр. https://cdn.clientcase.app). Ключ: `<base>/<bucket>/<path>`. */
 const R2_PUBLIC_BASE = (process.env.NEXT_PUBLIC_R2_PUBLIC_BASE ?? '').replace(/\/+$/, '')
 
-type StorageError = { message: string } | null
+type StorageError = { message: string }
+/** error===null ⇒ data не null (как в supabase-js v2). */
+type Res<T> = { data: T; error: null } | { data: null; error: StorageError }
 
 /** Вызов edge-посредника storage-r2 с пользовательским JWT. */
 async function callR2<T = unknown>(
@@ -49,7 +53,7 @@ export async function r2Upload(
   path: string,
   file: File | Blob | ArrayBuffer | Uint8Array,
   options?: { contentType?: string },
-): Promise<{ data: { path: string } | null; error: StorageError }> {
+): Promise<Res<{ path: string }>> {
   const { status, body } = await callR2('sign_put', { bucket, path })
   if (!body.url) return { data: null, error: errFrom(status, body) }
   const contentType =
@@ -67,7 +71,7 @@ export async function r2Upload(
 export async function r2Download(
   bucket: BucketRef,
   path: string,
-): Promise<{ data: Blob | null; error: StorageError }> {
+): Promise<Res<Blob>> {
   const { status, body } = await callR2('sign_get', { bucket, path })
   if (!body.url) return { data: null, error: errFrom(status, body) }
   const res = await fetch(body.url)
@@ -80,7 +84,7 @@ export async function r2SignedUrl(
   bucket: BucketRef,
   path: string,
   expiresIn: number,
-): Promise<{ data: { signedUrl: string } | null; error: StorageError }> {
+): Promise<Res<{ signedUrl: string }>> {
   const { status, body } = await callR2('sign_get', { bucket, path, expiresIn })
   if (!body.url) return { data: null, error: errFrom(status, body) }
   return { data: { signedUrl: body.url }, error: null }
@@ -96,17 +100,17 @@ export function r2PublicUrl(bucket: BucketRef, path: string): { data: { publicUr
 export async function r2Remove(
   bucket: BucketRef,
   paths: string[],
-): Promise<{ data: unknown; error: StorageError }> {
+): Promise<Res<unknown>> {
   const { status, body } = await callR2<{ results?: unknown }>('remove', { bucket, paths })
   if (status !== 200) return { data: null, error: errFrom(status, body) }
-  return { data: (body as { results?: unknown }).results ?? null, error: null }
+  return { data: (body as { results?: unknown }).results ?? {}, error: null }
 }
 
 /** Список ключей по префиксу. */
 export async function r2List(
   bucket: BucketRef,
   prefix?: string,
-): Promise<{ data: { name: string }[] | null; error: StorageError }> {
+): Promise<Res<{ name: string }[]>> {
   const { status, body } = await callR2<{ keys?: string[] }>('list', { bucket, prefix })
   if (status !== 200) return { data: null, error: errFrom(status, body) }
   const keys = (body as { keys?: string[] }).keys ?? []
