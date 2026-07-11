@@ -9,6 +9,7 @@ import {
 import { formatSize } from '@/utils/files/formatSize'
 import { toast } from 'sonner'
 import { AttachmentMenuButton } from './AttachmentMenuButton'
+import type { ReactNode } from 'react'
 
 type FileAttachmentProps = {
   attachment: AttachmentType
@@ -18,6 +19,9 @@ type FileAttachmentProps = {
   projectId?: string
   workspaceId?: string
   threadId?: string
+  /** Время сообщения — встраивается в строку плашки (одиночный файл без текста),
+   *  чтобы не оставлять пустой «подвал» под баблом. */
+  timestamp?: ReactNode
 }
 
 export function FileAttachment({
@@ -28,6 +32,7 @@ export function FileAttachment({
   projectId,
   workspaceId,
   threadId,
+  timestamp,
 }: FileAttachmentProps) {
   const [loading, setLoading] = useState(false)
 
@@ -80,7 +85,7 @@ export function FileAttachment({
       draggable={!!(projectId && workspaceId)}
       onDragStart={handleDragStart}
       className={cn(
-        'flex items-center gap-2 px-2 py-1 rounded-lg border cursor-pointer transition-colors',
+        'relative flex items-center gap-2 px-2 py-1 rounded-lg border cursor-pointer transition-colors',
         isFailed
           ? 'bg-red-50 border-red-200 hover:bg-red-100'
           : isDraft
@@ -132,16 +137,23 @@ export function FileAttachment({
           </p>
         )}
       </div>
-      <AttachmentMenuButton
-        attachment={attachment}
-        isOwn={isOwn}
-        projectId={projectId}
-        workspaceId={workspaceId}
-        threadId={threadId}
-        openLabel="Открыть документ"
-        loading={loading}
-        setLoading={setLoading}
-      />
+      {/* При бейдже времени внизу поднимаем меню «…» вверх, чтобы не пересекались. */}
+      <div className={cn('shrink-0', timestamp && 'self-start')}>
+        <AttachmentMenuButton
+          attachment={attachment}
+          isOwn={isOwn}
+          projectId={projectId}
+          workspaceId={workspaceId}
+          threadId={threadId}
+          openLabel="Открыть документ"
+          loading={loading}
+          setLoading={setLoading}
+        />
+      </div>
+      {/* Время сообщения — оверлеем в правом нижнем углу последнего файла. */}
+      {timestamp && (
+        <div className="absolute bottom-1 right-1 z-10 pointer-events-none">{timestamp}</div>
+      )}
     </div>
   )
 }

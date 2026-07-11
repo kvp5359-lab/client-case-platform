@@ -17,7 +17,9 @@ type BubbleTextContentProps = {
   message: ProjectMessage
   isOwn: boolean
   accent: MessengerAccent
-  hasAttachments: boolean
+  /** Показывать время в конце текста. false — время идёт отдельно (оверлей на
+   *  картинке / у одиночного файла в плашке). */
+  showTimestamp: boolean
   deliveryStatus: DeliveryStatus
   deliveryFailed: boolean
   textRef: React.RefObject<HTMLDivElement | null>
@@ -38,7 +40,7 @@ export function BubbleTextContent({
   message,
   isOwn,
   accent,
-  hasAttachments,
+  showTimestamp,
   deliveryStatus,
   deliveryFailed,
   textRef,
@@ -126,7 +128,7 @@ export function BubbleTextContent({
           className={cn(isOverflowing && isCollapsed && 'overflow-hidden')}
           style={collapsedStyle}
         >
-          <div className={cn('flex items-end justify-between gap-2', hasAttachments && 'block')}>
+          <div className={cn('flex items-end justify-between gap-2', !showTimestamp && 'block')}>
             {isHtmlContent(message.content) ? (
               <div
                 ref={contentContainerRef}
@@ -148,7 +150,7 @@ export function BubbleTextContent({
                 }}
               />
             )}
-            {!hasAttachments && (
+            {showTimestamp && (
               <BubbleTimestamp
                 message={message}
                 isOwn={isOwn}
@@ -188,7 +190,7 @@ export function BubbleTextContent({
             {isCollapsed ? 'Показать полностью' : 'Свернуть'}
           </button>
           <div className="flex items-center gap-2">
-            {isCollapsed && !hasAttachments && (
+            {isCollapsed && showTimestamp && (
               <BubbleTimestamp
                 message={message}
                 isOwn={isOwn}

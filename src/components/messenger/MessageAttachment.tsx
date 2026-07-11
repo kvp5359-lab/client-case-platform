@@ -28,6 +28,12 @@ type MessageAttachmentsProps = {
   threadId?: string
   /** Оверлей в правом нижнем углу последней картинки (обычно — таймстамп). */
   imageTimestampOverlay?: ReactNode
+  /** Таймстамп, встраиваемый в строку ЕДИНСТВЕННОГО файла (без картинок/аудио),
+   *  чтобы не оставлять пустой «подвал» под баблом. */
+  fileTimestamp?: ReactNode
+  /** Убрать верхний отступ у первого блока (бабл только из вложений — padding
+   *  бабла даёт равномерный отступ). */
+  flushTop?: boolean
 }
 
 export function MessageAttachments({
@@ -39,16 +45,22 @@ export function MessageAttachments({
   workspaceId,
   threadId,
   imageTimestampOverlay,
+  fileTimestamp,
+  flushTop,
 }: MessageAttachmentsProps) {
   const images = attachments.filter((a) => isImage(a.mime_type))
   const audios = attachments.filter((a) => isAudio(a.mime_type))
   const files = attachments.filter((a) => !isImage(a.mime_type) && !isAudio(a.mime_type))
+  // Первый непустой блок — у него убираем верхний mt при flushTop.
+  const firstBlock = images.length > 0 ? 'images' : audios.length > 0 ? 'audios' : 'files'
+  const topMargin = (block: 'images' | 'audios' | 'files') =>
+    flushTop && firstBlock === block ? 'mt-0' : 'mt-1.5'
 
   return (
     <>
       {images.length > 0 && (
         <div
-          className="grid gap-1.5 mt-1.5"
+          className={`grid gap-1.5 ${topMargin('images')}`}
           style={{
             gridTemplateColumns:
               images.length === 1
@@ -74,15 +86,15 @@ export function MessageAttachments({
         </div>
       )}
       {audios.length > 0 && (
-        <div className="space-y-1 mt-1.5">
+        <div className={`space-y-1 ${topMargin('audios')}`}>
           {audios.map((att) => (
             <AudioAttachmentPlayer key={att.id} attachment={att} isOwn={isOwn} />
           ))}
         </div>
       )}
       {files.length > 0 && (
-        <div className="space-y-1 mt-1.5">
-          {files.map((att) => (
+        <div className={`space-y-1 ${topMargin('files')}`}>
+          {files.map((att, idx) => (
             <FileAttachment
               key={att.id}
               attachment={att}
@@ -92,6 +104,8 @@ export function MessageAttachments({
               projectId={projectId}
               workspaceId={workspaceId}
               threadId={threadId}
+              // Время — оверлеем в правом нижнем углу ПОСЛЕДНЕГО файла.
+              timestamp={idx === files.length - 1 ? fileTimestamp : undefined}
             />
           ))}
         </div>

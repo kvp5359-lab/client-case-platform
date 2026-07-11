@@ -3,7 +3,7 @@ import { CornerDownRight, Loader2, Trash2, BellOff, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MessageAttachments } from './MessageAttachment'
-import { isImage } from './utils/attachmentHelpers'
+import { isImage, isAudio } from './utils/attachmentHelpers'
 import { getInitials, getAvatarColor } from '@/utils/avatarHelpers'
 import { useContactCardStore } from '@/store/contactCardStore'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
@@ -203,7 +203,13 @@ function MessageBubbleImpl({
     (message.content === '📎' || !message.content.trim())
   )
   const hasImages = !!message.attachments?.some((a) => isImage(a.mime_type))
-  const hasNonImageAttachments = !!message.attachments?.some((a) => !isImage(a.mime_type))
+  const hasAudio = !!message.attachments?.some((a) => isAudio(a.mime_type))
+  const hasFiles = !!message.attachments?.some(
+    (a) => !isImage(a.mime_type) && !isAudio(a.mime_type),
+  )
+  // Есть файлы (без картинок/аудио) → время кладём ОВЕРЛЕЕМ в правый нижний угол
+  // последнего файла (как у картинок), а не в текст/подвал бабла.
+  const fileOverlayTimestamp = hasFiles && !hasImages && !hasAudio
   // Pill-фон таймстампа, лежащего поверх картинки — повторяет фон бабла,
   // чтобы выглядело как «вырез» в углу изображения.
   const timestampPillBg = message.is_draft
@@ -364,7 +370,10 @@ function MessageBubbleImpl({
           <div
             id={`msg-${message.id}`}
             className={cn(
-              'relative rounded-2xl px-4 py-2.5 min-w-[10rem] overflow-hidden transition-all duration-500',
+              'relative rounded-2xl min-w-[10rem] overflow-hidden transition-all duration-500',
+              // Только файлы/картинки без текста — маленький равномерный отступ
+              // вокруг вложений. Иначе обычный текстовый padding.
+              hasAttachmentsOnly ? 'p-2.5' : 'px-4 py-2.5',
               // Оптимистическое сообщение — приглушаем до возврата из БД.
               isOptimistic && 'opacity-70',
               // Левый индикатор бабла:
@@ -374,10 +383,9 @@ function MessageBubbleImpl({
               isUnread && !isOwn
                 ? cn('border-l-4', unreadTone === 'slate' ? 'border-slate-500' : 'border-red-500')
                 : !isOwn && showStaffMark && cn('border-l-2', staffBorderColor),
-              // Нижний padding только для аудио/файлов: у них таймстамп лежит абсолютно
-              // под бабла. Если в сообщении есть картинки — таймстамп уезжает поверх
-              // картинки, и лишний отступ снизу не нужен.
-              hasNonImageAttachments && !hasImages && 'pb-6',
+              // Нижний резерв под absolute-таймстамп — только для аудио без текста
+              // (у файлов время оверлеем на плашке, у картинок — на картинке).
+              hasAttachmentsOnly && hasAudio && !hasImages && !fileOverlayTimestamp && 'pb-6',
               message.is_draft
                 ? isScheduled
                   ? 'bg-white border-2 border-dashed border-amber-500 text-gray-900'
@@ -428,7 +436,9 @@ function MessageBubbleImpl({
                     <BellOff className="h-3.5 w-3.5" />
                   ) : undefined
                 }
-                hasAttachments={hasAttachments}
+                // Время в конце текста — только когда нет картинок и нет файлов.
+                // С картинками/файлами оно идёт оверлеем на последнем вложении.
+                showTimestamp={!hasImages && !fileOverlayTimestamp}
                 deliveryStatus={deliveryStatus}
                 deliveryFailed={deliveryFailed}
                 textRef={textRef}
@@ -503,6 +513,24 @@ function MessageBubbleImpl({
                     </div>
                   ) : undefined
                 }
+                fileTimestamp={
+                  fileOverlayTimestamp ? (
+                    <div
+                      className={cn(
+                        'flex items-center gap-1 rounded-full px-1.5 py-0.5 backdrop-blur-sm',
+                        timestampPillBg,
+                      )}
+                    >
+                      <BubbleTimestamp
+                        message={message}
+                        isOwn={isOwn}
+                        deliveryStatus={deliveryStatus}
+                        deliveryFailed={deliveryFailed}
+                      />
+                    </div>
+                  ) : undefined
+                }
+                flushTop={hasAttachmentsOnly}
               />
             )}
 
@@ -562,7 +590,9 @@ function MessageBubbleImpl({
           {/* Timestamp в правом нижнем углу бабла — только когда есть аудио/файлы
               без картинок. Для картинок таймстамп идёт оверлеем на самой картинке
               (см. imageTimestampOverlay у MessageAttachments выше). */}
-          {hasNonImageAttachments && !hasImages && (
+          {/* Absolute-время внизу — только для аудио без текста (у файлов время
+              оверлеем на плашке, у картинок — на картинке, у текста — в тексте). */}
+          {hasAttachmentsOnly && hasAudio && !hasImages && !fileOverlayTimestamp && (
             <div className="absolute bottom-2 right-4 flex items-center gap-1 z-10 pointer-events-none">
               <BubbleTimestamp
                 message={message}
