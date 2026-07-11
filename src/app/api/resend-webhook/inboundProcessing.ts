@@ -8,6 +8,7 @@ import { fetchResendInboundAttachments, sendAutoReply } from './api'
 import { escapeHtml } from './parsing'
 import { ROOT_DOMAIN, type ResendEmailData, type Resolution, type ServiceClient } from './types'
 import { STORAGE_BUCKETS } from '@/lib/storage/buckets'
+import { serverUploadToStorage } from '@/lib/storage/serverR2'
 
 type Address = { address: string; name?: string | null }
 
@@ -85,12 +86,16 @@ export async function saveInboundAttachments(
         ? `${workspaceId}/${projectId}/email-attachments/${rand}`
         : `${workspaceId}/email-attachments/${rand}`
       const mime = att.content_type || 'application/octet-stream'
-      // Серверный ServiceClient (не браузерный singleton) — единственный
-      // storage-вызов в Next-runtime; при переезде на R2 править вместе с
-      // edge `_shared/storage.ts`. Бакет — через общую константу.
-      const { error: ue } = await supabase.storage
-        .from(STORAGE_BUCKETS.files)
-        .upload(sp, bytes, { upsert: false, contentType: mime })
+      // Запись через серверный storage-слой: ветвится на R2 по флагу
+      // NEXT_PUBLIC_STORAGE_R2_BUCKETS — тот же бэкенд, откуда фронт читает файл.
+      // Прямой supabase.storage писал бы в Supabase, а фронт искал бы в R2 → 404.
+      const { error: ue } = await serverUploadToStorage(
+        supabase,
+        STORAGE_BUCKETS.files,
+        sp,
+        bytes,
+        { upsert: false, contentType: mime },
+      )
       if (ue) continue
       const { data: fr } = await supabase
         .from('files')

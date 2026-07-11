@@ -42,11 +42,19 @@ export async function signAttachmentToken(payload: AttachmentTokenPayload): Prom
   return `${body}.${await hmac(body)}`;
 }
 
+/** Сравнение строк за постоянное время — не сливает позицию первого различия. */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
 export async function verifyAttachmentToken(token: string): Promise<AttachmentTokenPayload | null> {
   const dot = token.lastIndexOf(".");
   if (dot < 0) return null;
   const body = token.slice(0, dot);
-  if (token.slice(dot + 1) !== (await hmac(body))) return null;
+  if (!timingSafeEqual(token.slice(dot + 1), await hmac(body))) return null;
   try {
     const payload = JSON.parse(new TextDecoder().decode(b64urlToBytes(body))) as AttachmentTokenPayload;
     if (!payload.p || !payload.exp || Date.now() / 1000 > payload.exp) return null;

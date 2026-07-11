@@ -99,8 +99,16 @@ export async function r2SignedUrl(
   bucket: BucketRef,
   path: string,
   expiresIn: number,
+  options?: { download?: string | boolean },
 ): Promise<Res<{ signedUrl: string }>> {
-  const { status, body } = await callR2('sign_get', { bucket, path, expiresIn })
+  // download → response-content-disposition в presigned URL (файл скачается с
+  // человеческим именем, паритет с Supabase createSignedUrl({ download })).
+  const { status, body } = await callR2('sign_get', {
+    bucket,
+    path,
+    expiresIn,
+    ...(options?.download ? { download: options.download } : {}),
+  })
   if (!body.url) return { data: null, error: errFrom(status, body) }
   return { data: { signedUrl: body.url }, error: null }
 }

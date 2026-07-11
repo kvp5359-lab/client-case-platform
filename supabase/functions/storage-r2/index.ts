@@ -72,6 +72,11 @@ const AUTH_BUCKETS = new Set([
   "docbuilder-screenshots",
   "participant-avatars",
 ]);
+// Бакеты, куда RLS Supabase разрешает ЗАПИСЬ только service_role (нет
+// authenticated-политики INSERT/UPDATE/DELETE). storage-r2 не должен выдавать
+// presigned PUT/DELETE обычному залогиненному — иначе расширяет права против RLS.
+// Чтение (публичное) идёт по public-URL, не через эту функцию.
+const WRITE_SERVICE_ONLY = new Set(["docbuilder-screenshots"]);
 
 const r2 = new AwsClient({
   accessKeyId: R2_ACCESS_KEY_ID,
@@ -140,6 +145,7 @@ Deno.serve(async (req) => {
     paths?: string[];
     prefix?: string;
     expiresIn?: number;
+    download?: string | boolean;
   };
   try {
     body = await req.json();
@@ -162,6 +168,9 @@ Deno.serve(async (req) => {
       case "sign_put": {
         const path = body.path ?? "";
         if (!path) return jsonRes({ error: "missing_path" }, 400, req);
+        if (op === "sign_put" && WRITE_SERVICE_ONLY.has(bucket)) {
+          return jsonRes({ error: "forbidden" }, 403, req);
+        }
         if (!(await canAccess(userId, bucket, path, service, wsCache))) {
           return jsonRes({ error: "forbidden" }, 403, req);
         }
@@ -169,6 +178,16 @@ Deno.serve(async (req) => {
         const expires = Math.min(Math.max(body.expiresIn ?? 3600, 60), 60 * 60 * 24 * 7);
         const url = new URL(objectUrl(bucket, path));
         url.searchParams.set("X-Amz-Expires", String(expires));
+        // Зеркало Supabase `createSignedUrl({ download })`: заставляем R2 отдать файл
+        // как вложение с человеческим именем (S3 override response-content-disposition).
+        // Параметр включается в подпись (signQuery), поэтому подделать нельзя.
+        if (op === "sign_get" && body.download) {
+          const name = typeof body.download === "string" ? body.download : path.split("/").pop() ?? "file";
+          url.searchParams.set(
+            "response-content-disposition",
+            `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
+          );
+        }
         const signed = await r2.sign(new Request(url.toString(), { method }), {
           aws: { signQuery: true },
         });
@@ -176,6 +195,9 @@ Deno.serve(async (req) => {
       }
 
       case "remove": {
+        if (WRITE_SERVICE_ONLY.has(bucket)) {
+          return jsonRes({ error: "forbidden" }, 403, req);
+        }
         const paths = body.paths ?? (body.path ? [body.path] : []);
         if (!paths.length) return jsonRes({ error: "missing_paths" }, 400, req);
         for (const p of paths) {

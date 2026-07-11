@@ -54,7 +54,7 @@ export function createStorageSignedUrl(
   expiresIn: number,
   options?: { download?: string | boolean; transform?: Record<string, unknown> },
 ) {
-  if (isBucketOnR2(bucket)) return r2SignedUrl(bucket, path, expiresIn)
+  if (isBucketOnR2(bucket)) return r2SignedUrl(bucket, path, expiresIn, { download: options?.download })
   return supabase.storage.from(bucket).createSignedUrl(path, expiresIn, options)
 }
 

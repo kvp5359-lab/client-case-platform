@@ -60,6 +60,7 @@
     "@tiptap/react": "^3.22.2",
     "@tiptap/starter-kit": "^3.22.2",
     "@tiptap/suggestion": "^3.22.4",
+    "aws4fetch": "^1.0.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
