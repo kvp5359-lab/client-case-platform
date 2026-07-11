@@ -161,6 +161,7 @@ export function QuickReplyFormDialog({
                   placeholder="Введите текст шаблона..."
                   minHeight="150px"
                   showMenuBar
+                  editorClassName="text-[14px] [&_h1]:text-[22px] [&_h2]:text-[18px] [&_h3]:text-[16px]"
                 />
               </Suspense>
             </div>

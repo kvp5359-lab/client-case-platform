@@ -167,10 +167,10 @@ export function TiptapEditor({
         class: cn(
           // Базовые стили prose (без @tailwindcss/typography)
           'focus:outline-none p-4',
-          '[&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mb-4 [&_h1]:mt-6',
-          '[&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mb-3 [&_h2]:mt-5',
-          '[&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mb-2 [&_h3]:mt-4',
-          '[&_p]:mb-2 [&_p]:leading-relaxed',
+          '[&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mb-3 [&_h1]:mt-3',
+          '[&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mb-2 [&_h2]:mt-3',
+          '[&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mb-2 [&_h3]:mt-3',
+          '[&_p]:mb-1.5 [&_p]:leading-normal',
           '[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-2',
           '[&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-2',
           '[&_li]:mb-0 [&_li_p]:mb-0',
