@@ -69,23 +69,11 @@ export async function saveInboundAttachments(
   if (!(data.attachments && data.attachments.length > 0 && resendId)) return
 
   const remoteAttachments = await fetchResendInboundAttachments(resendId)
-  // ВРЕМЕННАЯ диагностика (расследование потери email-вложений 2026-07-11).
-  const dbg = async (filename: string, size: number, mime: string, step: string, detail: string) => {
-    try {
-      // временная таблица, не в database.ts — каст клиента на время диагностики
-      const anyDb = supabase as unknown as {
-        from: (t: string) => { insert: (r: Record<string, unknown>) => Promise<unknown> }
-      }
-      await anyDb.from('_r2_inbound_debug').insert({ resend_id: resendId, filename, size, mime, step, detail })
-    } catch { /* диагностика не должна ломать приём */ }
-  }
   for (const att of remoteAttachments) {
-    const mime0 = att.content_type || 'application/octet-stream'
     try {
       const r = await fetch(att.download_url)
       if (!r.ok) {
         console.warn('[resend-webhook] attachment download failed:', att.filename, r.status)
-        await dbg(att.filename, att.size, mime0, 'download_fail', `HTTP ${r.status}`)
         continue
       }
       const buf = await r.arrayBuffer()
@@ -108,11 +96,8 @@ export async function saveInboundAttachments(
         bytes,
         { upsert: false, contentType: mime },
       )
-      if (ue) {
-        await dbg(fileName, bytes.length, mime, 'upload_fail', ue.message ?? 'unknown')
-        continue
-      }
-      const { data: fr, error: fe } = await supabase
+      if (ue) continue
+      const { data: fr } = await supabase
         .from('files')
         .insert({
           workspace_id: workspaceId,
@@ -124,10 +109,7 @@ export async function saveInboundAttachments(
         })
         .select('id')
         .single()
-      if (!fr) {
-        await dbg(fileName, bytes.length, mime, 'files_insert_fail', fe?.message ?? 'no row')
-        continue
-      }
+      if (!fr) continue
       await supabase.from('message_attachments').insert({
         message_id: messageId,
         file_name: fileName,
@@ -136,10 +118,8 @@ export async function saveInboundAttachments(
         storage_path: sp,
         file_id: fr.id,
       })
-      await dbg(fileName, bytes.length, mime, 'ok', sp)
     } catch (e) {
       console.error('[resend-webhook] Attachment error:', att.filename, e)
-      await dbg(att.filename, att.size, mime0, 'exception', String(e).slice(0, 400))
     }
   }
 }
