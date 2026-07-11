@@ -14,6 +14,15 @@
  */
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import {
+  isBucketOnR2,
+  r2Upload,
+  r2Download,
+  r2CreateSignedUrl,
+  r2GetPublicUrl,
+  r2Remove,
+  r2List,
+} from "./r2.ts";
 
 export const STORAGE_BUCKETS = {
   files: "files",
@@ -43,11 +52,13 @@ export function storageUpload(
   data: ArrayBuffer | Blob | Uint8Array | ReadableStream,
   options?: UploadOptions,
 ) {
+  if (isBucketOnR2(bucket)) return r2Upload(bucket, path, data, options);
   return client.storage.from(bucket).upload(path, data, options);
 }
 
 /** Скачать файл как Blob. Возвращает `{ data, error }`. */
 export function storageDownload(client: SupabaseClient, bucket: BucketRef, path: string) {
+  if (isBucketOnR2(bucket)) return r2Download(bucket, path);
   return client.storage.from(bucket).download(path);
 }
 
@@ -59,16 +70,19 @@ export function storageCreateSignedUrl(
   expiresIn: number,
   options?: { download?: string | boolean; transform?: Record<string, unknown> },
 ) {
+  if (isBucketOnR2(bucket)) return r2CreateSignedUrl(bucket, path, expiresIn);
   return client.storage.from(bucket).createSignedUrl(path, expiresIn, options);
 }
 
 /** Публичная ссылка (публичные бакеты). Синхронно. */
 export function storageGetPublicUrl(client: SupabaseClient, bucket: BucketRef, path: string) {
+  if (isBucketOnR2(bucket)) return r2GetPublicUrl(bucket, path);
   return client.storage.from(bucket).getPublicUrl(path);
 }
 
 /** Удалить файлы по путям. Возвращает `{ data, error }`. */
 export function storageRemove(client: SupabaseClient, bucket: BucketRef, paths: string[]) {
+  if (isBucketOnR2(bucket)) return r2Remove(bucket, paths);
   return client.storage.from(bucket).remove(paths);
 }
 
@@ -79,5 +93,6 @@ export function storageList(
   prefix?: string,
   options?: { limit?: number; offset?: number; sortBy?: { column: string; order: string } },
 ) {
+  if (isBucketOnR2(bucket)) return r2List(bucket, prefix);
   return client.storage.from(bucket).list(prefix, options);
 }

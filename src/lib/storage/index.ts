@@ -17,6 +17,8 @@
 
 import { supabase } from '@/lib/supabase'
 import type { BucketRef } from './buckets'
+import { isBucketOnR2 } from './backend'
+import { r2Upload, r2Download, r2SignedUrl, r2PublicUrl, r2Remove, r2List } from './r2Client'
 
 // Реэкспорт констант/типов бакетов (определены в client-free `./buckets`).
 export { STORAGE_BUCKETS } from './buckets'
@@ -35,11 +37,13 @@ export function uploadToStorage(
   file: File | Blob | ArrayBuffer | Uint8Array,
   options?: UploadOptions,
 ) {
+  if (isBucketOnR2(bucket)) return r2Upload(bucket, path, file, options)
   return supabase.storage.from(bucket).upload(path, file, options)
 }
 
 /** Скачать файл как Blob. Возвращает `{ data, error }`. */
 export function downloadFromStorage(bucket: BucketRef, path: string) {
+  if (isBucketOnR2(bucket)) return r2Download(bucket, path)
   return supabase.storage.from(bucket).download(path)
 }
 
@@ -50,16 +54,19 @@ export function createStorageSignedUrl(
   expiresIn: number,
   options?: { download?: string | boolean; transform?: Record<string, unknown> },
 ) {
+  if (isBucketOnR2(bucket)) return r2SignedUrl(bucket, path, expiresIn)
   return supabase.storage.from(bucket).createSignedUrl(path, expiresIn, options)
 }
 
 /** Публичная ссылка (только для публичных бакетов). Синхронно, как Supabase. */
 export function getStoragePublicUrl(bucket: BucketRef, path: string) {
+  if (isBucketOnR2(bucket)) return r2PublicUrl(bucket, path)
   return supabase.storage.from(bucket).getPublicUrl(path)
 }
 
 /** Удалить файлы по путям. Возвращает `{ data, error }`. */
 export function removeFromStorage(bucket: BucketRef, paths: string[]) {
+  if (isBucketOnR2(bucket)) return r2Remove(bucket, paths)
   return supabase.storage.from(bucket).remove(paths)
 }
 
@@ -69,5 +76,6 @@ export function listStorage(
   prefix?: string,
   options?: { limit?: number; offset?: number; sortBy?: { column: string; order: string } },
 ) {
+  if (isBucketOnR2(bucket)) return r2List(bucket, prefix)
   return supabase.storage.from(bucket).list(prefix, options)
 }

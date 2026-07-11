@@ -15,9 +15,10 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
+    "aws4fetch": "^1.0.20",
     "fastify": "^5.0.0",
-    "telegram": "^2.26.22",
     "pino-pretty": "^11.2.2",
+    "telegram": "^2.26.22",
     "zod": "^3.23.8"
   },
   "devDependencies": {
