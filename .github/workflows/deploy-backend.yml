@@ -1,0 +1,96 @@
+name: Deploy Backend (manual)
+
+# РУЧНОЙ деплой того, что deploy.yml НЕ катит: миграции БД, Edge Functions, mtproto-service.
+# ⚠️ ТОЛЬКО workflow_dispatch — НИКОГДА не запускается на push. Оператор жмёт «Run workflow»
+# и выбирает что деплоить. По умолчанию все входы выключены → пустой прогон ничего не делает.
+#
+# ТРЕБУЕМЫЕ СЕКРЕТЫ (Settings → Secrets → Actions), которых может ещё не быть:
+#   SUPABASE_ACCESS_TOKEN  — Personal Access Token (supabase.com/dashboard/account/tokens)
+#   SUPABASE_DB_PASSWORD   — пароль БД проекта (для `supabase db push`)
+# Уже есть (используются deploy.yml): VPS_SSH_KEY, VPS_HOST, VPS_USER, GH_PAT.
+#
+# ПОРЯДОК БЕЗОПАСНОГО ДЕПЛОЯ (см. docs/deploy-backlog.md): миграции → edge → mtproto → (фронт — обычный push).
+# ПОСЛЕ деплоя КАНАЛОВ — прогнать смок: workflow «Smoke Channels» (dispatch) или scripts/smoke-matrix.mjs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      migrations:
+        description: 'Применить миграции БД (supabase db push)'
+        type: boolean
+        default: false
+      edge:
+        description: "Edge Functions: список через пробел, или 'all', или пусто (пропустить)"
+        type: string
+        default: ''
+      mtproto:
+        description: 'Передеплоить mtproto-service (rsync + docker build на VPS)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+env:
+  SUPABASE_PROJECT_REF: zjatohckcpiqmxkmfxbs
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Supabase CLI
+        if: ${{ inputs.migrations || inputs.edge != '' }}
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # 1. Миграции БД
+      - name: Apply migrations
+        if: ${{ inputs.migrations }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+          supabase db push --password "$SUPABASE_DB_PASSWORD"
+
+      # 2. Edge Functions (scripts/deploy-edge.sh сам ставит --no-verify-jwt где нужно)
+      - name: Deploy Edge Functions
+        if: ${{ inputs.edge != '' }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          chmod +x scripts/deploy-edge.sh
+          if [ "${{ inputs.edge }}" = "all" ]; then
+            scripts/deploy-edge.sh --all
+          else
+            scripts/deploy-edge.sh ${{ inputs.edge }}
+          fi
+
+      # 3. mtproto-service — rsync исходников на VPS + локальная пересборка образа
+      - name: Set up SSH agent
+        if: ${{ inputs.mtproto }}
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+      - name: Deploy mtproto-service
+        if: ${{ inputs.mtproto }}
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          # .env / node_modules / dist на VPS не трогаем (там свои секреты)
+          rsync -az --delete \
+            --exclude node_modules --exclude dist --exclude .env \
+            -e "ssh -o StrictHostKeyChecking=accept-new" \
+            ./mtproto-service/ "$VPS_USER@$VPS_HOST:/opt/clientcase/mtproto-service/"
+          ssh -o StrictHostKeyChecking=accept-new "$VPS_USER@$VPS_HOST" \
+            "cd /opt/clientcase && docker compose build mtproto && docker compose up -d mtproto"
+
+      - name: Reminder — smoke channels
+        if: ${{ inputs.edge != '' || inputs.mtproto }}
+        run: |
+          echo "::warning::Задеплоены каналы. Прогони смок: workflow 'Smoke Channels' (dispatch) или scripts/smoke-matrix.mjs --confirm"

@@ -204,6 +204,7 @@ ORDER BY id DESC LIMIT 10;
 | `ci.yml` | push/PR в main | Проверочная сборка: `npm install` → eslint (non-blocking, `|| true`) → `npm run build`. |
 | `db-drift.yml` («Ops Checks») | ежедневно 05:00 UTC + PR к `supabase/migrations/**` или `supabase/schema/**` + dispatch | `db-drift-check.mjs` (дрейф функций repo↔prod) + `channel-health.mjs` (здоровье каналов). **Не блокирует** (сигнал). Требует секрет `SUPABASE_SERVICE_ROLE_KEY`. |
 | `smoke-channels.yml` («Smoke Channels») | ежедневно 06:00 UTC + dispatch | `smoke-matrix.mjs --confirm` — реальная отправка по всем каналам в allowlist-треды (`smoke_test_threads`). Требует `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SMOKE_BOT_PASSWORD`. |
+| `deploy-backend.yml` («Deploy Backend (manual)») | **только dispatch** (никогда push) | Ручной деплой того, что не катит `deploy.yml`: миграции (`db push`), Edge (`deploy-edge.sh`), mtproto (rsync+docker). Входы по умолчанию выключены. Требует `SUPABASE_ACCESS_TOKEN` + `SUPABASE_DB_PASSWORD` (+ существующие VPS-секреты). После деплоя каналов — смок. |
 
 **Ручной деплой (CI НЕ катит):**
 - **Edge Functions** — `scripts/deploy-edge.sh <name>` (сам ставит `--no-verify-jwt` из списка `NO_JWT_FUNCTIONS`). Карантин — со смоком.
