@@ -9,6 +9,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { usePersistentSearch } from '@/hooks/knowledge/useKnowledgeSearch'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { knowledgeBaseKeys, statusKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
@@ -72,7 +73,7 @@ export function useKnowledgeBasePage() {
   const currentUserId = user?.id ?? null
 
   // Search & filters
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = usePersistentSearch(`${workspaceId ?? 'ws'}:articles`)
   const [filterTagIds, setFilterTagIds] = useState<string[]>([])
   const [filterGroupIds, setFilterGroupIds] = useState<string[]>([])
   const [filterStatusIds, setFilterStatusIds] = useState<string[]>([])

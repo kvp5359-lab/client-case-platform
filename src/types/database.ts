@@ -3916,6 +3916,7 @@ export type Database = {
           search_vector: unknown
           status_id: string | null
           summary: string | null
+          template_access_mode: string
           title: string
           updated_at: string
           workspace_id: string
@@ -3935,6 +3936,7 @@ export type Database = {
           search_vector?: unknown
           status_id?: string | null
           summary?: string | null
+          template_access_mode?: string
           title: string
           updated_at?: string
           workspace_id: string
@@ -3954,6 +3956,7 @@ export type Database = {
           search_vector?: unknown
           status_id?: string | null
           summary?: string | null
+          template_access_mode?: string
           title?: string
           updated_at?: string
           workspace_id?: string
@@ -4132,9 +4135,11 @@ export type Database = {
           color: string | null
           created_at: string
           id: string
+          kind: string
           name: string
           parent_id: string | null
           sort_order: number
+          template_access_mode: string
           updated_at: string
           workspace_id: string
         }
@@ -4142,9 +4147,11 @@ export type Database = {
           color?: string | null
           created_at?: string
           id?: string
+          kind?: string
           name: string
           parent_id?: string | null
           sort_order?: number
+          template_access_mode?: string
           updated_at?: string
           workspace_id: string
         }
@@ -4152,9 +4159,11 @@ export type Database = {
           color?: string | null
           created_at?: string
           id?: string
+          kind?: string
           name?: string
           parent_id?: string | null
           sort_order?: number
+          template_access_mode?: string
           updated_at?: string
           workspace_id?: string
         }
@@ -4227,6 +4236,7 @@ export type Database = {
           question: string
           residency_type: string | null
           source: string | null
+          template_access_mode: string
           topic: string | null
           updated_at: string | null
           workspace_id: string
@@ -4247,6 +4257,7 @@ export type Database = {
           question: string
           residency_type?: string | null
           source?: string | null
+          template_access_mode?: string
           topic?: string | null
           updated_at?: string | null
           workspace_id: string
@@ -4267,6 +4278,7 @@ export type Database = {
           question?: string
           residency_type?: string | null
           source?: string | null
+          template_access_mode?: string
           topic?: string | null
           updated_at?: string | null
           workspace_id?: string
@@ -4277,6 +4289,42 @@ export type Database = {
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_qa_templates: {
+        Row: {
+          created_at: string
+          id: string
+          project_template_id: string
+          qa_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_template_id: string
+          qa_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_template_id?: string
+          qa_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_qa_templates_qa_id_fkey"
+            columns: ["qa_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_qa"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_qa_templates_project_template_id_fkey"
+            columns: ["project_template_id"]
+            isOneToOne: false
+            referencedRelation: "project_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -10902,6 +10950,14 @@ export type Database = {
           similarity: number
         }[]
       }
+      resolve_template_article_ids: {
+        Args: {
+          p_template_id: string
+        }
+        Returns: {
+          article_id: string
+        }[]
+      }
       match_knowledge_chunks_by_sources: {
         Args: {
           filter_article_ids?: string[]
@@ -10934,6 +10990,14 @@ export type Database = {
       move_article_to_group: {
         Args: {
           p_article_id: string
+          p_from_group_id?: string
+          p_to_group_id?: string
+        }
+        Returns: undefined
+      }
+      move_qa_to_group: {
+        Args: {
+          p_qa_id: string
           p_from_group_id?: string
           p_to_group_id?: string
         }

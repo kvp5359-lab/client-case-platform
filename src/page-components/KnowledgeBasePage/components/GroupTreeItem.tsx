@@ -130,20 +130,21 @@ export function GroupTreeItem({
             </Button>
           </div>
           <div className="flex-1" />
-          {/* Кнопки у правого края: доступ и удалить */}
+          {/* Кнопки у правого края: доступ (всегда виден — отражает режим) и удалить (по наведению) */}
           <div
-            className="flex items-center gap-0.5 md:invisible md:group-hover:visible transition-all flex-shrink-0"
+            className="flex items-center gap-0.5 flex-shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
             <TemplateAccessButton
               entityId={group.id}
               entityType="group"
               workspaceId={page.workspaceId!}
+              mode={group.template_access_mode}
             />
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 text-muted-foreground/50 hover:text-destructive hover:bg-muted"
+              className="h-6 w-6 p-0 text-muted-foreground/50 hover:text-destructive hover:bg-muted md:invisible md:group-hover:visible transition-all"
               title="Удалить"
               onClick={() => page.handleDeleteGroup(group.id, group.name)}
             >

@@ -21,6 +21,7 @@ export type KnowledgeQA = {
   created_at: string
   updated_at: string
   created_by: string | null
+  template_access_mode: 'inherit' | 'everywhere' | 'selected' | 'nowhere'
   // Joined relations
   knowledge_qa_tags?: Array<{
     tag_id: string
@@ -28,12 +29,13 @@ export type KnowledgeQA = {
   }>
   knowledge_qa_groups?: Array<{
     group_id: string
+    sort_order?: number | null
     knowledge_groups: { id: string; name: string; color: string | null }
   }>
 }
 
 const QA_SELECT =
-  '*, knowledge_qa_tags(tag_id, knowledge_tags(*)), knowledge_qa_groups(group_id, knowledge_groups(*))'
+  '*, knowledge_qa_tags(tag_id, knowledge_tags(*)), knowledge_qa_groups(group_id, sort_order, knowledge_groups(*))'
 
 export async function getQAItems(workspaceId: string): Promise<KnowledgeQA[]> {
   const rows = await safeFetchOrThrow(

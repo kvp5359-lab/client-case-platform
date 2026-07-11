@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🔴 Рабочий репозиторий — только `client-case-platform`
+
+Продакшн (Next-приложение, деплой на VPS blue/green) живёт **здесь**, в `client-case-platform`. Репозиторий `/Users/kvp5359/Проекты/ClientCase/` — **старое vite-приложение**, из которого идёт миграция: **НЕ вносить в него изменения**. Любые правки фронта/edge делать в `client-case-platform`. БД (Supabase `zjatohckcpiqmxkmfxbs`) — **одна на оба** репозитория, поэтому миграции переиспользуемы, но код — только здесь.
+
 ## Источники правды
 
 Подробные правила и контракты — в `.claude/rules/`. Глобальный стиль общения и принципы отладки — в `~/.claude/CLAUDE.md` (подгружаются автоматически, тут не дублируем).

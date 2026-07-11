@@ -18,6 +18,7 @@ function article(over: Partial<KnowledgeArticle> & { id: string }): KnowledgeArt
     title: '',
     content: null,
     access_mode: 'read_only',
+    template_access_mode: 'inherit',
     is_published: true,
     status_id: null,
     statuses: null,

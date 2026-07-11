@@ -7,7 +7,8 @@
 
 import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { KnowledgeSearchInput } from '@/components/knowledge/KnowledgeSearchInput'
+import { ArticleHistoryButton } from '@/components/knowledge/ArticleHistoryButton'
 import { Card } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
 import {
@@ -26,7 +27,7 @@ import {
   NativeTableHeadCell,
 } from '@/components/ui/native-table'
 import { StatusDropdown } from '@/components/common/status-dropdown'
-import { Plus, Search, FolderPlus, Tags, BookOpen, Trash2, Filter, ArrowUp, ArrowDown, ArrowUpDown, MoreHorizontal } from 'lucide-react'
+import { Plus, FolderPlus, Tags, BookOpen, Trash2, Filter, ArrowUp, ArrowDown, ArrowUpDown, MoreHorizontal } from 'lucide-react'
 import { formatSmartDate } from '@/utils/format/dateFormat'
 import { KnowledgeFilterBar } from './components/KnowledgeFilterBar'
 import { InlineGroupsCell, InlineTagsCell } from './components/InlineCells'
@@ -100,15 +101,14 @@ export function KnowledgeTableView({ page }: { page: PageReturn }) {
     <div className="space-y-3">
       {/* Toolbar */}
       <div className="flex items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Поиск статей..."
-            className="pl-9 h-8 text-sm"
-            value={page.searchQuery}
-            onChange={(e) => page.setSearchQuery(e.target.value)}
-          />
-        </div>
+        <KnowledgeSearchInput
+          value={page.searchQuery}
+          onChange={page.setSearchQuery}
+          historyScope={`${page.workspaceId ?? 'ws'}:articles`}
+          placeholder="Поиск статей..."
+          className="flex-1 min-w-[200px] max-w-sm"
+          inputClassName="h-8 text-sm"
+        />
         <Button
           size="sm"
           variant={page.showFilters || hasActiveFilters ? 'secondary' : 'outline'}
@@ -118,6 +118,7 @@ export function KnowledgeTableView({ page }: { page: PageReturn }) {
         >
           <Filter className="w-4 h-4" />
         </Button>
+        {page.workspaceId && <ArticleHistoryButton workspaceId={page.workspaceId} />}
         {/* Селектор сортировки */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

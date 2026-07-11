@@ -13,20 +13,24 @@ import { ColorPickerInline } from './ColorPickerInline'
 import { hashString } from '@/utils/notionPill'
 import { TAG_PALETTE as TAG_COLOR_PALETTE } from '@/lib/palette'
 import { ArticleTreePicker } from '@/components/templates/ArticleTreePicker'
-import type { KnowledgeGroup, useKnowledgeBasePage } from '../useKnowledgeBasePage'
+import type { KnowledgeGroup } from '../useKnowledgeBasePage'
 
-type PageReturn = ReturnType<typeof useKnowledgeBasePage>
+type UpdateGroupArgs = { id: string; name: string; color: string; parentId: string | null }
 
 export function EditGroupDialog({
   group,
   open,
   onOpenChange,
-  page,
+  groups,
+  updateGroup,
+  isSaving,
 }: {
   group: KnowledgeGroup | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  page: PageReturn
+  groups: KnowledgeGroup[]
+  updateGroup: (args: UpdateGroupArgs, opts?: { onSuccess?: () => void }) => void
+  isSaving: boolean
 }) {
   const [name, setName] = useState(() => group?.name ?? '')
   const [color, setColor] = useState(
@@ -40,7 +44,7 @@ export function EditGroupDialog({
     if (!group) return new Set<string>()
     const ids = new Set<string>()
     const collectDescendants = (id: string) => {
-      for (const g of page.groups) {
+      for (const g of groups) {
         if (g.parent_id === id) {
           ids.add(g.id)
           collectDescendants(g.id)
@@ -50,20 +54,13 @@ export function EditGroupDialog({
     ids.add(group.id)
     collectDescendants(group.id)
     return ids
-  }, [group, page.groups])
+  }, [group, groups])
 
   const handleSave = () => {
     if (!group || !name.trim()) return
-    page.updateGroupMutation.mutate(
-      {
-        id: group.id,
-        name: name.trim(),
-        color,
-        parentId: parentId,
-      },
-      {
-        onSuccess: () => onOpenChange(false),
-      },
+    updateGroup(
+      { id: group.id, name: name.trim(), color, parentId },
+      { onSuccess: () => onOpenChange(false) },
     )
   }
 
@@ -102,7 +99,7 @@ export function EditGroupDialog({
             <Label>Группа-родитель</Label>
             <ArticleTreePicker
               mode="single-group"
-              groups={page.groups}
+              groups={groups}
               selectedId={parentId}
               onSelect={setParentId}
               excludeGroupIds={excludeGroupIds}
@@ -116,10 +113,7 @@ export function EditGroupDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!name.trim() || page.updateGroupMutation.isPending}
-          >
+          <Button onClick={handleSave} disabled={!name.trim() || isSaving}>
             Сохранить
           </Button>
         </DialogFooter>

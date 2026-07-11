@@ -9,8 +9,20 @@ import { knowledgeBaseKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
 import type { KnowledgeGroup } from './useKnowledgeBasePage.types'
 
-export function useKnowledgeGroups(workspaceId: string | undefined) {
+// Группы статей и Q&A живут в одной таблице, но раздельны по kind.
+export type KnowledgeGroupKind = 'article' | 'qa'
+
+export function useKnowledgeGroups(
+  workspaceId: string | undefined,
+  kind: KnowledgeGroupKind = 'article',
+) {
   const queryClient = useQueryClient()
+
+  // Ключ списка и ключ связанного контента — по виду групп.
+  const listKey =
+    kind === 'qa' ? knowledgeBaseKeys.qaGroups(workspaceId!) : knowledgeBaseKeys.groups(workspaceId!)
+  const relatedKey =
+    kind === 'qa' ? knowledgeBaseKeys.qa(workspaceId!) : knowledgeBaseKeys.articles(workspaceId!)
 
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
   const [editingGroupName, setEditingGroupName] = useState('')
@@ -18,12 +30,13 @@ export function useKnowledgeGroups(workspaceId: string | undefined) {
   const [newGroupName, setNewGroupName] = useState('')
 
   const groupsQuery = useQuery({
-    queryKey: knowledgeBaseKeys.groups(workspaceId!),
+    queryKey: listKey,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('knowledge_groups')
         .select('*')
         .eq('workspace_id', workspaceId!)
+        .eq('kind', kind)
         .order('sort_order')
         .order('name')
       if (error) throw error
@@ -47,11 +60,12 @@ export function useKnowledgeGroups(workspaceId: string | undefined) {
         name,
         parent_id: parentId || null,
         color: color || null,
+        kind,
       })
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: knowledgeBaseKeys.groups(workspaceId!) })
+      queryClient.invalidateQueries({ queryKey: listKey })
       setNewGroupName('')
       setAddingGroupParentId(null)
       toast.success('Группа создана')
@@ -81,8 +95,8 @@ export function useKnowledgeGroups(workspaceId: string | undefined) {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: knowledgeBaseKeys.groups(workspaceId!) })
-      queryClient.invalidateQueries({ queryKey: knowledgeBaseKeys.articles(workspaceId!) })
+      queryClient.invalidateQueries({ queryKey: listKey })
+      queryClient.invalidateQueries({ queryKey: relatedKey })
       setEditingGroupId(null)
       setEditingGroupName('')
     },
@@ -97,8 +111,8 @@ export function useKnowledgeGroups(workspaceId: string | undefined) {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: knowledgeBaseKeys.groups(workspaceId!) })
-      queryClient.invalidateQueries({ queryKey: knowledgeBaseKeys.articles(workspaceId!) })
+      queryClient.invalidateQueries({ queryKey: listKey })
+      queryClient.invalidateQueries({ queryKey: relatedKey })
       toast.success('Группа удалена')
     },
     onError: () => {

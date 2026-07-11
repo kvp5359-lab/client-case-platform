@@ -91,42 +91,19 @@ export function KnowledgeBaseTabContent({
   } = useQuery({
     queryKey: knowledgeBaseKeys.projectArticles(templateId!),
     queryFn: async () => {
-      // 1. Получаем article_id из точечных привязок
-      const { data: articleLinks, error: articleLinksError } = await supabase
-        .from('knowledge_article_templates')
-        .select('article_id')
-        .eq('project_template_id', templateId!)
+      // Видимость статьи в проекте резолвится единой БД-функцией (та же логика,
+      // что у бота): режим доступа сущности (наследует / везде / выбранные /
+      // нигде) + каскад по вложенным группам.
+      const { data: visibleRows, error: resolveError } = await supabase.rpc(
+        'resolve_template_article_ids',
+        { p_template_id: templateId! },
+      )
+      if (resolveError) throw resolveError
 
-      if (articleLinksError) throw articleLinksError
-
-      // 2. Получаем group_id из групповых привязок
-      const { data: groupLinks, error: groupLinksError } = await supabase
-        .from('knowledge_group_templates')
-        .select('group_id')
-        .eq('project_template_id', templateId!)
-
-      if (groupLinksError) throw groupLinksError
-
-      const directArticleIds = new Set((articleLinks || []).map((l) => l.article_id))
-      const linkedGroupIds = (groupLinks || []).map((l) => l.group_id)
-
-      // 3. Если есть группы — загружаем article_id из knowledge_article_groups
-      if (linkedGroupIds.length > 0) {
-        const { data: groupArticles, error: gaError } = await supabase
-          .from('knowledge_article_groups')
-          .select('article_id')
-          .in('group_id', linkedGroupIds)
-
-        if (gaError) throw gaError
-        for (const ga of groupArticles || []) {
-          directArticleIds.add(ga.article_id)
-        }
-      }
-
-      const allArticleIds = [...directArticleIds]
+      const allArticleIds = (visibleRows || []).map((r) => r.article_id)
       if (allArticleIds.length === 0) return []
 
-      // 4. Загружаем статьи с группами, тегами и статусами
+      // Загружаем статьи с группами, тегами и статусами
       const { data, error: articlesError } = await supabase
         .from('knowledge_articles')
         .select(

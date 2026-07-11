@@ -253,35 +253,16 @@ export async function resolveTemplateArticleIds(
   supabaseAdmin: SupabaseClient,
   templateId: string,
 ): Promise<string[]> {
-  const [artLinksRes, grpLinksRes] = await Promise.all([
-    supabaseAdmin
-      .from("knowledge_article_templates")
-      .select("article_id")
-      .eq("project_template_id", templateId),
-    supabaseAdmin
-      .from("knowledge_group_templates")
-      .select("group_id")
-      .eq("project_template_id", templateId),
-  ]);
-
-  const allIds = new Set(
-    (artLinksRes.data || []).map((l: { article_id: string }) => l.article_id),
+  // Видимость резолвится единой БД-функцией (та же логика, что в UF/UI):
+  // режим доступа сущности (inherit / everywhere / selected / nowhere) +
+  // каскад по вложенным группам. См. миграцию
+  // 20260711120000_knowledge_template_access_modes.sql.
+  const { data, error } = await supabaseAdmin.rpc(
+    "resolve_template_article_ids",
+    { p_template_id: templateId },
   );
-  const grpIds = (grpLinksRes.data || []).map(
-    (l: { group_id: string }) => l.group_id,
-  );
-
-  if (grpIds.length > 0) {
-    const { data: grpArticles } = await supabaseAdmin
-      .from("knowledge_article_groups")
-      .select("article_id")
-      .in("group_id", grpIds);
-    for (const ga of grpArticles || []) {
-      allIds.add(ga.article_id);
-    }
-  }
-
-  return [...allIds];
+  if (error) throw error;
+  return (data || []).map((r: { article_id: string }) => r.article_id);
 }
 
 // ── Filter to published article IDs ──

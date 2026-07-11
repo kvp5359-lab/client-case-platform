@@ -9,53 +9,46 @@
  * голубая полоса показывает место вставки — как в документах.
  */
 
-import { useState, useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { FolderPlus, Check, X } from 'lucide-react'
-import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core'
+import { useTrackRecentView } from '@/hooks/useGlobalSearch'
 import { reindexAllArticles } from '@/services/api/knowledge/knowledgeSearchService'
 import { toast } from 'sonner'
-import { GroupTreeItem, ArticleRow } from './components/GroupTreeItem'
+import { SortableArticleRow, ArticleRow } from './components/ArticleRows'
 import { EditGroupDialog } from './components/EditGroupDialog'
 import { KnowledgeFilterBar } from './components/KnowledgeFilterBar'
 import { StatusDot } from './components/ArticleStatusIndicators'
 import { KnowledgeTreeToolbar } from './components/KnowledgeTreeToolbar'
-import { UngroupedDropZone } from './components/UngroupedDropZone'
 import { KnowledgeEmptyState } from './components/KnowledgeEmptyState'
+import { GroupTreeBody } from '@/components/knowledge/tree/GroupTreeBody'
+import type { TreeSource } from '@/components/knowledge/tree/types'
 import type { useKnowledgeBasePage, KnowledgeArticle, KnowledgeGroup } from './useKnowledgeBasePage'
-import { useKnowledgeTreeDnd, UNGROUPED_ID } from './useKnowledgeTreeDnd'
 export type { DropIndicatorState } from './useKnowledgeTreeDnd'
 
 type PageReturn = ReturnType<typeof useKnowledgeBasePage>
 
 export function KnowledgeTreeView({ page }: { page: PageReturn }) {
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [isReindexing, setIsReindexing] = useState(false)
   const layoutPanel = useLayoutTaskPanel()
+  const { mutate: trackRecentView } = useTrackRecentView()
   // Открытие статьи KB в боковой панели через knowledge-scope (вариант A).
   const openArticleInPanel = useCallback(
     (article: KnowledgeArticle) => {
       if (!layoutPanel?.openKnowledgeArticleTab) return
       layoutPanel.openKnowledgeArticleTab(article.id, article.title)
+      // Пишем в историю открытий (боковое окно editor-page не монтирует → сам трек)
+      if (page.workspaceId) {
+        trackRecentView({
+          workspaceId: page.workspaceId,
+          entityType: 'knowledge_article',
+          entityId: article.id,
+        })
+      }
     },
-    [layoutPanel],
+    [layoutPanel, page.workspaceId, trackRecentView],
   )
   const isReindexingRef = useRef(false)
   const [editingGroup, setEditingGroup] = useState<KnowledgeGroup | null>(null)
-
-  // drag & drop логика вынесена в хук
-  const dnd = useKnowledgeTreeDnd(page)
-
-  const toggleCollapse = (id: string) => {
-    setCollapsedGroups((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
 
   const handleReindex = useCallback(async () => {
     if (!page.workspaceId || isReindexingRef.current) return
@@ -84,7 +77,6 @@ export function KnowledgeTreeView({ page }: { page: PageReturn }) {
     }
   }, [page.workspaceId])
 
-  const rootGroups = page.groups.filter((g) => !g.parent_id)
   const isLoading = page.articlesQuery.isLoading || page.groupsQuery.isLoading
 
   const isSearchActive =
@@ -100,14 +92,67 @@ export function KnowledgeTreeView({ page }: { page: PageReturn }) {
     return page.groups.filter((g) => g.parent_id === groupId).some((c) => groupHasMatches(c.id))
   }
 
-  const visibleRootGroups = isSearchActive
-    ? rootGroups.filter((g) => groupHasMatches(g.id))
-    : rootGroups
   const hasActiveFilters =
     page.filterTagIds.length > 0 ||
     page.filterGroupIds.length > 0 ||
     page.filterStatusIds.length > 0 ||
     page.advancedFilter.rules.length > 0
+
+  // Адаптер общего дерева для статей
+  const treeSource: TreeSource<KnowledgeArticle> = {
+    workspaceId: page.workspaceId!,
+    groups: page.groups,
+    items: page.articles,
+    getItemGroupId: (id) => {
+      const a = page.articles.find((x) => x.id === id)
+      return a && a.knowledge_article_groups.length > 0 ? a.knowledge_article_groups[0].group_id : null
+    },
+    getItemsForGroup: (groupId) => page.getArticlesForGroup(groupId),
+    ungroupedItems: page.ungroupedArticles,
+    moveItemToGroup: ({ itemId, fromGroupId, toGroupId }, opts) =>
+      page.moveArticleToGroupMutation.mutate({ articleId: itemId, fromGroupId, toGroupId }, opts),
+    reorderItems: ({ groupId, itemIds }) =>
+      page.reorderArticlesMutation.mutate({ groupId, articleIds: itemIds }),
+    addingGroupParentId: page.addingGroupParentId,
+    setAddingGroupParentId: page.setAddingGroupParentId,
+    newGroupName: page.newGroupName,
+    setNewGroupName: page.setNewGroupName,
+    onCreateGroup: page.handleCreateGroup,
+    createGroupPending: page.createGroupMutation.isPending,
+    onEditGroup: (g) => setEditingGroup(g as KnowledgeGroup),
+    onDeleteGroup: (g) => page.handleDeleteGroup(g.id, g.name),
+    onAddItem: (groupId) => page.createArticleMutation.mutate(groupId),
+    addItemTitle: 'Добавить статью',
+    renderItemRow: ({ item, depth, isLast, dropPosition }) =>
+      depth === 0 ? (
+        // «Без группы» — недрагируемая строка (как раньше)
+        <ArticleRow
+          key={item.id}
+          article={item}
+          depth={0}
+          page={page}
+          onArticleClick={openArticleInPanel}
+        />
+      ) : (
+        <SortableArticleRow
+          key={item.id}
+          article={item}
+          depth={depth}
+          page={page}
+          isLast={isLast}
+          dropIndicator={dropPosition}
+          onArticleClick={openArticleInPanel}
+        />
+      ),
+    renderDragOverlay: (item) => (
+      <div className="flex items-center gap-1.5 h-7 px-3 bg-background border rounded-md shadow-md text-sm">
+        <StatusDot article={item} />
+        <span className="truncate">{item.title}</span>
+      </div>
+    ),
+    filterChildren: isSearchActive ? groupHasMatches : undefined,
+    isSearchActive,
+  }
 
   return (
     <div className="space-y-4">
@@ -130,99 +175,7 @@ export function KnowledgeTreeView({ page }: { page: PageReturn }) {
       ) : page.groups.length === 0 && page.articles.length === 0 ? (
         <KnowledgeEmptyState page={page} />
       ) : (
-        <DndContext
-          sensors={dnd.sensors}
-          collisionDetection={pointerWithin}
-          onDragStart={dnd.handleDragStart}
-          onDragOver={dnd.handleDragOver}
-          onDragEnd={dnd.handleDragEnd}
-          onDragCancel={dnd.handleDragCancel}
-        >
-          <div className="border rounded-lg py-1">
-            {/* Inline add root group */}
-            {page.addingGroupParentId === 'root' && (
-              <div className="flex items-center gap-1.5 h-7 px-2" style={{ paddingLeft: '8px' }}>
-                <FolderPlus className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                <Input
-                  value={page.newGroupName}
-                  onChange={(e) => page.setNewGroupName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') page.handleCreateGroup()
-                    if (e.key === 'Escape') page.setAddingGroupParentId(null)
-                  }}
-                  placeholder="Название группы..."
-                  className="h-6 text-sm flex-1"
-                  autoFocus
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={page.handleCreateGroup}
-                  disabled={!page.newGroupName.trim() || page.createGroupMutation.isPending}
-                  className="h-6 w-6 p-0"
-                >
-                  <Check className="w-3.5 h-3.5 text-green-600" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => page.setAddingGroupParentId(null)}
-                  className="h-6 w-6 p-0"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            )}
-
-            {/* Root groups */}
-            {visibleRootGroups.map((group) => (
-              <GroupTreeItem
-                key={group.id}
-                group={group}
-                groups={page.groups}
-                depth={0}
-                page={page}
-                collapsedGroups={collapsedGroups}
-                toggleCollapse={toggleCollapse}
-                overGroupId={dnd.overGroupId}
-                dropIndicator={dnd.dropIndicator}
-                onEditGroup={setEditingGroup}
-                onArticleClick={openArticleInPanel}
-                filterChildren={isSearchActive ? groupHasMatches : undefined}
-              />
-            ))}
-
-            {/* Ungrouped articles */}
-            {(page.ungroupedArticles.length > 0 || dnd.activeArticle) && rootGroups.length > 0 && (
-              <UngroupedDropZone isOver={dnd.overGroupId === UNGROUPED_ID}>
-                <div className="border-t mt-1 pt-1">
-                  <div className="flex items-center gap-1.5 h-6 px-2 pl-[8px]">
-                    <span className="text-xs text-muted-foreground font-medium">Без группы</span>
-                  </div>
-                </div>
-                {page.ungroupedArticles.map((article) => (
-                  <ArticleRow
-                    key={article.id}
-                    article={article}
-                    depth={0}
-                    page={page}
-                    onArticleClick={openArticleInPanel}
-                  />
-                ))}
-              </UngroupedDropZone>
-            )}
-          </div>
-
-          {/* Drag overlay */}
-          <DragOverlay dropAnimation={null}>
-            {dnd.activeArticle && (
-              <div className="flex items-center gap-1.5 h-7 px-3 bg-background border rounded-md shadow-md text-sm">
-                <StatusDot article={dnd.activeArticle} />
-                <span className="truncate">{dnd.activeArticle.title}</span>
-              </div>
-            )}
-          </DragOverlay>
-        </DndContext>
+        <GroupTreeBody source={treeSource} />
       )}
 
       {/* Counter */}
@@ -239,7 +192,9 @@ export function KnowledgeTreeView({ page }: { page: PageReturn }) {
         group={editingGroup}
         open={!!editingGroup}
         onOpenChange={(open) => !open && setEditingGroup(null)}
-        page={page}
+        groups={page.groups}
+        updateGroup={page.updateGroupMutation.mutate}
+        isSaving={page.updateGroupMutation.isPending}
       />
     </div>
   )

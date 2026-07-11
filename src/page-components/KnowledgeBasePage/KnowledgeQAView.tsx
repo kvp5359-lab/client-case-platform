@@ -13,7 +13,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import {
   NativeTable,
   NativeTableHead,
@@ -30,18 +29,22 @@ import {
 } from '@/components/ui/dropdown-menu'
 import {
   Plus,
-  Search,
   Trash2,
   MoreVertical,
   RefreshCw,
   Upload,
   Filter,
   MessageCircleQuestion,
+  Table as TableIcon,
+  FolderTree,
 } from 'lucide-react'
 import { PageLoader } from '@/components/ui/loaders'
 import { useSearchParams, usePathname } from 'next/navigation'
 import { QAEditDialog } from '@/components/knowledge/QAEditDialog'
 import { QAImportDialog } from '@/components/knowledge/QAImportDialog'
+import { TemplateAccessButton } from '@/components/knowledge/template-access/TemplateAccessButton'
+import { KnowledgeQATreeView } from './KnowledgeQATreeView'
+import { KnowledgeSearchInput } from '@/components/knowledge/KnowledgeSearchInput'
 import { getGroupColor, NotionPill } from '@/utils/notionPill'
 import { formatSmartDate } from '@/utils/format/dateFormat'
 import { safeCssColor } from '@/utils/isValidCssColor'
@@ -87,6 +90,9 @@ export function KnowledgeQAView({ workspaceId }: KnowledgeQAViewProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingQA, setEditingQA] = useState<KnowledgeQA | null>(null)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [qaView, setQaView] = useState<'table' | 'tree'>('table')
+
+  const isSearchActive = !!searchQuery || filterTagIds.length > 0 || filterGroupIds.length > 0
 
   // Автооткрытие Q&A по qaId из URL — синхронизация с URL (внешний источник)
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -140,15 +146,14 @@ export function KnowledgeQAView({ workspaceId }: KnowledgeQAViewProps) {
     <div className="space-y-3">
       {/* Toolbar */}
       <div className="flex items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Поиск по вопросу..."
-            className="pl-9 h-8 text-sm"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+        <KnowledgeSearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          historyScope={`${workspaceId}:qa`}
+          placeholder="Поиск по вопросу..."
+          className="flex-1 min-w-[200px] max-w-sm"
+          inputClassName="h-8 text-sm"
+        />
 
         <Button
           size="sm"
@@ -159,6 +164,28 @@ export function KnowledgeQAView({ workspaceId }: KnowledgeQAViewProps) {
         >
           <Filter className="w-4 h-4" />
         </Button>
+
+        {/* Переключатель Таблица / Дерево */}
+        <div className="inline-flex rounded-md border overflow-hidden">
+          <Button
+            size="sm"
+            variant={qaView === 'table' ? 'secondary' : 'ghost'}
+            className="h-8 w-8 p-0 rounded-none"
+            onClick={() => setQaView('table')}
+            title="Таблица"
+          >
+            <TableIcon className="w-4 h-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant={qaView === 'tree' ? 'secondary' : 'ghost'}
+            className="h-8 w-8 p-0 rounded-none"
+            onClick={() => setQaView('tree')}
+            title="Дерево"
+          >
+            <FolderTree className="w-4 h-4" />
+          </Button>
+        </div>
 
         <Button size="sm" onClick={handleCreateClick}>
           <Plus className="w-4 h-4 mr-1.5" />
@@ -221,6 +248,15 @@ export function KnowledgeQAView({ workspaceId }: KnowledgeQAViewProps) {
             </Button>
           </div>
         </Card>
+      ) : qaView === 'tree' ? (
+        <KnowledgeQATreeView
+          workspaceId={workspaceId}
+          items={filteredItems}
+          isSearchActive={isSearchActive}
+          onRowClick={handleRowClick}
+          onDelete={(qa) => deleteMutation.mutate(qa.id)}
+          onAddQA={handleCreateClick}
+        />
       ) : (
         <div className="border rounded-lg overflow-hidden">
           <NativeTable columns={COLUMNS}>
@@ -303,15 +339,26 @@ export function KnowledgeQAView({ workspaceId }: KnowledgeQAViewProps) {
                     </div>
                   </NativeTableCell>
 
-                  {/* Удалить */}
+                  {/* Доступ к типам проектов + удалить */}
                   <NativeTableCell withDivider={false}>
-                    <button
-                      className="md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => handleDeleteClick(qa, e)}
-                      title="Удалить"
+                    <div
+                      className="flex items-center gap-0.5"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <Trash2 className="w-3 h-3 text-red-500" />
-                    </button>
+                      <TemplateAccessButton
+                        entityId={qa.id}
+                        entityType="qa"
+                        workspaceId={workspaceId}
+                        mode={qa.template_access_mode}
+                      />
+                      <button
+                        className="md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => handleDeleteClick(qa, e)}
+                        title="Удалить"
+                      >
+                        <Trash2 className="w-3 h-3 text-red-500" />
+                      </button>
+                    </div>
                   </NativeTableCell>
                 </NativeTableRow>
               ))}

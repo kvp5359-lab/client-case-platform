@@ -112,6 +112,7 @@ export function SortableArticleRow({
           entityId={article.id}
           entityType="article"
           workspaceId={page.workspaceId!}
+          mode={(article as KnowledgeArticle).template_access_mode}
         />
 
         <div
@@ -195,6 +196,7 @@ export function ArticleRow({
           entityId={article.id}
           entityType="article"
           workspaceId={page.workspaceId!}
+          mode={article.template_access_mode}
         />
 
         <div

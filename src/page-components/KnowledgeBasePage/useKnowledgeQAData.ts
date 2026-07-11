@@ -5,6 +5,7 @@
  */
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { usePersistentSearch } from '@/hooks/knowledge/useKnowledgeSearch'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
@@ -39,12 +40,13 @@ export function useKnowledgeQAData(workspaceId: string) {
   })
 
   const groupsQuery = useQuery({
-    queryKey: knowledgeBaseKeys.groups(workspaceId),
+    queryKey: knowledgeBaseKeys.qaGroups(workspaceId),
     queryFn: async () => {
       const { data, error } = await supabase
         .from('knowledge_groups')
         .select('*')
         .eq('workspace_id', workspaceId)
+        .eq('kind', 'qa')
         .order('name')
       if (error) throw error
       return data as Array<{
@@ -65,12 +67,12 @@ export function useKnowledgeQAData(workspaceId: string) {
 
   // --- Search & filters ---
 
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = usePersistentSearch(`${workspaceId}:qa`)
   const [filterTagIds, setFilterTagIds] = useState<string[]>([])
   const [filterGroupIds, setFilterGroupIds] = useState<string[]>([])
 
   useEffect(() => {
-    setSearchQuery('')
+    // searchQuery не сбрасываем — он персистится per-workspace (usePersistentSearch)
     setFilterTagIds([])
     setFilterGroupIds([])
   }, [workspaceId])

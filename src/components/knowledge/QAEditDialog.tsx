@@ -93,12 +93,14 @@ function QAEditForm({
   })
 
   const { data: groups } = useQuery<Array<{ id: string; name: string; color: string | null }>>({
-    queryKey: knowledgeBaseKeys.groups(workspaceId),
+    // Q&A группы отдельны от статейных (knowledge_groups.kind='qa').
+    queryKey: knowledgeBaseKeys.qaGroups(workspaceId),
     queryFn: async () => {
       const r = await supabase
         .from('knowledge_groups')
         .select('*')
         .eq('workspace_id', workspaceId)
+        .eq('kind', 'qa')
         .order('sort_order')
         .order('name')
       return (r.data ?? []) as Array<{ id: string; name: string; color: string | null }>

@@ -28,15 +28,20 @@ import { cn } from '@/lib/utils'
 
 import {
   getAccessConfig,
+  getKbAccessConfig,
+  fetchKbMode,
   isQuickReply,
+  isKnowledgeBase,
   fetchQrFlags,
+  KB_MODE_META,
   type TemplateAccessEntityType,
+  type KbAccessMode,
 } from './template-access/helpers'
 
 // Реэкспорт типа для обратной совместимости (entityType используется снаружи).
 export type { TemplateAccessEntityType } from './template-access/helpers'
 
-type AccessMode = 'inherit' | 'everywhere' | 'selected' | 'personal_only'
+type AccessMode = 'inherit' | 'everywhere' | 'selected' | 'personal_only' | 'nowhere'
 
 type TemplateAccessPopoverProps = {
   entityId: string
@@ -62,6 +67,8 @@ export function TemplateAccessPopover({
 
   const { table, fkColumn, queryKey, badgeQueryKey } = getAccessConfig(entityType, entityId)
   const isQR = isQuickReply(entityType)
+  const isKb = entityType === 'group' || entityType === 'article' || entityType === 'qa'
+  const kbConfig = isKnowledgeBase(entityType) ? getKbAccessConfig(entityType, entityId) : null
 
   // Загружаем все шаблоны проектов workspace (лёгкий список id+name —
   // отдельный кеш-ключ, чтобы не затирать полный кеш listByWorkspace).
@@ -100,16 +107,24 @@ export function TemplateAccessPopover({
     enabled: open && isQR,
   })
 
+  // Режим доступа сущности базы знаний (колонка template_access_mode)
+  const { data: kbMode } = useQuery({
+    queryKey: kbConfig?.modeQueryKey ?? ['template-access-mode', 'none'],
+    queryFn: () => fetchKbMode(entityType as 'group' | 'article' | 'qa', entityId),
+    enabled: open && isKb,
+  })
+
   // Вычисляем «эффективный» режим из текущих данных
   const derivedMode: AccessMode | null = useMemo(() => {
     if (isLoading || !open) return null
+    if (isKb) return kbMode ?? null
     if (isQR && qrFlags === undefined) return null
     if (isQR && qrFlags) {
       if (qrFlags.access_inherits && qrFlags.group_id) return 'inherit'
       if (qrFlags.personal_only) return 'personal_only'
     }
     return linkedTemplateIds.length === 0 ? 'everywhere' : 'selected'
-  }, [isLoading, open, isQR, qrFlags, linkedTemplateIds.length])
+  }, [isLoading, open, isKb, kbMode, isQR, qrFlags, linkedTemplateIds.length])
 
   const effectiveMode: AccessMode | null = mode ?? derivedMode
 
@@ -197,6 +212,26 @@ export function TemplateAccessPopover({
     onError: () => toast.error('Не удалось изменить доступ'),
   })
 
+  // Сменить режим доступа у сущности базы знаний (колонка template_access_mode)
+  const setKbModeMutation = useMutation({
+    mutationFn: async (next: KbAccessMode) => {
+      if (!kbConfig) return
+      const { error } = await supabase
+        .from(kbConfig.entityTable)
+        .update({ template_access_mode: next })
+        .eq('id', entityId)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      if (kbConfig) {
+        queryClient.invalidateQueries({ queryKey: kbConfig.modeQueryKey })
+        queryClient.invalidateQueries({ queryKey: kbConfig.listInvalidateKey(workspaceId) })
+      }
+      queryClient.invalidateQueries({ queryKey: badgeQueryKey })
+    },
+    onError: () => toast.error('Не удалось изменить доступ'),
+  })
+
   const handleToggle = (templateId: string) => {
     if (linkedTemplateIds.includes(templateId)) {
       removeMutation.mutate(templateId)
@@ -208,9 +243,10 @@ export function TemplateAccessPopover({
   const handleModeChange = async (next: AccessMode) => {
     setMode(next)
 
-    // KB-режимы — только everywhere/selected, по пустоте junction
-    if (!isQR) {
-      if (next === 'everywhere' && linkedTemplateIds.length > 0) removeAllMutation.mutate()
+    // База знаний — режим хранится колонкой; привязки не трогаем
+    // (актуальны только в selected и сохраняются для round-trip).
+    if (isKb) {
+      setKbModeMutation.mutate(next as KbAccessMode)
       return
     }
 
@@ -240,7 +276,8 @@ export function TemplateAccessPopover({
     addMutation.isPending ||
     removeMutation.isPending ||
     removeAllMutation.isPending ||
-    updateQrFlagsMutation.isPending
+    updateQrFlagsMutation.isPending ||
+    setKbModeMutation.isPending
 
   // Показывать ли пункт «Наследовать от группы»
   const showInherit = entityType === 'qr-reply' && !!qrFlags?.group_id
@@ -263,6 +300,37 @@ export function TemplateAccessPopover({
     </label>
   )
 
+  // Радиокнопка режима базы знаний: иконка состояния + подпись + подсказка
+  const kbRadioRow = (val: KbAccessMode, hint?: string, disabled = false) => {
+    const meta = KB_MODE_META[val]
+    const Icon = meta.Icon
+    return (
+      <label
+        className={cn(
+          'flex items-start gap-2 px-1.5 py-1 rounded text-sm',
+          disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted/50 cursor-pointer',
+        )}
+      >
+        <input
+          type="radio"
+          className="accent-primary mt-1"
+          checked={effectiveMode === val}
+          onChange={() => handleModeChange(val)}
+          disabled={isPending || disabled}
+        />
+        <span className="flex flex-col">
+          <span className="flex items-center gap-1.5">
+            <Icon className={cn('w-3.5 h-3.5', meta.color)} />
+            {val === 'inherit' && kbConfig ? kbConfig.inheritLabel : meta.label}
+          </span>
+          {hint && (
+            <span className="text-[11px] text-muted-foreground leading-tight">{hint}</span>
+          )}
+        </span>
+      </label>
+    )
+  }
+
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
@@ -271,22 +339,33 @@ export function TemplateAccessPopover({
           Доступ для типов проектов
         </div>
 
-        {isLoading || (isQR && qrFlags === undefined) ? (
+        {isLoading || (isQR && qrFlags === undefined) || (isKb && kbMode === undefined) ? (
           <div className="flex justify-center py-4">
             <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <>
-            <div className="space-y-1 mb-2">
-              {showInherit && (
+            <div className="space-y-0.5 mb-2">
+              {isKb ? (
                 <>
-                  {radioRow('inherit', 'Наследовать от группы')}
-                  <div className="border-t my-1" />
+                  {kbRadioRow('inherit', kbConfig?.inheritHint)}
+                  {kbRadioRow('everywhere')}
+                  {kbRadioRow('selected', undefined, allTemplates.length === 0)}
+                  {kbRadioRow('nowhere')}
+                </>
+              ) : (
+                <>
+                  {showInherit && (
+                    <>
+                      {radioRow('inherit', 'Наследовать от группы')}
+                      <div className="border-t my-1" />
+                    </>
+                  )}
+                  {radioRow('everywhere', 'Везде')}
+                  {isQR && radioRow('personal_only', 'Только без проектов')}
+                  {radioRow('selected', 'Только в выбранных', allTemplates.length === 0)}
                 </>
               )}
-              {radioRow('everywhere', 'Везде')}
-              {isQR && radioRow('personal_only', 'Только без проектов')}
-              {radioRow('selected', 'Только в выбранных', allTemplates.length === 0)}
             </div>
 
             {/* Список типов проектов — только в режиме selected */}

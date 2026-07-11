@@ -111,6 +111,30 @@ export function useRecentlyViewed(workspaceId: string | undefined, limit = 20) {
 }
 
 /**
+ * История открытых СТАТЕЙ базы знаний (per-user, последнее открытие каждой).
+ * Переиспользует get_recently_viewed, фильтруя тип. Суб-ключ под recently-viewed —
+ * инвалидация track_recent_view (byWorkspace) накрывает его префиксом.
+ */
+export function useRecentlyViewedArticles(workspaceId: string | undefined, limit = 40) {
+  return useQuery({
+    queryKey: [...recentlyViewedKeys.byWorkspace(workspaceId ?? ''), 'articles'] as const,
+    enabled: Boolean(workspaceId),
+    staleTime: 60_000,
+    queryFn: async (): Promise<RecentlyViewedRow[]> => {
+      const { data, error } = await supabase.rpc('get_recently_viewed', {
+        p_workspace_id: workspaceId!,
+        // берём с запасом (RPC отдаёт union всех типов) и фильтруем статьи
+        p_limit: Math.max(limit * 2, 60),
+      })
+      if (error) throw error
+      return ((data as RecentlyViewedRow[] | null) ?? [])
+        .filter((r) => r.entity_type === 'knowledge_article')
+        .slice(0, limit)
+    },
+  })
+}
+
+/**
  * Зафиксировать факт «пользователь открыл сущность». UPSERT по PK
  * (user, workspace, entity_type, entity_id) → обновляет opened_at = now().
  *

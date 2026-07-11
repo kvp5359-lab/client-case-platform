@@ -8,15 +8,17 @@ export const knowledgeBaseKeys = {
   article: (articleId: string) => ['knowledge-base', 'article', articleId] as const,
   articleGroups: (articleId: string) => ['knowledge-base', 'article-groups', articleId] as const,
   groups: (workspaceId: string) => ['knowledge-base', 'groups', workspaceId] as const,
+  qaGroups: (workspaceId: string) => ['knowledge-base', 'qa-groups', workspaceId] as const,
   templateArticles: (templateId: string) =>
     ['knowledge-base', 'template-articles', templateId] as const,
   templateGroups: (templateId: string) =>
     ['knowledge-base', 'template-groups', templateId] as const,
   projectArticles: (templateId: string) =>
     ['knowledge-base', 'project-articles', templateId] as const,
-  // Доступ: какие шаблоны привязаны к группе/статье
+  // Доступ: какие шаблоны привязаны к группе/статье/Q&A
   groupAccess: (groupId: string) => ['knowledge-base', 'group-access', groupId] as const,
   articleAccess: (articleId: string) => ['knowledge-base', 'article-access', articleId] as const,
+  qaAccess: (qaId: string) => ['knowledge-base', 'qa-access', qaId] as const,
   // AI-поиск
   conversations: (workspaceId: string, projectId?: string) =>
     ['knowledge-base', 'conversations', workspaceId, projectId ?? 'admin'] as const,

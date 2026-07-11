@@ -3,6 +3,8 @@
  * и useKnowledgeTags могли импортировать их без циклической зависимости.
  */
 
+export type TemplateAccessMode = 'inherit' | 'everywhere' | 'selected' | 'nowhere'
+
 export type KnowledgeGroup = {
   id: string
   name: string
@@ -11,6 +13,7 @@ export type KnowledgeGroup = {
   parent_id: string | null
   sort_order: number
   created_at: string
+  template_access_mode: TemplateAccessMode
 }
 
 export type KnowledgeTag = {
@@ -45,6 +48,7 @@ export type KnowledgeArticle = {
   title: string
   content: string | null
   access_mode: 'read_only' | 'read_copy'
+  template_access_mode: TemplateAccessMode
   is_published: boolean
   status_id: string | null
   statuses: KnowledgeArticleStatus | null
