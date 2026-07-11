@@ -1,7 +1,8 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.39.0'
-import { corsHeadersFor } from "../_shared/edge.ts"
+import { corsHeadersFor, getServiceClient } from "../_shared/edge.ts"
+import { STORAGE_BUCKETS, storageGetPublicUrl } from "../_shared/storage.ts"
 
-const SUPABASE_URL = 'https://zjatohckcpiqmxkmfxbs.supabase.co'
+const _service = getServiceClient()
 
 interface OcrRequest {
   action: 'ocr'
@@ -22,8 +23,11 @@ interface SummarizeRequest {
 
 type RequestBody = OcrRequest | SummarizeRequest
 
+// Публичный URL через storage-слой: docbuilder пока на Supabase → тот же URL,
+// что и раньше; при переезде docbuilder на R2 автоматически отдаст CDN-ссылку
+// (без правки здесь). Раньше был захардкожен supabase-домен в обход слоя.
 function getFileUrl(filePath: string): string {
-  return `${SUPABASE_URL}/storage/v1/object/public/docbuilder/${filePath}`
+  return storageGetPublicUrl(_service, STORAGE_BUCKETS.docbuilder, filePath).data.publicUrl
 }
 
 async function fetchAsBase64(url: string): Promise<string> {

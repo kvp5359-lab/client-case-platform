@@ -1,7 +1,8 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.39.0'
-import { corsHeadersFor } from "../_shared/edge.ts"
+import { corsHeadersFor, getServiceClient } from "../_shared/edge.ts"
+import { STORAGE_BUCKETS, storageGetPublicUrl } from "../_shared/storage.ts"
 
-const SUPABASE_URL = 'https://zjatohckcpiqmxkmfxbs.supabase.co'
+const _service = getServiceClient()
 
 interface ContextDefinition {
   id: string
@@ -71,8 +72,10 @@ const LANG_NAMES: Record<string, string> = {
   en: 'английском',
 }
 
+// Публичный URL через storage-слой (docbuilder): пока на Supabase — тот же URL;
+// при переезде docbuilder на R2 автоматически отдаст CDN-ссылку без правки тут.
 function getFileUrl(filePath: string): string {
-  return `${SUPABASE_URL}/storage/v1/object/public/docbuilder/${filePath}`
+  return storageGetPublicUrl(_service, STORAGE_BUCKETS.docbuilder, filePath).data.publicUrl
 }
 
 async function fetchAsBase64(url: string): Promise<string> {
