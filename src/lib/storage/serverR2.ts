@@ -61,11 +61,25 @@ export async function serverUploadToStorage(
   options?: { upsert?: boolean; contentType?: string },
 ): Promise<{ error: { message: string } | null }> {
   if (isBucketOnR2(bucket)) {
-    const res = await r2.fetch(objectUrl(bucket, path), {
+    const url = objectUrl(bucket, path)
+    // Нормализуем тело в Uint8Array (Buffer уже подходит; Blob/ArrayBuffer → буфер),
+    // чтобы undici сам выставил Content-Length.
+    const body: Uint8Array =
+      data instanceof Uint8Array ? data
+      : data instanceof ArrayBuffer ? new Uint8Array(data)
+      : new Uint8Array(await (data as Blob).arrayBuffer())
+    const contentType = options?.contentType ?? 'application/octet-stream'
+    // aws4fetch.fetch() оборачивает тело в Request → ReadableStream БЕЗ
+    // Content-Length; пропатченный Next-ом fetch не проставляет его для крупных
+    // тел → R2 отвечает 411 (Length Required). Поэтому: подписываем запрос через
+    // aws4fetch (получаем SigV4-заголовки по хешу тела), а отправляем СЫРОЙ
+    // Uint8Array-body напрямую — тогда undici выставляет Content-Length сам.
+    const signed = await r2.sign(url, {
       method: 'PUT',
-      headers: { 'Content-Type': options?.contentType ?? 'application/octet-stream' },
-      body: data as BodyInit,
+      headers: { 'Content-Type': contentType },
+      body: body as BodyInit,
     })
+    const res = await fetch(url, { method: 'PUT', headers: signed.headers, body: body as BodyInit })
     return res.ok ? { error: null } : { error: { message: `R2 PUT ${res.status}` } }
   }
   return client.storage.from(bucket).upload(path, data, options)
