@@ -72,7 +72,14 @@ export async function r2Download(bucket: string, path: string): Promise<Res<Blob
 
 export function r2GetPublicUrl(bucket: string, path: string): { data: { publicUrl: string } } {
   const key = path.replace(/^\/+/, "")
-  return { data: { publicUrl: `${R2_PUBLIC_BASES[bucket] ?? ""}/${key}` } }
+  const base = R2_PUBLIC_BASES[bucket] ?? ""
+  // Fail-fast: без домена ссылка `/key` битая и молча легла бы в БД навсегда.
+  if (!base) {
+    throw new Error(
+      `R2 public base не задан для бакета "${bucket}" (env R2_PUBLIC_BASE). Публичная ссылка не построена.`,
+    )
+  }
+  return { data: { publicUrl: `${base}/${key}` } }
 }
 
 export async function r2Remove(bucket: string, paths: string[]): Promise<Res<unknown>> {

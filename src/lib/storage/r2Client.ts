@@ -117,6 +117,14 @@ export async function r2SignedUrl(
 export function r2PublicUrl(bucket: BucketRef, path: string): { data: { publicUrl: string } } {
   const key = path.replace(/^\/+/, '')
   const base = R2_PUBLIC_BASES[bucket] ?? ''
+  // Fail-fast: без домена получилась бы битая ссылка `/key`, которая молча
+  // записалась бы в БД навсегда. Лучше бросить — вызывающий покажет ошибку.
+  if (!base) {
+    throw new Error(
+      `R2 public base не задан для бакета "${bucket}" (NEXT_PUBLIC_R2_PUBLIC_BASE). ` +
+        `Публичная ссылка не может быть построена.`,
+    )
+  }
   return { data: { publicUrl: `${base}/${key}` } }
 }
 

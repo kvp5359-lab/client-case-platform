@@ -11,7 +11,8 @@
 
 import { AwsClient } from "https://esm.sh/aws4fetch@1.0.20";
 
-const R2_ENDPOINT = Deno.env.get("R2_ENDPOINT") ?? "";
+// .replace хвостового `/` — консистентно с mtproto/Next (иначе `//bucket/...`).
+const R2_ENDPOINT = (Deno.env.get("R2_ENDPOINT") ?? "").replace(/\/+$/, "");
 const R2_ACCESS_KEY_ID = Deno.env.get("R2_ACCESS_KEY_ID") ?? "";
 const R2_SECRET_ACCESS_KEY = Deno.env.get("R2_SECRET_ACCESS_KEY") ?? "";
 /** Публичные домены R2 по бакетам: env `R2_PUBLIC_BASE` = `bucket=url,bucket=url`. */
@@ -64,7 +65,11 @@ type Res<T> = { data: T | null; error: { message: string } | null };
 export async function r2Upload(
   bucket: string,
   path: string,
-  data: ArrayBuffer | Blob | Uint8Array | ReadableStream,
+  // Тело — ТОЛЬКО известной длины (BufferSource/Blob). ReadableStream убран
+  // намеренно: у потокового тела нет Content-Length → R2 отвечает 411. Если
+  // когда-нибудь понадобится стрим — сперва буферизовать в Uint8Array (как в
+  // src/lib/storage/serverR2.ts), иначе крупная загрузка молча упадёт.
+  data: ArrayBuffer | Blob | Uint8Array,
   options?: { contentType?: string },
 ): Promise<Res<{ path: string }>> {
   const res = await client().fetch(objectUrl(bucket, path), {
@@ -98,7 +103,15 @@ export async function r2CreateSignedUrl(
 /** Публичная ссылка — домен бакета из R2_PUBLIC_BASES. Синхронно. */
 export function r2GetPublicUrl(bucket: string, path: string): { data: { publicUrl: string } } {
   const key = path.replace(/^\/+/, "");
-  return { data: { publicUrl: `${R2_PUBLIC_BASES[bucket] ?? ""}/${key}` } };
+  const base = R2_PUBLIC_BASES[bucket] ?? "";
+  // Fail-fast: без домена вышла бы битая ссылка `/key`, которая молча легла бы
+  // в БД навсегда. Бросаем — вызывающий не запишет мусор (в проде base задан).
+  if (!base) {
+    throw new Error(
+      `R2 public base не задан для бакета "${bucket}" (env R2_PUBLIC_BASE). Публичная ссылка не построена.`,
+    );
+  }
+  return { data: { publicUrl: `${base}/${key}` } };
 }
 
 export async function r2Remove(bucket: string, paths: string[]): Promise<Res<unknown>> {

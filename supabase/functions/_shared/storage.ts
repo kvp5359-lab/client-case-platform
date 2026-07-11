@@ -48,8 +48,10 @@ interface UploadOptions {
 export function storageUpload(
   client: SupabaseClient,
   bucket: BucketRef,
+  // Тело известной длины (BufferSource/Blob) — без ReadableStream: R2 PUT
+  // потокового тела без Content-Length падает 411 (см. r2Upload).
   path: string,
-  data: ArrayBuffer | Blob | Uint8Array | ReadableStream,
+  data: ArrayBuffer | Blob | Uint8Array,
   options?: UploadOptions,
 ) {
   if (isBucketOnR2(bucket)) return r2Upload(bucket, path, data, options);
