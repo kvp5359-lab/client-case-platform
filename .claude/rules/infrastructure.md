@@ -150,7 +150,7 @@ ORDER BY id DESC LIMIT 10;
 `mtproto-service/` — отдельный Node 20 сервис на Fastify + gramjs. Держит MTProto-сессии сотрудников (TG «как личный аккаунт»: реакции в обе стороны, read-receipts, online presence, typing). **Только private chats**; групповые — на бот-секретаре.
 
 - **Доступ**: только через Edge Function `telegram-mtproto-*` (JWT + права) → mtproto-service с `x-internal-secret`. **Никогда не доступен из браузера напрямую.**
-- **Деплой**: **ручной**, НЕ через CI/CD (`deploy.yml` его не выкатывает — `git push` mtproto не трогает). `/opt/clientcase/` на VPS — **не git-репо**; код `mtproto-service/` доставляется **rsync'ом** с локалки, образ собирается **локально на VPS** (`docker-compose.yml` → `build: ./mtproto-service`, не pull). Контейнер `clientcase-mtproto` (порт 3007). На VPS свой `mtproto-service/.env` с секретами — **не перезатирать**.
+- **Деплой**: **авто на push** — `deploy.yml` job `backend` при изменении `mtproto-service/` сам делает rsync на VPS + `docker compose build mtproto && up -d mtproto` (+ смок после). Ручной путь (тот же rsync+build, см. ниже) — как фолбэк. `/opt/clientcase/` на VPS — **не git-репо**; образ собирается **локально на VPS** (`docker-compose.yml` → `build: ./mtproto-service`, не pull). Контейнер `clientcase-mtproto` (порт 3007). rsync исключает `.env`/`node_modules`/`dist` — секреты на VPS **не перезатираются**.
   ```bash
   # 1. С локалки — синхронизировать код (БЕЗ .env / node_modules / dist):
   rsync -av --delete --exclude node_modules --exclude dist --exclude .env \
@@ -194,22 +194,23 @@ ORDER BY id DESC LIMIT 10;
 ## Деплой
 
 - **Репозиторий**: https://github.com/kvp5359-lab/client-case-platform
-- **CI/CD**: GitHub Actions. **Автоматически деплоится ТОЛЬКО Next-приложение.** Edge Functions, миграции БД и `mtproto-service` — **вручную** (см. ниже + `pre-push` хук напоминает).
+- **CI/CD**: GitHub Actions. На push в main `deploy.yml` катит **фронт** (blue/green) **И бэкенд по изменениям** (job `backend`): синхронизирует `scripts/` на VPS всегда, деплоит **изменённые** edge-функции (+ зависимые от `_shared`) и `mtproto` (если менялся), затем прогоняет смок каналов. **Миграции БД авто НЕ применяются** (необратимо — только `::warning::`, применять вручную через `deploy-backend.yml`).
 
 **GitHub Actions workflows (`.github/workflows/`):**
 
 | Workflow | Триггер | Что делает |
 |----------|---------|-----------|
-| `deploy.yml` | push в main / dispatch | `quality` (lint + `npm test` — **жёсткий гейт**, при падении деплоя нет) → build Docker → push GHCR → blue/green deploy на VPS по SSH (retry на сетевой таймаут). **Только Next-приложение.** |
+| `deploy.yml` | push в main / dispatch | `quality` (lint + `npm test` — **жёсткий гейт**) → **фронт**: build Docker → push GHCR → blue/green на VPS. **`backend` (параллельно, по git-diff):** rsync `scripts/`→VPS (всегда), деплой изменённых edge (нужен `SUPABASE_ACCESS_TOKEN`, иначе шаг пропуск с warning) + mtproto (если менялся) → смок каналов. Миграции — только warning. |
 | `ci.yml` | push/PR в main | Проверочная сборка: `npm install` → eslint (non-blocking, `|| true`) → `npm run build`. |
 | `db-drift.yml` («Ops Checks») | ежедневно 05:00 UTC + PR к `supabase/migrations/**` или `supabase/schema/**` + dispatch | `db-drift-check.mjs` (дрейф функций repo↔prod) + `channel-health.mjs` (здоровье каналов). **Не блокирует** (сигнал). Требует секрет `SUPABASE_SERVICE_ROLE_KEY`. |
 | `smoke-channels.yml` («Smoke Channels») | ежедневно 06:00 UTC + dispatch | `smoke-matrix.mjs --confirm` — реальная отправка по всем каналам в allowlist-треды (`smoke_test_threads`). Требует `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SMOKE_BOT_PASSWORD`. |
 | `deploy-backend.yml` («Deploy Backend (manual)») | **только dispatch** (никогда push) | Ручной деплой того, что не катит `deploy.yml`: миграции (`db push`), Edge (`deploy-edge.sh`), mtproto (rsync+docker). Входы по умолчанию выключены. Требует `SUPABASE_ACCESS_TOKEN` + `SUPABASE_DB_PASSWORD` (+ существующие VPS-секреты). После деплоя каналов — смок. |
 
-**Ручной деплой (CI НЕ катит):**
-- **Edge Functions** — `scripts/deploy-edge.sh <name>` (сам ставит `--no-verify-jwt` из списка `NO_JWT_FUNCTIONS`). Карантин — со смоком.
-- **Миграции** — `supabase db push` (после — при правке функций/триггеров/RLS обновить эталон дрейфа `db-drift-check.mjs --update` и закоммитить).
-- **mtproto-service** — rsync + docker build на VPS (см. раздел mtproto-service).
+**Ручной деплой — теперь ФОЛБЭК** (авто-деплой из `deploy.yml` job `backend` покрывает edge/mtproto/scripts по изменениям). Ручной путь нужен, когда: не задан `SUPABASE_ACCESS_TOKEN` (edge-шаг пропускается); нужно передеплоить без push; миграции.
+- **Миграции** — **всегда вручную** (авто не применяются): `deploy-backend.yml` (dispatch, вход `migrations`) или `supabase db push`. После правки функций/триггеров/RLS — обновить эталон дрейфа `db-drift-check.mjs --update` и закоммитить.
+- **Edge Functions** — `scripts/deploy-edge.sh <name>` (сам ставит `--no-verify-jwt`). То же делает авто-job.
+- **mtproto-service** — rsync + docker build на VPS (то же делает авто-job при изменении `mtproto-service/`).
+- **⚠️ Активация авто-деплоя edge:** нужен секрет `SUPABASE_ACCESS_TOKEN` (Settings → Secrets → Actions; supabase.com → Account → Access Tokens). Смок-файлы R2 требуют `R2_ENDPOINT`/`R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`/`STORAGE_R2_BUCKETS` в секретах.
 
 **Git-хуки (`.githooks/`, активация `git config core.hooksPath .githooks`)** — оба НЕ блокируют:
 - `pre-commit` — предупреждает о файлах >500 строк + напоминает обновить `messenger-ledger.md`, если тронут мессенджер.
