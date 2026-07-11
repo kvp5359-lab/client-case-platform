@@ -67,14 +67,27 @@ const TXT = Buffer.from('ClientCase smoke-test document ' + new Date().toISOStri
 const DISPATCH_CHANNELS = new Set(['telegram_group', 'wazzup'])
 const EDGE_BY_CHANNEL = { telegram_mtproto: 'telegram-mtproto-send', email: 'email-internal-send' }
 
+// Воркспейс треда (кэш) — путь файла ОБЯЗАН начинаться с UUID воркспейса,
+// иначе storage-RLS/брокер R2 не пустят к нему на чтение (первая папка =
+// workspace_id), и картинка в чате покажется битым квадратом.
+const wsCache = new Map()
+async function workspaceOfThread(threadId) {
+  if (wsCache.has(threadId)) return wsCache.get(threadId)
+  const { data, error } = await supabase.from('project_threads').select('workspace_id').eq('id', threadId).single()
+  if (error || !data?.workspace_id) throw new Error('workspace_id треда: ' + (error?.message ?? 'нет'))
+  wsCache.set(threadId, data.workspace_id)
+  return data.workspace_id
+}
+
 // Загружает файлы в бакет `files` и отправляет как одно сообщение с вложениями.
 async function sendFiles(threadId, channel, files, withText) {
   const useDispatch = DISPATCH_CHANNELS.has(channel)
   if (!useDispatch && !botClient) throw new Error('нужен смок-бот (SMOKE_BOT_PASSWORD)')
+  const ws = await workspaceOfThread(threadId)
   const msgId = randomUUID()
   const uploaded = []
   for (const f of files) {
-    const path = `smoke/${msgId}/${f.name}`
+    const path = `${ws}/smoke/${msgId}/${f.name}`
     const { error } = await supabase.storage.from('files').upload(path, f.buf, { contentType: f.mime, upsert: true })
     if (error) throw new Error('upload: ' + error.message)
     uploaded.push({ name: f.name, size: f.buf.length, mime: f.mime, path })
