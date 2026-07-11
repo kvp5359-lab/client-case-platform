@@ -1,18 +1,19 @@
 # Миграция файлового хранилища: Supabase Storage → Cloudflare R2
 
-**Статус:** ✅ ПРИВАТНЫЕ БАКЕТЫ В ПРОДЕ, смок всех каналов пройден (2026-07-11). Публичные бакеты — остаток (см. ниже).
+**Статус:** ✅ ПРИВАТНЫЕ + `participant-avatars` В ПРОДЕ, смок всех каналов пройден (2026-07-11). Остаётся только `docbuilder*` (домен) + уборка.
 **Зачем:** уйти от растущего egress-счёта Supabase; R2 = egress $0, дешёвое хранение, S3-совместимость.
 
 ## ✅ Сделано (2026-07-11, в проде)
 - Флип 4 приватных бакетов (`files`,`document-files`,`document-templates`,`message-attachments`) на R2 во всех 3 средах (фронт CI-деплой + edge redeploy + mtproto rebuild). Флаг: `NEXT_PUBLIC_STORAGE_R2_BUCKETS` (фронт, deploy.yml) / `STORAGE_R2_BUCKETS` (edge secret + mtproto VPS `.env`).
 - Смок вживую: документы, MTProto вх/исх, Wazzup вх/исх, TG-группа вх/исх — всё через R2.
 - **Wazzup-фикс:** `attachment-proxy` (Wazzup не мог забрать R2 presigned-ссылку). **mtproto-фикс:** Node 22 (gramjs+WebSocket).
+- **✅ Публичный бакет `participant-avatars`** (2026-07-11): Custom Domain `cdn.clientcase.app` → бакет; `next.config` whitelist (`cdn.clientcase.app` + `*.r2.cloudflarestorage.com`); флаг +`participant-avatars` (фронт deploy.yml + edge secret); `R2_PUBLIC_BASE=participant-avatars=https://cdn.clientcase.app` (edge). Писатели аватаров задеплоены: `fetch-telegram-avatar`, `telegram-register-webhook` (mtproto — в rebuild). Мигрировано **84 URL** → cdn (81 `participants.avatar_url` + 3 `telegram_user_avatars.avatar_url`), сверено (файлы в R2, `next/image` отдаёт 200). `project_threads.wazzup_contact_avatar_url` — 0 (внешние wazzup24-URL, не наш бакет).
 
 ## ⏳ Остаток
-1. **Публичные бакеты** (`docbuilder`,`participant-avatars`,`docbuilder-covers`,`docbuilder-screenshots`) — ещё на Supabase (флаг их не включает). Нужен публичный домен R2 `cdn.clientcase.app` (Custom Domain на бакет) + `NEXT_PUBLIC_R2_PUBLIC_BASE`/`R2_PUBLIC_BASE` + починка ~101 аватара со старым Supabase-URL (`participants.avatar_url`, `project_threads.wazzup_contact_avatar_url`).
-2. **Пушнуть коммиты** `36cfed9c` (mtproto Node22), `b7d22e5f` (wazzup proxy) в main (код уже в проде через ручной деплой; пуш = синхронизация репо).
-3. **Косметика:** фронт спамит 403 в консоль на smoke-картинках с путём `smoke/...` (не воркспейс) — приглушить.
-4. **Через 1-2 недели** без проблем — удалить копию файлов в Supabase Storage.
+1. **`docbuilder*` бакеты** (`docbuilder`,`docbuilder-covers`,`docbuilder-screenshots`) — ещё на Supabase (флаг их не включает; при настройке аватаров домен docbuilder **выдал ошибку** — нужен свой Custom Domain, отдельно). До этого docbuilder работает штатно на Supabase.
+2. **Косметика:** фронт спамит 403 в консоль на smoke-картинках с путём `smoke/...` (не воркспейс) — приглушить.
+3. **Через 1-2 недели** без проблем — удалить копию файлов в Supabase Storage (вкл. `participant-avatars`).
+4. **Бэкап:** переключить `scripts/backup-storage*.mjs` на R2.
 
 ---
 
