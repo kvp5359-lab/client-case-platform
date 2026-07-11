@@ -115,10 +115,13 @@ export function extractOriginalFrom(opts: {
  */
 export function stripHtmlQuotes(html: string): string {
   let result = html
-  // Снимаем обёртки <html>/<head>/<body> если есть
-  result = result.replace(/^[\s\S]*<body[^>]*>/i, '')
-  result = result.replace(/<\/body>[\s\S]*$/i, '')
-  // <style> блоки
+  // Снимаем обёртки html/head/body КАК ТЕГИ (не «всё до <body>»). Письмо
+  // бывает multipart — несколько склеенных <html>-документов; жадный
+  // `^[\s\S]*<body>` матчился до ПОСЛЕДНЕГО <body> и выбрасывал ранние
+  // части с основным текстом, оставляя только последнюю (обычно цитату).
+  result = result.replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
+  result = result.replace(/<\/?(?:html|body)[^>]*>/gi, '')
+  // <style> блоки (на случай inline <style> в теле)
   result = result.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
   // Gmail quote-контейнеры (div с классом gmail_quote)
   result = result.replace(/<div[^>]*class="[^"]*gmail_quote[^"]*"[^>]*>[\s\S]*$/i, '')
