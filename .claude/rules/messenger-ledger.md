@@ -46,6 +46,13 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-07-11 — Edge-бэкстопы видимости вложений (defense-in-depth) ⏳ КОД ГОТОВ, ЖДЁТ ДЕПЛОЯ + СМОК
+- **Что:** зеркалю существующий backstop из `telegram-send-message` в три исходящие edge-функции — `wazzup-send`, `telegram-mtproto-send`, `email-internal-send`. Читаем `visibility` сообщения; если `!= 'client'` (team/self/заметка) → `markMessageSent` + ранний return `{ok, skipped:'internal_visibility'}` ДО внешней доставки. Null/absent/`client` → шлём как раньше (без регрессии).
+- **Зачем (реверс решения 07-08):** тогда edge-бэкстопы осознанно НЕ добавляли (фронт-гейт покрывал). По просьбе владельца добавил как второй слой — если какой-то путь забудет фронт-гейт, внутреннее сообщение/файл не утечёт в канал.
+- **Правки:** в каждую функцию добавлен `visibility` в SELECT + гейт (fail-closed). `telegram-mtproto-send` — дозобавлен импорт `markMessageSent`. deno check — только пред-существующие strict-null (`sendFailureLog.ts`, `to:` в email:643), новых нет.
+- **⏳ Деплой (карантин, строго со смоком):** `wazzup-send`/`telegram-mtproto-send`/`email-internal-send` (`--no-verify-jwt`). Смок: внутреннее (Команде/Заметка/Только я) сообщение С файлом → в сервисе есть, клиенту в Wazzup/MTProto/Email НЕ уходит; клиентское → уходит как раньше.
+- **Файлы:** `supabase/functions/{wazzup-send,telegram-mtproto-send,email-internal-send}/index.ts`.
+
 ### 2026-07-11 — Техдолг-проход: security-грант, паритет БД, CI-гейты (не баг, укрепление)
 - **Контекст:** аудит техдолга → точечные фиксы. Мессенджера касается ТОЛЬКО перечисленное; канальной логики (dispatch/webhook/send/visibility) НЕ трогал.
 - **`record_telegram_bot_msg_id`** — был EXECUTE-грант для `anon`/`authenticated` при том, что функция `SECURITY DEFINER` и ПИШЕТ в `project_messages` (per-bot msg-id карта). Единственный вызывающий — `_shared/syncTelegramIncomingMessage.ts` под service-role. Отозвал anon+authenticated (прод + миграция). Грабля: write-RPC мессенджера должны быть service_role-only.

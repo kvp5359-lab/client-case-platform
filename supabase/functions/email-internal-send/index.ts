@@ -41,6 +41,7 @@ interface MessageRow {
   thread_id: string;
   workspace_id: string;
   created_at: string;
+  visibility: string | null;
 }
 
 interface ThreadRow {
@@ -108,7 +109,7 @@ Deno.serve(async (req: Request) => {
   const { data: msg, error: msgErr } = await service
     .from("project_messages")
     .select(
-      "id, content, sender_name, has_attachments, email_in_reply_to, email_references, email_subject, email_send_method, email_send_account_id, thread_id, workspace_id, created_at",
+      "id, content, sender_name, has_attachments, email_in_reply_to, email_references, email_subject, email_send_method, email_send_account_id, thread_id, workspace_id, created_at, visibility",
     )
     .eq("id", body.message_id)
     .maybeSingle();
@@ -135,6 +136,16 @@ Deno.serve(async (req: Request) => {
       .limit(1)
       .maybeSingle();
     if (!member) return jsonRes({ error: "forbidden" }, 403, req);
+  }
+
+  // 🔒 Backstop: НЕ отправляем во внешний канал внутренние сообщения (team/self/
+  // «Заметка»). Фронт уже гейтит внешнюю доставку по visibility, это защита
+  // на уровне канала — утечка внутреннего сообщения клиенту критична
+  // (баг 2026-07-08: внутреннее сообщение с файлом ушло клиенту в группу).
+  const visibility = m.visibility ?? "client";
+  if (visibility !== "client") {
+    await markMessageSent(service, m.id, { channelFields: {} });
+    return jsonRes({ ok: true, skipped: "internal_visibility" }, 200, req);
   }
 
   const { data: thread, error: threadErr } = await service

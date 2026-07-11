@@ -50,12 +50,22 @@ Deno.serve(async (req: Request) => {
   // 1. Сообщение
   const { data: msg } = await service
     .from("project_messages")
-    .select("id, thread_id, content, wazzup_message_id, send_status, workspace_id, reply_to_message_id, has_attachments")
+    .select("id, thread_id, content, wazzup_message_id, send_status, workspace_id, reply_to_message_id, has_attachments, visibility")
     .eq("id", body.message_id)
     .maybeSingle();
   if (!msg || !msg.thread_id) return jsonRes({ skip: "no thread" }, 200, req);
   if (msg.send_status === "sent" || msg.wazzup_message_id) {
     return jsonRes({ skip: "already sent" }, 200, req);
+  }
+
+  // 🔒 Backstop: НЕ отправляем во внешний канал внутренние сообщения (team/self/
+  // «Заметка»). Фронт уже гейтит внешнюю доставку по visibility, это защита
+  // на уровне канала — утечка внутреннего сообщения клиенту критична
+  // (баг 2026-07-08: внутреннее сообщение с файлом ушло клиенту в группу).
+  const visibility = (msg.visibility as string | null) ?? "client";
+  if (visibility !== "client") {
+    await markMessageSent(service, msg.id, { channelFields: {} });
+    return jsonRes({ ok: true, skipped: "internal_visibility" }, 200, req);
   }
 
   // 2. Тред

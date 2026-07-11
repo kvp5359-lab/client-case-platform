@@ -16,7 +16,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeadersFor } from "../_shared/edge.ts";
-import { markMessageFailed } from "../_shared/messageSendStatus.ts";
+import { markMessageFailed, markMessageSent } from "../_shared/messageSendStatus.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -62,11 +62,21 @@ Deno.serve(async (req: Request) => {
 
   const { data: msg } = await service
     .from("project_messages")
-    .select("id, workspace_id, thread_id, content, has_attachments, reply_to_message_id")
+    .select("id, workspace_id, thread_id, content, has_attachments, reply_to_message_id, visibility")
     .eq("id", body.message_id)
     .maybeSingle();
   if (!msg || !msg.thread_id) {
     return jsonResponse({ error: "Message not eligible" }, 400, corsHeaders);
+  }
+
+  // 🔒 Backstop: НЕ отправляем во внешний канал внутренние сообщения (team/self/
+  // «Заметка»). Фронт уже гейтит внешнюю доставку по visibility, это защита
+  // на уровне канала — утечка внутреннего сообщения клиенту критична
+  // (баг 2026-07-08: внутреннее сообщение с файлом ушло клиенту в группу).
+  const visibility = ((msg as { visibility?: string | null }).visibility) ?? "client";
+  if (visibility !== "client") {
+    await markMessageSent(service, msg.id, { channelFields: {} });
+    return jsonResponse({ ok: true, skipped: "internal_visibility" }, 200, corsHeaders);
   }
 
   const { data: thread } = await service
