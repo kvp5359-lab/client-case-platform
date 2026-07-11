@@ -12,7 +12,7 @@ import { useMemo } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { STALE_TIME, projectPeopleByRoleKeys } from '@/hooks/queryKeys'
-import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
+import type { AvatarParticipant } from '@/types/participants'
 
 const CHUNK = 40
 

@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { formKitKeys } from '@/hooks/queryKeys'
 import { getUserFacingErrorMessage } from '@/utils/errorMessage'
-import type { RiskLevel } from '@/components/forms/riskLevels'
+import type { RiskLevel } from '@/lib/forms/riskLevels'
 
 type FieldValueCacheRow = {
   field_definition_id: string

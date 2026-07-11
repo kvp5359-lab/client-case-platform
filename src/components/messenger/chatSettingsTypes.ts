@@ -5,7 +5,11 @@
 import { MessageSquare, Send, Mail } from 'lucide-react'
 import type { ThreadAccentColor, ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import type { ThreadTemplate } from '@/types/threadTemplate'
-import { SYSTEM_WORKSPACE_ROLES } from '@/types/permissions'
+import { STAFF_ROLES, EXTERNAL_ROLES, CLIENT_ROLES } from '@/lib/messenger/chatRoles'
+
+// Реэкспорт для существующих импортёров chatSettingsTypes (определение — в
+// нейтральном @/lib/messenger/chatRoles, чтобы хуки не тянули вверх из components/).
+export { STAFF_ROLES, EXTERNAL_ROLES, CLIENT_ROLES }
 
 // ── Types ──
 
@@ -120,18 +124,6 @@ export const CHANNEL_OPTIONS: {
   { value: 'telegram', label: 'Telegram', desc: 'Группа в Telegram', icon: Send },
   { value: 'email', label: 'Email', desc: 'Через Gmail', icon: Mail },
 ]
-
-// «Staff» в контексте классификации участников чата = ТОЛЬКО workspace-роли.
-// Отличается от глобального STAFF_ROLES из permissions.ts (туда входит project-роль
-// «Исполнитель»). Здесь специально без неё — getRoleGroup ниже различает workspace
-// и project уровни через 4 группы: staff (workspace) / external / client / other.
-export const STAFF_ROLES = [
-  SYSTEM_WORKSPACE_ROLES.OWNER,
-  SYSTEM_WORKSPACE_ROLES.ADMIN,
-  SYSTEM_WORKSPACE_ROLES.EMPLOYEE,
-]
-export const EXTERNAL_ROLES = ['Внешний сотрудник']
-export const CLIENT_ROLES = [SYSTEM_WORKSPACE_ROLES.CLIENT]
 
 export const PROJECT_ROLE_OPTIONS = [
   { value: 'Администратор', label: 'Администраторы' },

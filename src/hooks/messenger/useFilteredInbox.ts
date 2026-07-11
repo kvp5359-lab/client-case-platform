@@ -26,7 +26,7 @@ import {
   getInboxMessageStatuses,
   type InboxThreadAggregate,
 } from '@/services/api/inboxService'
-import type { DeliveryStatus } from '@/components/messenger/DeliveryIndicator'
+import type { DeliveryStatus } from '@/types/delivery'
 import { inboxKeys, sidebarDataKeys, STALE_TIME } from '@/hooks/queryKeys'
 
 type MyProjectRole = {

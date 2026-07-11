@@ -22,8 +22,11 @@ import { AlertCircle } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { messengerKeys } from '@/hooks/queryKeys/messenger'
+import type { DeliveryStatus } from '@/types/delivery'
 
-export type DeliveryStatus = 'pending' | 'sent' | 'read' | 'failed' | null
+// Реэкспорт для существующих импортёров DeliveryIndicator (определение — в
+// нейтральном @/types/delivery, чтобы хуки не тянули вверх из components/).
+export type { DeliveryStatus }
 
 const CLIENT_TIMEOUT_MS = 60_000
 

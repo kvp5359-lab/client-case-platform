@@ -7,11 +7,11 @@
 
 import { useRef } from 'react'
 import { X } from 'lucide-react'
+import type { EmailChip } from '@/types/email'
 
-export type EmailChip = {
-  email: string
-  label: string
-}
+// Реэкспорт для существующих импортёров (определение — в нейтральном
+// @/types/email, чтобы хуки не тянули вверх из components/).
+export type { EmailChip }
 
 type EmailRecipientInputProps = {
   chips: EmailChip[]

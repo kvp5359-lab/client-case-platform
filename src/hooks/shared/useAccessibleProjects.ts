@@ -12,7 +12,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { accessibleProjectKeys, STALE_TIME } from '@/hooks/queryKeys'
-import type { BoardProject } from '@/components/boards/hooks/useWorkspaceProjects'
+import type { BoardProject } from '@/types/board'
 
 export function useAccessibleProjects(workspaceId: string | undefined) {
   const { user } = useAuth()

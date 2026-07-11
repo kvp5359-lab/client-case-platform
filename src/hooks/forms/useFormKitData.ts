@@ -22,7 +22,7 @@ import type {
 } from '@/types/forms'
 import { logger } from '@/utils/logger'
 import { formKitKeys } from '@/hooks/queryKeys'
-import { isRiskLevel, type RiskLevel } from '@/components/forms/riskLevels'
+import { isRiskLevel, type RiskLevel } from '@/lib/forms/riskLevels'
 
 type FieldType = Database['public']['Enums']['field_type']
 

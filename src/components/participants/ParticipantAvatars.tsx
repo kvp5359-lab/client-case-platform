@@ -4,13 +4,11 @@
  */
 
 import Image from 'next/image'
+import type { AvatarParticipant } from '@/types/participants'
 
-export type AvatarParticipant = {
-  id: string
-  name: string
-  last_name: string | null
-  avatar_url: string | null
-}
+// Реэкспорт для существующих импортёров (определение — в нейтральном
+// @/types/participants, чтобы хуки/утилиты не тянули вверх из components/).
+export type { AvatarParticipant }
 
 const SIZES = {
   sm: { px: 18, cls: 'w-[18px] h-[18px]', text: 'text-[7px]', overlap: '-space-x-1' },

@@ -15,7 +15,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { CLIENT_ROLES } from '@/components/messenger/chatSettingsTypes'
+import { CLIENT_ROLES } from '@/lib/messenger/chatRoles'
 import type { ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import { STALE_TIME, projectClientThreadKeys } from '@/hooks/queryKeys'
 

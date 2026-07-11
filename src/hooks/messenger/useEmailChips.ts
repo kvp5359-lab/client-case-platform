@@ -7,7 +7,7 @@
 
 import { useState, useMemo } from 'react'
 import type { WorkspaceParticipant } from '@/hooks/shared/useWorkspaceParticipants'
-import type { EmailChip } from '@/components/templates/EmailRecipientInput'
+import type { EmailChip } from '@/types/email'
 
 export function useEmailChips(initialEmails: EmailChip[], participants: WorkspaceParticipant[]) {
   const [selectedEmails, setSelectedEmails] = useState<EmailChip[]>(initialEmails)
