@@ -14,7 +14,17 @@ import { AwsClient } from "https://esm.sh/aws4fetch@1.0.20";
 const R2_ENDPOINT = Deno.env.get("R2_ENDPOINT") ?? "";
 const R2_ACCESS_KEY_ID = Deno.env.get("R2_ACCESS_KEY_ID") ?? "";
 const R2_SECRET_ACCESS_KEY = Deno.env.get("R2_SECRET_ACCESS_KEY") ?? "";
-const R2_PUBLIC_BASE = (Deno.env.get("R2_PUBLIC_BASE") ?? "").replace(/\/+$/, "");
+/** Публичные домены R2 по бакетам: env `R2_PUBLIC_BASE` = `bucket=url,bucket=url`. */
+const R2_PUBLIC_BASES: Record<string, string> = Object.fromEntries(
+  (Deno.env.get("R2_PUBLIC_BASE") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.includes("="))
+    .map((pair) => {
+      const i = pair.indexOf("=");
+      return [pair.slice(0, i).trim(), pair.slice(i + 1).trim().replace(/\/+$/, "")];
+    }),
+);
 
 /**
  * true → бакет обслуживается R2. Флаг читается из env НА КАЖДЫЙ вызов —
@@ -82,10 +92,10 @@ export async function r2CreateSignedUrl(
   return { data: { signedUrl: signed.url }, error: null };
 }
 
-/** Публичная ссылка из R2_PUBLIC_BASE. Синхронно. */
+/** Публичная ссылка — домен бакета из R2_PUBLIC_BASES. Синхронно. */
 export function r2GetPublicUrl(bucket: string, path: string): { data: { publicUrl: string } } {
   const key = path.replace(/^\/+/, "");
-  return { data: { publicUrl: `${R2_PUBLIC_BASE}/${bucket}/${key}` } };
+  return { data: { publicUrl: `${R2_PUBLIC_BASES[bucket] ?? ""}/${key}` } };
 }
 
 export async function r2Remove(bucket: string, paths: string[]): Promise<Res<unknown>> {

@@ -16,8 +16,23 @@ import type { BucketRef } from './buckets'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-/** База публичного домена R2 (напр. https://cdn.clientcase.app). Ключ: `<base>/<bucket>/<path>`. */
-const R2_PUBLIC_BASE = (process.env.NEXT_PUBLIC_R2_PUBLIC_BASE ?? '').replace(/\/+$/, '')
+
+/**
+ * Публичные домены R2 ПО БАКЕТАМ. У R2 один custom-домен = один бакет
+ * (домен указывает на корень бакета), поэтому карта `bucket → base`, а ссылка =
+ * `<base>/<path>` (без имени бакета в пути). Формат env — список `bucket=url`
+ * через запятую: `participant-avatars=https://cdn.clientcase.app,docbuilder=https://...`.
+ */
+const R2_PUBLIC_BASES: Record<string, string> = Object.fromEntries(
+  (process.env.NEXT_PUBLIC_R2_PUBLIC_BASE ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.includes('='))
+    .map((pair) => {
+      const i = pair.indexOf('=')
+      return [pair.slice(0, i).trim(), pair.slice(i + 1).trim().replace(/\/+$/, '')]
+    }),
+)
 
 type StorageError = { message: string }
 /** error===null ⇒ data не null (как в supabase-js v2). */
@@ -90,10 +105,11 @@ export async function r2SignedUrl(
   return { data: { signedUrl: body.url }, error: null }
 }
 
-/** Публичная ссылка (публичные бакеты) — из R2_PUBLIC_BASE. Синхронно, как Supabase. */
+/** Публичная ссылка (публичные бакеты) — домен бакета из R2_PUBLIC_BASES. Синхронно, как Supabase. */
 export function r2PublicUrl(bucket: BucketRef, path: string): { data: { publicUrl: string } } {
   const key = path.replace(/^\/+/, '')
-  return { data: { publicUrl: `${R2_PUBLIC_BASE}/${bucket}/${key}` } }
+  const base = R2_PUBLIC_BASES[bucket] ?? ''
+  return { data: { publicUrl: `${base}/${key}` } }
 }
 
 /** Удаление файлов. */

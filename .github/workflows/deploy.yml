@@ -94,8 +94,8 @@ jobs:
             NEXT_PUBLIC_APP_VERSION=1.0.0
             NEXT_PUBLIC_MODULE_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_MODULE_SUPABASE_URL }}
             NEXT_PUBLIC_MODULE_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_MODULE_SUPABASE_ANON_KEY }}
-            NEXT_PUBLIC_STORAGE_R2_BUCKETS=files,document-files,document-templates,message-attachments
-            NEXT_PUBLIC_R2_PUBLIC_BASE=
+            NEXT_PUBLIC_STORAGE_R2_BUCKETS=files,document-files,document-templates,message-attachments,participant-avatars
+            NEXT_PUBLIC_R2_PUBLIC_BASE=participant-avatars=https://cdn.clientcase.app
 
   # ===========================================
   # 3. Deploy to VPS

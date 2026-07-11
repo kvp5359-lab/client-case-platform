@@ -11,7 +11,18 @@
 import { AwsClient } from "aws4fetch"
 
 const R2_ENDPOINT = (process.env.R2_ENDPOINT ?? "").replace(/\/+$/, "")
-const R2_PUBLIC_BASE = (process.env.R2_PUBLIC_BASE ?? "").replace(/\/+$/, "")
+
+/** Публичные домены R2 по бакетам: env `R2_PUBLIC_BASE` = `bucket=url,bucket=url`. */
+const R2_PUBLIC_BASES: Record<string, string> = Object.fromEntries(
+  (process.env.R2_PUBLIC_BASE ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.includes("="))
+    .map((pair) => {
+      const i = pair.indexOf("=")
+      return [pair.slice(0, i).trim(), pair.slice(i + 1).trim().replace(/\/+$/, "")]
+    }),
+)
 
 const rawFlag = (process.env.STORAGE_R2_BUCKETS ?? "").trim()
 const r2BucketSet = new Set(rawFlag.split(",").map((s) => s.trim()).filter(Boolean))
@@ -59,7 +70,7 @@ export async function r2Download(bucket: string, path: string): Promise<Res<Blob
 
 export function r2GetPublicUrl(bucket: string, path: string): { data: { publicUrl: string } } {
   const key = path.replace(/^\/+/, "")
-  return { data: { publicUrl: `${R2_PUBLIC_BASE}/${bucket}/${key}` } }
+  return { data: { publicUrl: `${R2_PUBLIC_BASES[bucket] ?? ""}/${key}` } }
 }
 
 export async function r2Remove(bucket: string, paths: string[]): Promise<Res<unknown>> {
