@@ -1,25 +1,10 @@
 import type { MessageChannel } from '@/services/api/messenger/messengerService'
+import type { AccentSlug } from '@/lib/accentPalette'
 
-export type ThreadAccentColor =
-  | 'blue'
-  | 'slate'
-  | 'emerald'
-  | 'amber'
-  | 'rose'
-  | 'violet'
-  | 'orange'
-  | 'cyan'
-  | 'pink'
-  | 'indigo'
-  // Расширенная палитра (пары оттенков). slate/cyan оставлены выше для
-  // совместимости со старыми тредами, но в новый пикер не выводятся.
-  | 'green'
-  | 'sky'
-  | 'brown'
-  | 'taupe'
-  | 'red'
-  | 'black'
-  | 'graphite'
+// Единый источник палитры — src/lib/accentPalette.ts (ACCENT_SLUGS/AccentSlug).
+// Добавление цвета туда автоматически расширит этот тип → Record<ThreadAccentColor>-
+// карты потребуют новый ключ (tsc). Не дублировать список слагов здесь вручную.
+export type ThreadAccentColor = AccentSlug
 
 export type ProjectThread = {
   id: string

@@ -1,26 +1,7 @@
 import { acc, ACCENT_SLUGS, type AccentSlug } from '@/lib/accentPalette'
 
-export type MessengerAccent =
-  | 'blue'
-  | 'slate'
-  | 'emerald'
-  | 'amber'
-  | 'rose'
-  | 'violet'
-  | 'orange'
-  | 'cyan'
-  | 'pink'
-  | 'indigo'
-  // Расширенная палитра (пары оттенков)
-  | 'green'
-  | 'sky'
-  | 'brown'
-  | 'taupe'
-  | 'red'
-  | 'black'
-  | 'graphite'
-  // Legacy alias
-  | 'dark'
+// Единый источник — accentPalette.AccentSlug (+ legacy-алиас 'dark' для командного серого).
+export type MessengerAccent = AccentSlug | 'dark'
 
 /**
  * Светло-серый — ЕДИНЫЙ источник. Используется в двух местах:
