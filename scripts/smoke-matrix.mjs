@@ -19,6 +19,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
 import zlib from 'node:zlib'
+import { isBucketOnR2, r2Configured, r2Put } from './lib/r2.mjs'
 
 // Генерирует ВАЛИДНЫЙ PNG WxH сплошного цвета (Telegram sendPhoto строг к формату).
 function makePng(w, h, rgb = [80, 140, 220]) {
@@ -86,10 +87,18 @@ async function sendFiles(threadId, channel, files, withText) {
   const ws = await workspaceOfThread(threadId)
   const msgId = randomUUID()
   const uploaded = []
+  // Тест-файл ОБЯЗАН лечь туда же, откуда приложение его читает: если `files`
+  // на R2 — пишем в R2 (иначе смок «отправит» файл, которого в R2 нет → битый
+  // квадрат и ложный сигнал). Иначе — в Supabase, как раньше.
+  const filesOnR2 = isBucketOnR2('files') && r2Configured()
   for (const f of files) {
     const path = `${ws}/smoke/${msgId}/${f.name}`
-    const { error } = await supabase.storage.from('files').upload(path, f.buf, { contentType: f.mime, upsert: true })
-    if (error) throw new Error('upload: ' + error.message)
+    if (filesOnR2) {
+      await r2Put('files', path, f.buf, f.mime)
+    } else {
+      const { error } = await supabase.storage.from('files').upload(path, f.buf, { contentType: f.mime, upsert: true })
+      if (error) throw new Error('upload: ' + error.message)
+    }
     uploaded.push({ name: f.name, size: f.buf.length, mime: f.mime, path })
   }
   const { error } = await supabase.rpc('smoke_send_file', {
