@@ -17,7 +17,6 @@ FUNCTIONS_DIR="$(cd "$(dirname "$0")/.." && pwd)/supabase/functions"
 # сервисов) → шлюз Supabase отобьёт без --no-verify-jwt. Источник — gotchas.md +
 # channels.md (матрица авторизации). Держать в синхроне при добавлении каналов.
 NO_JWT_FUNCTIONS=(
-  telegram-webhook
   telegram-webhook-v2
   telegram-business-webhook
   telegram-send-message

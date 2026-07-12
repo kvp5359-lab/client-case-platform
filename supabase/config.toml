@@ -354,8 +354,6 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # «забыл флаг». Теперь CLI читает это при `supabase functions deploy`; флаг в
 # скрипте остаётся подстраховкой. Функции без записи → verify_jwt=true (дефолт).
 # Список синхронизирован с NO_JWT_FUNCTIONS в scripts/deploy-edge.sh.
-[functions.telegram-webhook]
-verify_jwt = false
 [functions.telegram-webhook-v2]
 verify_jwt = false
 [functions.telegram-business-webhook]
