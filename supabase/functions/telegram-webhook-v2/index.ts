@@ -44,7 +44,7 @@ import {
   syncTelegramReactions,
   syncTelegramReactionsAggregated,
 } from "../_shared/syncTelegramReactions.ts";
-import { service, setBotToken } from "./shared.ts";
+import { service, setBotToken, runWithBotToken } from "./shared.ts";
 import { handleMessage } from "./sync.ts";
 import { handleCallback } from "./callbacks.ts";
 import type { IntegrationContext } from "./types.ts";
@@ -98,28 +98,33 @@ Deno.serve(async (req) => {
     botToken: tokenFromDb,
   };
 
-  try {
-    const update = await req.json();
+  // Вся обработка — внутри request-scoped ALS-контекста с токеном этого бота,
+  // чтобы параллельный webhook другого бота той же группы не перетёр токен
+  // (гонка G10). getBotToken() внутри любого tgCall берёт токен отсюда.
+  return await runWithBotToken(tokenFromDb, async () => {
+    try {
+      const update = await req.json();
 
-    if (update.callback_query) {
-      await handleCallback(update.callback_query, ctx);
-    } else if (update.message_reaction) {
-      await syncTelegramReactions(service, update.message_reaction);
-    } else if (update.message_reaction_count) {
-      // Premium-юзер с мульти-реакцией / анонимный админ → приходит
-      // агрегатный count-update без user info. Пишем как «anonymous».
-      await syncTelegramReactionsAggregated(service, update.message_reaction_count);
-    } else if (update.edited_message) {
-      await handleMessage(update.edited_message, true, ctx);
-    } else if (update.message) {
-      await handleMessage(update.message, false, ctx);
+      if (update.callback_query) {
+        await handleCallback(update.callback_query, ctx);
+      } else if (update.message_reaction) {
+        await syncTelegramReactions(service, update.message_reaction);
+      } else if (update.message_reaction_count) {
+        // Premium-юзер с мульти-реакцией / анонимный админ → приходит
+        // агрегатный count-update без user info. Пишем как «anonymous».
+        await syncTelegramReactionsAggregated(service, update.message_reaction_count);
+      } else if (update.edited_message) {
+        await handleMessage(update.edited_message, true, ctx);
+      } else if (update.message) {
+        await handleMessage(update.message, false, ctx);
+      }
+    } catch (err) {
+      // Возвращаем 500, чтобы Telegram повторил доставку. Дедуп защищает от
+      // двойной вставки при ретраях (uq_project_messages_telegram_dedup).
+      console.error("telegram-webhook-v2 error:", err);
+      return new Response("error", { status: 500 });
     }
-  } catch (err) {
-    // Возвращаем 500, чтобы Telegram повторил доставку. Дедуп защищает от
-    // двойной вставки при ретраях (uq_project_messages_telegram_dedup).
-    console.error("telegram-webhook-v2 error:", err);
-    return new Response("error", { status: 500 });
-  }
 
-  return new Response("ok", { status: 200 });
+    return new Response("ok", { status: 200 });
+  });
 });
