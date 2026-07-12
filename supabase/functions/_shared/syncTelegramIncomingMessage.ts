@@ -38,6 +38,11 @@ interface TgMessageMinimal {
   chat: { id: number };
   date?: number;
   from?: TgFrom;
+  /** Общий id медиа-группы (альбома). Одинаков у всех файлов, отправленных
+   *  клиентом одним альбомом. Нужен фронту как флаг «это альбом» — соседние
+   *  строки одного (sender, date) с непустым grouped_id склеиваются в один
+   *  бабл (см. mergeAlbumMessages). Приходит и для фото, и для документов. */
+  media_group_id?: string;
   reply_to_message?: { message_id: number; date?: number };
   // Поля вложений — нужны для извлечения file_unique_id в дедуп-ключ.
   // Все опциональные: одно сообщение содержит ровно один из этих типов
@@ -235,6 +240,9 @@ export async function syncTelegramIncomingMessage(
     telegram_chat_id: chatId,
     telegram_sender_user_id: telegramUserId,
     telegram_message_date: messageDateISO,
+    // media_group_id (строка-число) → bigint-колонка telegram_grouped_id.
+    // PostgREST кастует text→int8. Флаг альбома для склейки бабла на фронте.
+    telegram_grouped_id: message.media_group_id ?? null,
     reply_to_message_id: replyToDbId,
     forwarded_from_name: forwardInfo.name,
     forwarded_date: forwardInfo.date,

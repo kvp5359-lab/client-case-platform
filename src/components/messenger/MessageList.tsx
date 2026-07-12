@@ -14,6 +14,7 @@ import { perfEnd } from '@/utils/perfTrace'
 import { wrapOrphanListItems } from '@/utils/messenger/listAwareCopy'
 import { DateSeparator, UnreadSeparator, isSameDay } from './messageListParts'
 import { buildMessageTimeline, timelineItemDate } from './buildMessageTimeline'
+import { mergeAlbumMessages } from './mergeAlbumMessages'
 import { useFloatingDateBadge } from './hooks/useFloatingDateBadge'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 
@@ -116,7 +117,7 @@ export function MessageList({
       const existing = realByKey.get(key)
       if (!existing) realByKey.set(key, m.created_at)
     }
-    return rawMessages.filter((m) => {
+    const deduped = rawMessages.filter((m) => {
       if (!m.id.startsWith('optimistic-')) return true
       const key = `${m.sender_participant_id ?? ''}|${m.content}|${m.attachments?.length ? '1' : '0'}`
       const realTs = realByKey.get(key)
@@ -124,6 +125,9 @@ export function MessageList({
       const delta = Math.abs(Date.parse(m.created_at) - Date.parse(realTs))
       return delta > 60_000
     })
+    // Склейка альбома (несколько файлов одним сообщением клиента) в один бабл:
+    // групповой TG-бот пишет по строке на файл — визуально объединяем соседние.
+    return mergeAlbumMessages(deduped)
   }, [rawMessages])
   const { user } = useAuth()
   const currentUserId = user?.id ?? null

@@ -98,6 +98,14 @@ export type ProjectMessage = {
   /** Все TG-message-id для media-group/split (BD-уникальный singular часто конфликтует со старыми тестовыми данными — массив всегда заполняется через append RPC). */
   telegram_message_ids?: number[] | null
   telegram_chat_id: number | null
+  /** Отправитель в Telegram (bigint→строка/число). Бот-независим — вместе с
+   *  telegram_message_date образует ключ склейки альбома на фронте. */
+  telegram_sender_user_id?: number | string | null
+  /** Дата сообщения в Telegram (ISO). Одинакова у всех файлов альбома. */
+  telegram_message_date?: string | null
+  /** id медиа-группы (альбома), если сообщение — часть альбома; иначе null.
+   *  Флаг «это альбом» для склейки соседних файлов в один бабл (mergeAlbumMessages). */
+  telegram_grouped_id?: number | string | null
   telegram_attachments_delivered: boolean | null
   /** Диагностика последней отправки в TG. Если есть telegram_message_id и
    *  error начинается с `reply_dropped:` или содержит `via=text` — сообщение
