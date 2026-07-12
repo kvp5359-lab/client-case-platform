@@ -234,14 +234,14 @@ D4.1 зависит от D2.1+D3.1. D4.2 — по факту после D2.3.
 - **v1 ретайр** (после смока треда «Клиенты» по плану F1) → снять весь v1↔v2 дубль (монолит `telegram-webhook/index.ts` 798 стр дублирует v2 без его фиксов). Не бэкпортить фиксы в v1 — ускорять вывод.
 
 **СРЕДНИЙ**
-- mtproto `commands.ts` God-file (818) → `routes/commands/{send,react,delete,backfill}.ts`; вынести send-attachments и inline-аватар-IIFE.
+- ✅ mtproto `commands.ts` God-file (818) — **частично 2026-07-12**: чистые хелперы (throttleBackfill/isTelegramPhotoMime/prepareTelegramText/resolvePeer/fetchAttachments/humanError/floodAwareError) вынесены в `routes/commandHelpers.ts`, файл 818→522, читается как список роутов. Разбиение самих роутов на `{send,react,delete,backfill}.ts` НЕ делал (Fastify-boilerplate + риск карантина; свалка-характер устранён выносом хелперов). Осталось: send-attachments и inline-аватар-IIFE внутри /messages/send.
 - mtproto `ingestMtprotoMessage` (`incoming.ts` ~232 стр) → `resolveClientIdentity`/`mergeAlbumMessage`/`insertMessageRow`.
 - Дубль fire-and-forget avatar-fetch (business-webhook `triggerAvatarFetch` + v2 `sync.ts` inline) → helper.
 - Двойной владелец `send_status` MTProto (edge `markMessageSent` И mtproto-service) — задокументировать источник истины.
 - `gmail-webhook` `processGmailMessage` (162-319) → parse/resolveThread/persist.
 
 **НИЗКИЙ / мёртвый код**
-- Мёртвое: `telegram-setup-webhook` (нет вызывающих, регистрирует v1), mtproto `/threads/read`+`/users/fetch-avatar`+`hasClient`+`r2Remove`/`storageRemove`, фронт `gmail-send`/`useSendEmail` (гасится в handleSend).
+- ✅ **2026-07-12 удалено:** фронт `useSendEmail`+`useOptimisticEmail` (инертная цепочка отправки email — mutate не звался); mtproto `/threads/read`+`/users/fetch-avatar` (без вызывающих) + осиротевший storage-импорт; `hasClient` (ранее). **Оставлено осознанно:** `r2Remove`/`storageRemove` в mtproto — часть симметричной storage-абстракции 3 рантаймов (edge-копия активно используется upload-slot/compress/drive; удалять только mtproto-половину = хуже, асимметрия). Edge `gmail-send` задеплоена, но теперь ничем не зовётся — снять как прод-операцию (`supabase functions delete gmail-send`). `telegram-setup-webhook` не трогал (регистрирует v1, ждёт ретайра v1).
 - `DeliveryIcon` vs `DeliveryTick` дубль маппинга; `formatTime` дубль (переименовать список-версию в `formatRelativeTime`).
 - mtproto `humanError` ×2 → `utils/telegramErrors.ts`; `htmlFormatting` копия edge↔mtproto (тест-паритет/ссылка).
 

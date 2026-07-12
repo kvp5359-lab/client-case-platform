@@ -18,7 +18,7 @@
 | Edit своих исходящих              | ✅       | ✅          | ✅         | ❌          | ❌    |
 | Delete своих (сообщение/файл)     | ✅ 48ч   | ✅ право    | ✅         | 🟡 ~2 сут   | ❌    |
 | Read-receipts (от клиента)        | ❌       | ❌          | ✅ MTProto | ✅          | 🟡 пиксель |
-| Mark-as-read (мы → внешний)       | ❌       | ❌          | ✅         | ✅          | n/a   |
+| Mark-as-read (мы → внешний)       | ❌       | ❌          | 🟡 не подключён | ✅     | n/a   |
 | Голосовые с автотранскрипцией     | ✅       | ✅          | ✅         | ✅          | n/a   |
 
 Легенда: ✅ — нативно, 🟡 — эмуляция/частично, ❌ — не поддерживается каналом.
@@ -135,10 +135,10 @@
 
 - **Архитектура**: фронт → Edge Function `telegram-mtproto-*` (JWT + права) → `mtproto-service` (gramjs, Fastify) → Telegram → Supabase. `mtproto-service` никогда не доступен из браузера напрямую.
 - **Сервис**: `mtproto-service/` — отдельный Node 20 контейнер. Подробнее в [`infrastructure.md`](./infrastructure.md#mtproto-service).
-- **Edge Functions**: `telegram-mtproto-auth`, `telegram-mtproto-send`, `telegram-mtproto-react`, `telegram-mtproto-backfill`.
+- **Edge Functions**: `telegram-mtproto-auth`, `telegram-mtproto-send`, `telegram-mtproto-react`, `telegram-mtproto-edit`, `telegram-mtproto-delete`, `telegram-mtproto-backfill`.
 - **Тред**: `project_id = NULL`, `owner_user_id`, `mtproto_session_user_id`, `mtproto_client_tg_user_id`.
 - **Backfill истории** (2026-05-12): кнопка «Загрузить ещё 50 из Telegram» в [`MessageList.tsx`](../../src/components/messenger/MessageList.tsx) когда сотрудник дошёл до самого старого сообщения в БД. Цепочка: фронт → `telegram-mtproto-backfill` → `mtproto-service POST /messages/backfill` → `Api.messages.GetHistory` с `offset_id = min(telegram_message_id треда)`, `limit=50`. Идемпотентно через UNIQUE (thread_id, telegram_message_id, source). Rate-limit: 2 сек между запросами per-session; FLOOD_WAIT → 429 с Retry-After.
-- **Аватары**: эндпоинт `POST /users/fetch-avatar` в mtproto-service → `client.downloadProfilePhoto` → Storage → `participants.avatar_url`. Авто из `handleNewMessage` (fire-and-forget, идемпотентно).
+- **Аватары**: функция `fetchAndStoreAvatar(client, …)` в `incoming.ts` → `client.downloadProfilePhoto` → Storage → `participants.avatar_url`. Зовётся прямым вызовом из приёма (`handleNewMessage`) и `/messages/send` (fire-and-forget, идемпотентно). HTTP-обёртка `/users/fetch-avatar` удалена 2026-07-12 (не имела вызывающих). Mark-as-read через `/threads/read` тоже удалён — не был подключён к фронту.
 
 ## Wazzup (WhatsApp / Instagram)
 
