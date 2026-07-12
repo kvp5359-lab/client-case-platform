@@ -18,6 +18,7 @@ import { Api, TelegramClient } from "telegram"
 import { CustomFile } from "telegram/client/uploads.js"
 import { z } from "zod"
 import { config } from "../config.js"
+import { safeSecretEqual } from "../utils/secret.js"
 import { supabase } from "../db.js"
 import { getClient } from "../sessions/manager.js"
 import { htmlToTelegramHtml, isHtmlContent, escapeHtmlEntities } from "../utils/htmlFormatting.js"
@@ -104,8 +105,7 @@ async function resolvePeer(
 
 export const commandsRoutes: FastifyPluginAsync = async (app) => {
   app.addHook("preHandler", async (req, reply) => {
-    const got = req.headers["x-internal-secret"]
-    if (got !== config.INTERNAL_SECRET) {
+    if (!safeSecretEqual(req.headers["x-internal-secret"], config.INTERNAL_SECRET)) {
       return reply.code(401).send({ error: "Unauthorized" })
     }
   })

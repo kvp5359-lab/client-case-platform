@@ -39,8 +39,11 @@ export function useProjectModules(
       }
       return PROJECT_MODULES.filter(isModuleAccessible).sort((a, b) => a.order - b.order)
     },
+    // isFeatureEnabled/hasModuleAccess включены в deps: без них memo не
+    // пересчитывался при поздней загрузке workspace_features/прав → модуль с
+    // featureKey оставался stale (Фаза 8 аудита).
     // eslint-disable-next-line react-hooks/exhaustive-deps -- .join(',') стабилизация массива
-    [enabledModules.join(','), projectId, workspaceId, moduleAccess],
+    [enabledModules.join(','), projectId, workspaceId, moduleAccess, isFeatureEnabled, hasModuleAccess],
   )
 
   // Быстрая проверка по id
@@ -90,7 +93,7 @@ export function useProjectModules(
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- .join(',') стабилизация массива
-    [availableModules, enabledModules.join(','), moduleAccess],
+    [availableModules, enabledModules.join(','), moduleAccess, isFeatureEnabled, hasModuleAccess],
   )
 
   return {

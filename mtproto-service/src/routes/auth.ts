@@ -9,6 +9,7 @@
 import type { FastifyPluginAsync } from "fastify"
 import { z } from "zod"
 import { config } from "../config.js"
+import { safeSecretEqual } from "../utils/secret.js"
 import {
   sendCode,
   signInWithCode,
@@ -20,8 +21,7 @@ import { supabase } from "../db.js"
 export const authRoutes: FastifyPluginAsync = async (app) => {
   // Pre-handler: проверка internal secret.
   app.addHook("preHandler", async (req, reply) => {
-    const got = req.headers["x-internal-secret"]
-    if (got !== config.INTERNAL_SECRET) {
+    if (!safeSecretEqual(req.headers["x-internal-secret"], config.INTERNAL_SECRET)) {
       return reply.code(401).send({ error: "Unauthorized" })
     }
   })
