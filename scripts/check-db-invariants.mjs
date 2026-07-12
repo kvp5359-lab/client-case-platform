@@ -41,6 +41,18 @@ if (missing.length) {
   console.log('✓ recompute_thread_unread_for — все правила формулы на месте')
 }
 
+// 1b. Backstop'ы роутера исходящих (dispatch_message_to_channels): внутреннее
+// (visibility != client) наружу не уходит; вложения при p_force=false пропускаются
+// (их шлёт фронт). Зеркало edge-стража check-edge-invariants на уровне БД.
+const dispatchMarkers = inv.dispatch_markers || {}
+const dispatchMissing = Object.entries(dispatchMarkers).filter(([, v]) => v !== true).map(([k]) => k)
+if (dispatchMissing.length) {
+  console.error(`✗ dispatch_message_to_channels потеряла backstop: ${dispatchMissing.join(', ')} (внутреннее может утечь клиенту / дубли вложений)`)
+  failed++
+} else {
+  console.log('✓ dispatch_message_to_channels — visibility-backstop и skip-вложений на месте')
+}
+
 // 2. Совпадение колонок связки досок
 if (inv.board_out_cols !== inv.workspace_out_cols) {
   console.error(`✗ Колонки разошлись: get_board_filtered_threads=${inv.board_out_cols} ≠ get_workspace_threads=${inv.workspace_out_cols}. Синхронизируй RETURNS TABLE.`)
