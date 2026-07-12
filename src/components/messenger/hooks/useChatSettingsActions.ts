@@ -11,21 +11,14 @@
  * и финальный объект, который отдаётся в UI.
  */
 
-import { useCallback, useEffect, useMemo, type RefObject } from 'react'
+import { useEffect, useMemo, type RefObject } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import {
-  useEmailLink,
-  useCreateEmailLink,
-  useRemoveEmailLink,
-  useUpdateEmailLink,
-} from '@/hooks/email/useEmailLink'
 import { useTelegramLink } from '@/hooks/messenger/useTelegramLink'
-import { toast } from 'sonner'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { useTaskAssigneeIds, useToggleAssignee } from '@/components/tasks/useTaskAssignees'
-import type { ChatSettingsResult, AccessType } from '../chatSettingsTypes'
+import type { ChatSettingsResult } from '../chatSettingsTypes'
 import type { ThreadAccentColor, ProjectThread } from '@/hooks/messenger/useProjectThreads'
 import {
   useProjectParticipants,
@@ -40,9 +33,11 @@ import { useEmailSuggestionsFilter } from './useEmailSuggestionsFilter'
 import { useChatSettingsTemplateApply } from './useChatSettingsTemplateApply'
 import { useChatSettingsSave } from './useChatSettingsSave'
 import { useChatSettingsDefaults } from './useChatSettingsDefaults'
+import { useChatSettingsEmailLink } from './useChatSettingsEmailLink'
+import { useChatSettingsFieldHandlers } from './useChatSettingsFieldHandlers'
 import type { ComposeFieldHandle } from '../ComposeField'
 import type { useChatSettingsFormState } from './useChatSettingsFormState'
-import { STALE_TIME, statusKeys, projectThreadKeys } from '@/hooks/queryKeys'
+import { STALE_TIME, statusKeys } from '@/hooks/queryKeys'
 
 type FormReturn = ReturnType<typeof useChatSettingsFormState>
 
@@ -125,35 +120,9 @@ export function useChatSettingsActions({
     return Array.from(byId.values())
   }, [effectiveParticipants, workspaceParticipants])
 
-  // ── Email link (edit mode) ──
-  const { data: emailLink } = useEmailLink(chat?.id)
-  const createEmailLink = useCreateEmailLink(chat?.id)
-  const updateEmailLink = useUpdateEmailLink(chat?.id)
-  const removeEmailLink = useRemoveEmailLink(chat?.id)
-
-  // ── Sync form fields with current email link ──
-  // Когда тред уже привязан к email, поля «Email клиента» / «Тема письма»
-  // показывают текущие значения (а не пустые, как раньше). Так пользователь
-  // видит, что именно сейчас закреплено за тредом, и может отредактировать.
-  useEffect(() => {
-    if (!open || !form.isEditMode) return
-    if (emailLink) {
-      // Только если ещё не вводил вручную (не перезаписываем правки пользователя).
-      if (form.selectedEmails.length === 0 && !form.emailInput) {
-        form.setSelectedEmails([
-          { email: emailLink.contact_email, label: emailLink.contact_email },
-        ])
-      }
-      if (!form.emailSubject && !form.subjectTouched) {
-        form.setEmailSubject(emailLink.subject ?? '')
-      }
-    } else {
-      // Привязки нет → очищаем поля, чтобы можно было ввести новую.
-      if (form.selectedEmails.length > 0) form.setSelectedEmails([])
-      if (form.emailSubject && !form.subjectTouched) form.setEmailSubject('')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [emailLink?.id, open, chat?.id])
+  // ── Email link (edit mode): привязка + синхронизация полей + link/unlink ──
+  const { emailLink, handleLinkEmail, handleUnlinkEmail, isLinkingEmail, isUnlinkingEmail } =
+    useChatSettingsEmailLink({ chat, form, open })
 
   // ── Telegram link (edit mode) ──
   const {
@@ -202,14 +171,7 @@ export function useChatSettingsActions({
   }, [docAddFilesRef, composeRef])
 
   // ── Mutations ──
-  const {
-    updateProjectMutation,
-    updateStatusMutation,
-    updateDeadlineMutation,
-    updateAccessMutation,
-    toggleMemberMutation,
-    queryClient,
-  } = useChatSettingsMutations({
+  const mutations = useChatSettingsMutations({
     chatId: chat?.id,
     chatProjectId: chat?.project_id,
     selectedProjectId: form.selectedProjectId,
@@ -249,117 +211,15 @@ export function useChatSettingsActions({
     emailSuggestions,
   })
 
-  // ── Handlers ──
-  const handleAccessChange = useCallback(
-    (newAccess: AccessType, roles?: string[]) => {
-      form.setAccessType(newAccess)
-      if (form.isEditMode) updateAccessMutation.mutate({ accessType: newAccess, roles })
-    },
-    [form, updateAccessMutation],
-  )
-
-  const handleToggleMember = useCallback(
-    (participantId: string) => {
-      const isMember = memberIds.has(participantId)
-      toggleMemberMutation.mutate({ participantId, add: !isMember })
-      queryClient.setQueryData(projectThreadKeys.members(chat?.id), (old: Set<string> | undefined) => {
-        const next = new Set(old ?? [])
-        if (isMember) next.delete(participantId)
-        else next.add(participantId)
-        return next
-      })
-    },
-    [memberIds, toggleMemberMutation, chat?.id, queryClient],
-  )
-
-  const handleProjectSelect = useCallback(
-    (projectId: string | null) => {
-      form.setSelectedProjectId(projectId)
-      if (form.isEditMode) updateProjectMutation.mutate(projectId)
-    },
-    [form, updateProjectMutation],
-  )
-
-  const handleStatusSelect = useCallback(
-    (sid: string) => {
-      if (form.isEditMode) {
-        form.setLocalStatusId(sid)
-        updateStatusMutation.mutate(sid)
-      } else {
-        form.setTaskStatusId(sid)
-      }
-      form.setStatusPopoverOpen(false)
-    },
-    [form, updateStatusMutation],
-  )
-
-  const handleDeadlineSelect = useCallback(
-    (date: Date | undefined) => {
-      if (!date) return
-      if (form.isEditMode) {
-        const iso = date.toISOString()
-        form.setLocalDeadline(iso)
-        updateDeadlineMutation.mutate(iso)
-      } else {
-        form.setTaskDeadline(date)
-      }
-    },
-    [form, updateDeadlineMutation],
-  )
-
-  const handleDeadlineClear = useCallback(() => {
-    if (form.isEditMode) {
-      form.setLocalDeadline(null)
-      updateDeadlineMutation.mutate(null)
-    } else {
-      form.setTaskDeadline(undefined)
-    }
-  }, [form, updateDeadlineMutation])
-
-  const handleLinkEmail = useCallback(() => {
-    // Целевой адрес: либо то, что юзер набирает в input, либо уже выбранный чип
-    // (когда обновляем существующую привязку и input пустой).
-    const targetEmail =
-      form.emailInput.trim() ||
-      (form.selectedEmails.length > 0 ? form.selectedEmails[0].email : '')
-    if (!targetEmail) return
-    const subject = form.emailSubject.trim() || undefined
-
-    if (emailLink) {
-      // Привязка уже есть → UPDATE (меняем email или тему).
-      updateEmailLink.mutate(
-        { linkId: emailLink.id, contactEmail: targetEmail, subject: subject ?? null },
-        {
-          onSuccess: () => {
-            toast.success('Email-канал обновлён')
-            form.setEmailInput('')
-            form.setSubjectTouched(false)
-          },
-          onError: () => toast.error('Не удалось обновить email-канал'),
-        },
-      )
-    } else {
-      createEmailLink.mutate(
-        { contactEmail: targetEmail, subject },
-        {
-          onSuccess: () => {
-            toast.success('Email привязан')
-            form.setEmailInput('')
-            form.setSubjectTouched(false)
-          },
-          onError: () => toast.error('Не удалось привязать email'),
-        },
-      )
-    }
-  }, [form, createEmailLink, updateEmailLink, emailLink])
-
-  const handleUnlinkEmail = useCallback(() => {
-    if (!emailLink) return
-    removeEmailLink.mutate(emailLink.id, {
-      onSuccess: () => toast.success('Email отвязан'),
-      onError: () => toast.error('Не удалось отвязать email'),
-    })
-  }, [emailLink, removeEmailLink])
+  // ── Field handlers (доступ/участник/проект/статус/дедлайн) ──
+  const {
+    handleAccessChange,
+    handleToggleMember,
+    handleProjectSelect,
+    handleStatusSelect,
+    handleDeadlineSelect,
+    handleDeadlineClear,
+  } = useChatSettingsFieldHandlers({ form, mutations, memberIds, chatId: chat?.id })
 
   // ── Save ──
   const handleSave = useChatSettingsSave({
@@ -395,8 +255,8 @@ export function useChatSettingsActions({
     telegramCopied,
     handleCopyTelegramCode,
     // Email link
-    isLinkingEmail: createEmailLink.isPending || updateEmailLink.isPending,
-    isUnlinkingEmail: removeEmailLink.isPending,
+    isLinkingEmail,
+    isUnlinkingEmail,
     // Document picker
     projectDocuments,
     docStatusMap,

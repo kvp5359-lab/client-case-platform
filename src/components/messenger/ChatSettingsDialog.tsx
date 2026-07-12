@@ -14,17 +14,10 @@
  *  - hooks/useChatSettingsActions — все хендлеры и запросы данных
  */
 
-import { createElement, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertCircle, ChevronDown, ChevronRight, CircleDashed, Mail } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AlertCircle, Mail } from 'lucide-react'
 import { checkEmailAttachmentsLimit } from './hooks/useMessengerHandlers'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { ComposeField, type ComposeFieldHandle } from './ComposeField'
 import { DocumentPickerDialog } from './DocumentPickerDialog'
@@ -33,28 +26,18 @@ import { SegmentedToggle } from '@/components/ui/segmented-toggle'
 import { ThreadTemplatePicker } from './ThreadTemplatePicker'
 
 import type { ChatSettingsDialogProps } from './chatSettingsTypes'
-import { PROJECT_ROLE_OPTIONS } from './chatSettingsTypes'
 import type { TabMode } from './chatSettingsTypes'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import { acc } from '@/lib/accentPalette'
-import { safeCssColor } from '@/utils/isValidCssColor'
-import { getStatusIcon } from '@/components/common/status-icons'
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu'
-import { ChatSettingsIconColorPicker } from './ChatSettingsIconColorPicker'
-import { ChatSettingsProjectSelector } from './ChatSettingsProjectSelector'
 import { ChatSettingsAssignees } from './ChatSettingsAssignees'
-import { ChatSettingsAccess } from './ChatSettingsAccess'
 import { ChatSettingsNotifications } from './ChatSettingsNotifications'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { ChatSettingsChannels } from './ChatSettingsChannels'
 import { ChatSettingsChannelInfo } from './ChatSettingsChannelInfo'
-import { ChatSettingsTimeRangePicker } from './ChatSettingsTimeRangePicker'
-import { ChatSettingsStatusPopover } from './ChatSettingsStatusPopover'
+import { ChatSettingsNameField } from './chatSettings/ChatSettingsNameField'
+import { ChatSettingsMetaRow } from './chatSettings/ChatSettingsMetaRow'
+import { ChatSettingsAccessBlock } from './chatSettings/ChatSettingsAccessBlock'
+import { ChatSettingsFooter } from './chatSettings/ChatSettingsFooter'
 import { useChatSettingsFormState } from './hooks/useChatSettingsFormState'
 import { useChatSettingsActions } from './hooks/useChatSettingsActions'
 
@@ -141,36 +124,6 @@ export function ChatSettingsDialog({
     onUpdate,
   })
 
-  // Сворачиваемый блок «Доступ и подписки» — свёрнут по умолчанию (нужен реже,
-  // чем «Исполнители»). В свёрнутом виде показываем краткую сводку «кто видит».
-  const [accessOpen, setAccessOpen] = useState(false)
-
-  // Поле описания: в покое компактное (2 строки), на фокусе раскрывается вниз —
-  // минимум ~8rem, дальше растёт под контент до 16rem, потом скролл.
-  const descRef = useRef<HTMLTextAreaElement>(null)
-  const nameRef = useRef<HTMLInputElement>(null)
-  const [descFocused, setDescFocused] = useState(false)
-
-  // Автофокус названия: ставим каретку и прокрутку в НАЧАЛО, иначе у длинного
-  // названия input показывает его конец (каретка по умолчанию в конце).
-  useEffect(() => {
-    if (!open) return
-    if (!(form.isEditMode || form.channelType !== 'email')) return
-    const id = requestAnimationFrame(() => {
-      const el = nameRef.current
-      if (!el) return
-      el.focus()
-      el.setSelectionRange(0, 0)
-      el.scrollLeft = 0
-    })
-    return () => cancelAnimationFrame(id)
-  }, [open, form.isEditMode, form.channelType])
-  const growDescription = () => {
-    const el = descRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${Math.min(Math.max(el.scrollHeight, 128), 256)}px`
-  }
   // Email в режиме создания: получатель + тема + текст показываем единым блоком «Письмо».
   const isEmailCompose = form.channelType === 'email' && !form.isEditMode
   // Существующий email-тред: показываем read-only блок «Письмо» (Кому/Тема из
@@ -184,17 +137,6 @@ export function ChatSettingsDialog({
   useEffect(() => {
     if (open) modeLooks.current = {}
   }, [open])
-  const accessSummary = useMemo(() => {
-    if (form.accessType === 'all') return 'Все участники'
-    if (form.accessType === 'roles') {
-      if (form.selectedRoles.size === 0) return 'Роли не выбраны'
-      return Array.from(form.selectedRoles)
-        .map((r) => PROJECT_ROLE_OPTIONS.find((o) => o.value === r)?.label ?? r)
-        .join(', ')
-    }
-    const ids = form.isEditMode ? actions.memberIds : form.selectedMemberIds
-    return ids.size === 0 ? 'Никто не выбран' : `${ids.size} участн.`
-  }, [form.accessType, form.selectedRoles, form.isEditMode, form.selectedMemberIds, actions.memberIds])
 
   // Канал: для email-создания рендерится внутри блока «Письмо» (поля Кому/Тема),
   // для остальных — внизу окна (Подключить канал / личный канал / email-привязка).
@@ -343,163 +285,9 @@ export function ChatSettingsDialog({
         </DialogHeader>
 
         <div className="flex flex-col gap-3 py-2 min-w-0">
-          {/* Название */}
-          <div className="flex flex-col gap-1 min-w-0">
-            <Label htmlFor="chat-name" className="text-sm text-muted-foreground">
-              Название
-              {!form.isEditMode && form.channelType === 'email' && (
-                <span className="text-muted-foreground font-normal ml-1">(опционально)</span>
-              )}
-            </Label>
-            {/* Единая рамка «Название + Описание» (Gmail-стиль): название сверху,
-                тонкий разделитель, описание ниже. Описание — внутренняя заметка
-                команды (не уходит клиенту), одно поле для всех типов тредов. */}
-            <div className="rounded-md border border-input bg-background overflow-hidden transition-shadow focus-within:shadow-[0_2px_8px_rgba(0,0,0,0.10)]">
-              <div className="flex items-center">
-                <ChatSettingsStatusPopover
-                  taskStatuses={actions.taskStatuses}
-                  currentStatusId={form.currentStatusId}
-                  currentStatus={actions.currentStatus}
-                  statusPopoverOpen={form.statusPopoverOpen}
-                  onOpenChange={form.setStatusPopoverOpen}
-                  onSelect={actions.handleStatusSelect}
-                />
-                <input
-                  ref={nameRef}
-                  id="chat-name"
-                  value={form.name}
-                  onChange={(e) => {
-                    form.setName(e.target.value)
-                    if (form.channelType === 'email' && !form.subjectTouched) {
-                      form.setEmailSubject(e.target.value)
-                    }
-                  }}
-                  placeholder={
-                    !form.isEditMode && form.channelType === 'email'
-                      ? 'По умолчанию: тема или email'
-                      : form.isTask
-                        ? 'Название задачи'
-                        : 'Название чата'
-                  }
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && form.canSave) actions.handleSave()
-                  }}
-                  className="flex-1 min-w-0 h-9 pl-1 pr-2 py-1 text-[15px] font-semibold bg-transparent outline-none placeholder:text-muted-foreground/40 placeholder:font-normal"
-                />
-                <ChatSettingsIconColorPicker
-                  accentColor={form.accentColor}
-                  icon={form.icon}
-                  onAccentColorChange={form.setAccentColor}
-                  onIconChange={form.setIcon}
-                />
-              </div>
-              <div className="h-px bg-border mx-2" />
-              <textarea
-                ref={descRef}
-                value={form.description}
-                onChange={(e) => {
-                  form.setDescription(e.target.value)
-                  if (descFocused) growDescription()
-                }}
-                onFocus={() => {
-                  setDescFocused(true)
-                  requestAnimationFrame(growDescription)
-                }}
-                onBlur={() => {
-                  setDescFocused(false)
-                  if (descRef.current) descRef.current.style.height = ''
-                }}
-                placeholder="Описание — внутренняя заметка команды, клиент не видит…"
-                rows={2}
-                className="w-full resize-none bg-transparent px-3 py-2 text-sm leading-snug outline-none placeholder:text-muted-foreground/40 max-h-64 overflow-y-auto transition-[height] duration-150"
-              />
-            </div>
-          </div>
+          <ChatSettingsNameField form={form} actions={actions} open={open} />
 
-          {/* Срок + Проект слева, подсказка «только сотрудники» справа — одной строкой */}
-          <div className="flex items-center gap-2 -mt-1">
-            <ChatSettingsTimeRangePicker
-              date={form.currentDlDate}
-              startTime={form.taskStartTime}
-              endTime={form.taskEndTime}
-              endDate={form.taskEndDate}
-              showDuration={form.taskShowDuration}
-              onDateChange={actions.handleDeadlineSelect}
-              onStartTimeChange={form.setTaskStartTime}
-              onEndTimeChange={form.setTaskEndTime}
-              onEndDateChange={form.setTaskEndDate}
-              onShowDurationChange={form.setTaskShowDuration}
-              onClear={actions.handleDeadlineClear}
-            />
-            {/* Статус треда — текстовый чип в стиле «Срок» (светлая цветная плашка),
-                кликабельный: открывает выбор статуса. Тот же handleStatusSelect,
-                что и точка в поле названия. */}
-            {actions.taskStatuses.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className={
-                      actions.currentStatus
-                        ? 'flex items-center gap-1.5 text-sm rounded px-2 py-1 transition-colors shrink-0 hover:brightness-95'
-                        : 'flex items-center gap-1.5 text-sm rounded px-2 py-1 transition-colors shrink-0 bg-muted/60 text-muted-foreground hover:bg-muted'
-                    }
-                    style={
-                      actions.currentStatus
-                        ? {
-                            backgroundColor: `color-mix(in srgb, ${safeCssColor(actions.currentStatus.color)} 14%, transparent)`,
-                            color: `color-mix(in srgb, ${safeCssColor(actions.currentStatus.color)} 82%, black)`,
-                          }
-                        : undefined
-                    }
-                  >
-                    {actions.currentStatus ? (
-                      <>
-                        {actions.currentStatus.icon ? (
-                          createElement(getStatusIcon(actions.currentStatus.icon), {
-                            className: 'w-3.5 h-3.5 shrink-0',
-                          })
-                        ) : (
-                          <span
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: safeCssColor(actions.currentStatus.color) }}
-                          />
-                        )}
-                        <span className="truncate max-w-[140px]">{actions.currentStatus.name}</span>
-                      </>
-                    ) : (
-                      <>
-                        <CircleDashed className="w-3.5 h-3.5 shrink-0" />
-                        <span>Статус</span>
-                      </>
-                    )}
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-[180px]">
-                  {actions.taskStatuses.map((s) => (
-                    <DropdownMenuItem
-                      key={s.id}
-                      onClick={() => actions.handleStatusSelect(s.id)}
-                      className="gap-2"
-                    >
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: safeCssColor(s.color) }}
-                      />
-                      {s.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            <ChatSettingsProjectSelector
-              workspaceProjects={actions.workspaceProjects}
-              selectedProjectId={form.selectedProjectId}
-              isEditMode={form.isEditMode}
-              onSelect={actions.handleProjectSelect}
-              workspaceId={resolvedWorkspaceId}
-            />
-          </div>
+          <ChatSettingsMetaRow form={form} actions={actions} resolvedWorkspaceId={resolvedWorkspaceId} />
 
           {/* Исполнители (для задач, чатов, email) */}
           <ChatSettingsAssignees
@@ -556,58 +344,14 @@ export function ChatSettingsDialog({
 
           {/* ── Низ окна: доступ, канал, подписка ── */}
 
-          {/* Доступ и подписки — сворачиваемый блок (кто видит чат + подписчики) */}
-          <div className="rounded-md border">
-            <button
-              type="button"
-              onClick={() => setAccessOpen((o) => !o)}
-              className="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-muted/50"
-            >
-              {accessOpen ? (
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              )}
-              <span className="text-sm font-medium">Доступ и подписки</span>
-              {!accessOpen && (
-                <span className="ml-auto text-xs text-muted-foreground truncate max-w-[55%]">
-                  👁 {accessSummary}
-                </span>
-              )}
-            </button>
-
-            {accessOpen && (
-              <div className="px-3 pb-3 pt-1 space-y-3 border-t">
-                <ChatSettingsAccess
-                  participants={actions.effectiveParticipants}
-                  userId={user?.id}
-                  isEditMode={form.isEditMode}
-                  isTask={form.isTask}
-                  accessType={form.accessType}
-                  memberIds={actions.memberIds}
-                  selectedMemberIds={form.selectedMemberIds}
-                  selectedRoles={form.selectedRoles}
-                  onAccessChange={actions.handleAccessChange}
-                  onToggleMember={actions.handleToggleMember}
-                  onSetAccessType={form.setAccessType}
-                  onSetSelectedMemberIds={form.setSelectedMemberIds}
-                  onSetSelectedRoles={form.setSelectedRoles}
-                  hasProject={!!(form.selectedProjectId ?? propProjectId)}
-                />
-
-                {chat && canManageSubscribers && (
-                  <ChatSettingsNotifications
-                    variant="manage"
-                    threadId={chat.id}
-                    workspaceId={chat.workspace_id}
-                    participants={actions.effectiveParticipants}
-                    canManage={canManageSubscribers}
-                    userId={user?.id}
-                  />
-                )}
-              </div>
-            )}
-          </div>
+          <ChatSettingsAccessBlock
+            form={form}
+            actions={actions}
+            chat={chat}
+            userId={user?.id}
+            canManageSubscribers={canManageSubscribers}
+            hasProject={!!(form.selectedProjectId ?? propProjectId)}
+          />
 
           {/* Личная подписка + подключение канала — одной строкой, под блоком
               «Доступ и подписки». Для email-создания каналы (Кому/Тема) живут
@@ -629,40 +373,14 @@ export function ChatSettingsDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {form.isEditMode ? 'Закрыть' : 'Отмена'}
-          </Button>
-          {/* Email в режиме создания: «Сохранить черновик» создаёт тред без
-              отправки — текст/файлы/тема/получатели переезжают в композер треда,
-              письмо уйдёт при отправке оттуда. Защита от потери набранного при
-              закрытии модалки. */}
-          {!form.isEditMode && form.tabMode === 'email' && (
-            <Button
-              variant="outline"
-              onClick={() => actions.handleSave({ asDraft: true })}
-              disabled={isPending || emailAttachmentsTooBig}
-            >
-              Сохранить черновик
-            </Button>
-          )}
-          {/* Отправка письма (есть первое сообщение) требует и получателя, и тему.
-              Без сообщения «Создать» делает фактически черновик — тему не требуем. */}
-          <span title={emailSendBlockReason ?? undefined} className="inline-flex">
-            <Button
-              onClick={() => actions.handleSave()}
-              disabled={
-                !form.canSave || isPending || emailAttachmentsTooBig || !!emailSendBlockReason
-              }
-            >
-              {form.isEditMode
-                ? 'Сохранить'
-                : form.hasInitialMessage
-                  ? 'Создать и отправить'
-                  : 'Создать'}
-            </Button>
-          </span>
-        </DialogFooter>
+        <ChatSettingsFooter
+          form={form}
+          actions={actions}
+          isPending={isPending}
+          emailAttachmentsTooBig={emailAttachmentsTooBig}
+          emailSendBlockReason={emailSendBlockReason}
+          onOpenChange={onOpenChange}
+        />
       </DialogContent>
 
       {/* Document picker for compose field attachments */}
