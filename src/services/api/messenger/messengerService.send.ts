@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { ConversationError } from '@/services/errors/AppError'
 import { logger } from '@/utils/logger'
 import { uploadAttachments } from './messengerAttachmentService'
+import { resolveThreadChannel, type ThreadChannelSignals } from './resolveThreadChannel'
 import { logSendFailure } from './logSendFailure'
 import {
   MESSAGE_SELECT,
@@ -237,27 +238,19 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
     // файлы → письмо уходило с неполным набором вложений (или с одним).
     const { data: extThread } = await supabase
       .from('project_threads')
-      .select('type, wazzup_channel_id, mtproto_session_user_id, email_send_account_id')
+      .select('type, wazzup_channel_id, wazzup_chat_id, mtproto_session_user_id, mtproto_client_tg_user_id, business_connection_id, email_send_account_id')
       .eq('id', params.threadId)
       .maybeSingle()
 
-    const extRow = extThread as
-      | {
-          type?: string | null
-          wazzup_channel_id?: string | null
-          mtproto_session_user_id?: string | null
-          email_send_account_id?: string | null
-        }
-      | null
+    const extRow = extThread as ThreadChannelSignals | null
 
-    // Email-тред определяется так же, как в SQL-триггере: либо тред типа
-    // 'email', либо есть привязка к gmail-аккаунту (email_send_account_id).
-    // Дополнительная проверка по входящим email_internal-сообщениям здесь
-    // не нужна — на момент исходящего ответа тред уже либо type='email',
-    // либо имеет email_send_account_id (по факту это уже email-тред).
-    const isEmailThread = extRow?.type === 'email' || !!extRow?.email_send_account_id
+    // Единый резолвер канала (канон = SQL-триггер), вместо ad-hoc if/else.
+    // Для одноканального треда результат идентичен прежнему; убран дубль
+    // маршрутизации (D2.1 плана консолидации). tg-группа обрабатывается ниже
+    // отдельным блоком (по project_telegram_chats).
+    const channelKind = resolveThreadChannel(extRow ?? {})
 
-    if (isEmailThread) {
+    if (channelKind === 'email') {
       // Refresh session — но не блокируем invoke если что-то пошло не так
       // (вид сессии гонит свою цепочку обновления, иначе пользовательские
       // jpg-апроверы могли подвиснуть).
@@ -285,14 +278,14 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
           metadata: { stage: 'email_internal_send_invoke' },
         })
       }
-    } else if (extRow?.wazzup_channel_id) {
+    } else if (channelKind === 'wazzup') {
       await supabase.auth.getSession()
       supabase.functions
         .invoke('wazzup-send', { body: { message_id: message.id, attachments_only: true } })
         .catch((err) => {
           logger.error('Failed to send attachments to Wazzup:', err)
         })
-    } else if (extRow?.mtproto_session_user_id) {
+    } else if (channelKind === 'mtproto') {
       await supabase.auth.getSession()
       supabase.functions
         .invoke('telegram-mtproto-send', { body: { message_id: message.id } })
