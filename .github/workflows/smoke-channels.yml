@@ -9,6 +9,8 @@ name: Smoke Channels
 #
 # Секреты: SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_ANON_KEY,
 #          NEXT_PUBLIC_SUPABASE_URL, SMOKE_BOT_PASSWORD.
+#          R2_* + STORAGE_R2_BUCKETS — чтобы тест-файлы писались в R2 (куда читает
+#          приложение); без них файловый тест ушёл бы в Supabase → ложный сбой.
 
 on:
   schedule:
@@ -37,4 +39,8 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SMOKE_BOT_EMAIL: smoke-bot@clientcase.internal
           SMOKE_BOT_PASSWORD: ${{ secrets.SMOKE_BOT_PASSWORD }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          STORAGE_R2_BUCKETS: ${{ secrets.STORAGE_R2_BUCKETS }}
         run: node scripts/smoke-matrix.mjs --confirm
