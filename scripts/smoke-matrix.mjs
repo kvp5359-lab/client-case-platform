@@ -170,6 +170,19 @@ const COMBOS = [
   { key: 'file',      gate: 'files', run: async (t) => { const st = await waitSent(await sendFiles(t.thread_id, t.channel, [IMG], false)); if (st !== 'sent') throw new Error(st); return true } },
   { key: 'file+text', gate: 'files', run: async (t) => { const st = await waitSent(await sendFiles(t.thread_id, t.channel, [IMG], true)); if (st !== 'sent') throw new Error(st); return true } },
   { key: 'album',     gate: 'files', run: async (t) => { const st = await waitSent(await sendFiles(t.thread_id, t.channel, [IMG, DOC], false)); if (st !== 'sent') throw new Error(st); return true } },
+  // Гейт утечки: внутреннее сообщение (visibility='team') НЕ должно уйти в
+  // канал. Триггер dispatch_message_to_channels ставит send_status='sent' без
+  // внешней доставки → telegram/wazzup message_id остаётся пустым. Если он
+  // заполнился — внутреннее утекло клиенту (регрессия инцидента 2026-07-08).
+  { key: 'internal-vis', run: async (t) => {
+      const { data: id, error } = await supabase.rpc('smoke_send_test', { p_thread_id: t.thread_id, p_label: 'internal', p_visibility: 'team' })
+      if (error) throw new Error('rpc: ' + error.message)
+      const st = await waitSent(id); if (st !== 'sent') throw new Error('status ' + st)
+      const m = await extIds(id)
+      if (m.telegram_message_id != null || m.wazzup_message_id != null || (m.tgIds && m.tgIds.length))
+        throw new Error('УТЕЧКА: внутреннее (team) ушло в канал!')
+      return true
+    } },
   { key: 'reaction', gate: 'react', run: async (t) => {
       const id = await sendAndWait(t.thread_id, 'react')
       const fn = t.channel === 'wazzup' ? 'wazzup-send-reaction' : 'telegram-mtproto-react'
