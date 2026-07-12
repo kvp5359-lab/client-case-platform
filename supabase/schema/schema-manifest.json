@@ -3835,6 +3835,11 @@
       "body_md5": "c19a3352044c10e5c659e2f6627d2a3e"
     },
     {
+      "args": "",
+      "name": "_selftest_recompute_unread",
+      "body_md5": "c63e6e1b697e4d1d8171bbf14f5b3112"
+    },
+    {
       "args": "p_group jsonb, p_entity text",
       "name": "_board_compile_group",
       "body_md5": "6603d5525b9fca19342524b29fd451ca"
