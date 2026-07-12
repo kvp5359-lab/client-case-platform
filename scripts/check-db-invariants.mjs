@@ -6,6 +6,9 @@
  *      (ledger: CREATE OR REPLACE из параллельной сессии молча стирал чужую строку).
  *   2. get_board_filtered_threads по числу out-колонок разошлась с get_workspace_threads
  *      (расхождение уже роняло прод — 2026-06-24, доски/календарь на 400).
+ *   3. Появилась НОВАЯ SECURITY DEFINER функция с EXECUTE у PUBLIC/anon вне
+ *      whitelist (по умолчанию CREATE FUNCTION выдаёт PUBLIC → потенциальный
+ *      обход RLS/IDOR; см. Фаза 1/3 аудита 2026-07-12).
  *
  * Запуск: SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node scripts/check-db-invariants.mjs
  */
@@ -44,6 +47,28 @@ if (inv.board_out_cols !== inv.workspace_out_cols) {
   failed++
 } else {
   console.log(`✓ get_board_filtered_threads == get_workspace_threads (${inv.workspace_out_cols} колонок)`)
+}
+
+// 3. Ни одной новой SECURITY DEFINER функции с PUBLIC/anon вне whitelist.
+// Whitelist — намеренно публичные функции (резолверы коротких ссылок для
+// middleware, гейт регистрации, публичная статья/QA по неугадываемому токену).
+// Добавляешь сюда осознанно новую anon-функцию — впиши её ИМЯ и причину.
+const ANON_WHITELIST = new Set([
+  'consume_platform_invite',   // регистрация по инвайту (гейт на UI)
+  'get_shared_article',        // публичная статья по неугадываемому токену
+  'get_short_id_by_uuid',      // резолвер коротких ссылок (proxy.ts)
+  'get_workspace_slug_by_id',  // резолвер коротких ссылок (proxy.ts)
+  'registration_allowed',      // boolean-гейт регистрации
+  'resolve_short_id',          // резолвер коротких ссылок (proxy.ts)
+  'resolve_workspace_by_host', // резолвер домена воркспейса (proxy.ts)
+])
+const secdefPublic = inv.secdef_public_or_anon || []
+const rogue = secdefPublic.filter((n) => !ANON_WHITELIST.has(n))
+if (rogue.length) {
+  console.error(`✗ SECURITY DEFINER функции с PUBLIC/anon execute вне whitelist: ${rogue.join(', ')}. Добавь REVOKE ALL … FROM PUBLIC, anon (и явный GRANT), либо впиши в ANON_WHITELIST с обоснованием.`)
+  failed++
+} else {
+  console.log(`✓ SECURITY DEFINER + PUBLIC/anon — только whitelist (${secdefPublic.length})`)
 }
 
 if (failed) {
