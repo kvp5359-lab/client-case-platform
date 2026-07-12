@@ -22,7 +22,6 @@ import {
 import { useThreadSearch, type ThreadSearchFilterKey } from '@/hooks/messenger/useThreadSearch'
 import { MessageList } from '../MessageList'
 import { ThreadSearchGallery } from './ThreadSearchGallery'
-import { pluralRu } from './searchFormat'
 
 const NOOP = () => {}
 
@@ -63,6 +62,12 @@ export function ThreadSearchOverlay({
     files: s.filters.wantFiles,
     links: s.filters.wantLinks,
   }
+  const filterCount: Record<ThreadSearchFilterKey, number> = {
+    images: s.counts.images,
+    audio: s.counts.audios,
+    files: s.counts.files,
+    links: s.counts.links,
+  }
   const selectedSenderName =
     s.senders.find((x) => x.participant_id === s.senderParticipantId)?.name ?? 'Отправитель'
 
@@ -72,12 +77,12 @@ export function ThreadSearchOverlay({
 
   return (
     <div className="absolute inset-0 z-20 flex flex-col bg-background">
-      {/* Шапка */}
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+      {/* Шапка — заголовок без разделителя */}
+      <div className="flex items-center gap-2 px-3 pt-3 pb-1">
         <Search className="h-4 w-4 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">Поиск в треде</span>
+        <span className="text-sm font-medium text-foreground">Поиск в треде</span>
         {threadName && (
-          <span className="truncate text-sm text-muted-foreground/70">· {threadName}</span>
+          <span className="truncate text-sm text-muted-foreground">· {threadName}</span>
         )}
         <button
           type="button"
@@ -89,9 +94,9 @@ export function ThreadSearchOverlay({
         </button>
       </div>
 
-      {/* Панель управления */}
-      <div className="border-b border-border px-3 py-2.5">
-        <div className="flex h-9 items-center gap-2 rounded-md border border-border px-2.5">
+      {/* Панель управления — без нижнего разделителя (кнопки «в воздухе» над лентой) */}
+      <div className="px-3 pb-3 pt-1">
+        <div className="flex h-9 items-center gap-2 rounded-lg bg-muted px-3 transition-shadow focus-within:ring-2 focus-within:ring-ring/40">
           <Search className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
           <input
             value={s.query}
@@ -107,24 +112,32 @@ export function ThreadSearchOverlay({
             отправитель · переключатель вида. На узкой панели подписи типов
             скрываются (container query .tsf-label), остаются иконки. */}
         <div className="thread-search-filters-cq mt-2.5 flex items-center gap-1.5">
-          <div className="flex items-center divide-x divide-border overflow-hidden rounded-md border border-border">
+          <div className="flex items-center divide-x divide-border/60 overflow-hidden rounded-lg bg-muted/60">
             {FILTER_DEFS.map(({ key, label, Icon }) => {
               const active = filterActive[key]
+              const count = filterCount[key]
+              const disabled = count === 0
               return (
                 <button
                   key={key}
                   type="button"
-                  title={label}
-                  aria-label={label}
+                  title={`${label} (${count})`}
+                  aria-label={`${label} (${count})`}
                   onClick={() => s.toggleFilter(key)}
+                  disabled={disabled}
                   aria-pressed={active}
                   className={cn(
                     'flex h-8 items-center justify-center px-2.5 transition-colors',
-                    active ? 'bg-brand-100 text-brand-600' : 'text-muted-foreground hover:bg-muted',
+                    active
+                      ? 'bg-brand-100 text-brand-600'
+                      : 'text-muted-foreground hover:bg-muted-foreground/10',
+                    disabled && 'cursor-not-allowed opacity-40 hover:bg-transparent',
                   )}
                 >
                   <Icon className="h-4 w-4 flex-shrink-0" />
-                  <span className="tsf-label ml-1.5 whitespace-nowrap text-xs">{label}</span>
+                  <span className="tsf-label ml-1.5 whitespace-nowrap text-xs">
+                    {label} ({count})
+                  </span>
                 </button>
               )
             })}
@@ -138,10 +151,10 @@ export function ThreadSearchOverlay({
                   type="button"
                   title="Фильтр по отправителю"
                   className={cn(
-                    'flex h-8 min-w-0 max-w-[8rem] items-center gap-1 rounded-md border px-2 text-xs transition-colors',
+                    'flex h-8 min-w-0 max-w-[8rem] items-center gap-1 rounded-lg px-2.5 text-xs transition-colors',
                     s.senderParticipantId
-                      ? 'border-brand-100 bg-brand-100 text-brand-600'
-                      : 'border-border text-muted-foreground hover:bg-muted',
+                      ? 'bg-brand-100 text-brand-600'
+                      : 'bg-muted/60 text-muted-foreground hover:bg-muted-foreground/10',
                   )}
                 >
                   <User className="h-3.5 w-3.5 flex-shrink-0" />
@@ -165,7 +178,7 @@ export function ThreadSearchOverlay({
             </DropdownMenu>
           )}
 
-          <div className="ml-auto flex items-center divide-x divide-border overflow-hidden rounded-md border border-border">
+          <div className="ml-auto flex items-center divide-x divide-border/60 overflow-hidden rounded-lg bg-muted/60">
             <ViewBtn
               active={s.view === 'messages'}
               onClick={() => s.setView('messages')}
@@ -181,15 +194,6 @@ export function ThreadSearchOverlay({
           </div>
         </div>
 
-        {/* Разбивка счётчиков */}
-        {hasResults && (
-          <div className="mt-2 text-xs text-muted-foreground">
-            {s.counts.images} {pluralRu(s.counts.images, ['фото', 'фото', 'фото'])} ·{' '}
-            {s.counts.audios} аудио ·{' '}
-            {s.counts.files} {pluralRu(s.counts.files, ['файл', 'файла', 'файлов'])} ·{' '}
-            {s.counts.links} {pluralRu(s.counts.links, ['ссылка', 'ссылки', 'ссылок'])}
-          </div>
-        )}
       </div>
 
       {/* Тело. Для «Сообщения» MessageList скроллит сам (свой overflow) —
@@ -252,7 +256,7 @@ function ViewBtn({
       aria-pressed={active}
       className={cn(
         'flex h-8 w-9 items-center justify-center transition-colors',
-        active ? 'bg-brand-100 text-brand-600' : 'text-muted-foreground hover:bg-muted',
+        active ? 'bg-brand-100 text-brand-600' : 'text-muted-foreground hover:bg-muted-foreground/10',
       )}
     >
       <Icon className="h-4 w-4" />

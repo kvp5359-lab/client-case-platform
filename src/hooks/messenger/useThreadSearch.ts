@@ -31,6 +31,28 @@ export type GalleryFile = GalleryImage
 export type GalleryAudio = GalleryImage
 export type GalleryLink = SenderInfo & { url: string; messageId: string; createdAt: string }
 
+type MessageLike = {
+  content: string | null
+  attachments?: MessageAttachment[] | null
+}
+
+/** Счётчики вложений/ссылок по массиву сообщений (для бейджей на кнопках). */
+function countAttachments(msgs: MessageLike[]) {
+  let images = 0
+  let audios = 0
+  let files = 0
+  let links = 0
+  for (const m of msgs) {
+    for (const att of m.attachments ?? []) {
+      if (isImage(att.mime_type)) images++
+      else if (isAudioAttachment(att)) audios++
+      else files++
+    }
+    links += extractLinks(m.content ?? '').length
+  }
+  return { images, audios, files, links }
+}
+
 export function useThreadSearch(threadId: string) {
   const [query, setQuery] = useState('')
   const [view, setView] = useState<ThreadSearchView>('messages')
@@ -73,6 +95,23 @@ export function useThreadSearch(threadId: string) {
     enabled: !!threadId && shouldSearch,
     staleTime: STALE_TIME.SHORT,
   })
+
+  // Общее количество вложений/ссылок в треде (независимо от запроса) — для
+  // бейджей на кнопках фильтров: показать «сколько есть» и дизейблить нулевые.
+  const { data: allAttachMessages = [] } = useQuery({
+    queryKey: ['messenger', 'thread-attach-total', threadId],
+    queryFn: () =>
+      searchThreadMessages(threadId, '', {
+        wantFiles: true,
+        wantImages: true,
+        wantAudio: true,
+        wantLinks: true,
+        senderParticipantId: null,
+      }),
+    enabled: !!threadId,
+    staleTime: STALE_TIME.SHORT,
+  })
+  const totalCounts = useMemo(() => countAttachments(allAttachMessages), [allAttachMessages])
 
   const { images, audios, files, links } = useMemo(() => {
     // Найденное сообщение может нести смешанные вложения (фото + PDF). Если
@@ -126,11 +165,8 @@ export function useThreadSearch(threadId: string) {
     audios,
     files,
     links,
-    counts: {
-      images: images.length,
-      audios: audios.length,
-      files: files.length,
-      links: links.length,
-    },
+    // Счётчики на кнопках = ОБЩЕЕ число вложений в треде (не текущие результаты),
+    // чтобы «Файлы (4)» показывало наличие и до ввода запроса.
+    counts: totalCounts,
   }
 }
