@@ -70,13 +70,26 @@ export async function r2Upload(
   // когда-нибудь понадобится стрим — сперва буферизовать в Uint8Array (как в
   // src/lib/storage/serverR2.ts), иначе крупная загрузка молча упадёт.
   data: ArrayBuffer | Blob | Uint8Array,
-  options?: { contentType?: string },
+  options?: { contentType?: string; upsert?: boolean },
 ): Promise<Res<{ path: string }>> {
+  const headers: Record<string, string> = {
+    "Content-Type": options?.contentType ?? "application/octet-stream",
+  };
+  // upsert:false → атомарный conditional PUT: R2 вернёт 412, если объект уже
+  // существует. Восстанавливает дедуп входящих вложений — на Supabase его давал
+  // upsert:false (ошибка «resource already exists»), а R2-ветка опцию теряла и
+  // молча ПЕРЕЗАПИСЫВАЛА объект → при совпадении имён файлов в одном сообщении
+  // (альбом photo.jpg/image.png) первый файл терялся. If-None-Match атомарен
+  // (без TOCTOU-гонки, в отличие от предварительного HEAD). См. Фаза 2.3 аудита.
+  if (options?.upsert === false) headers["If-None-Match"] = "*";
   const res = await client().fetch(objectUrl(bucket, path), {
     method: "PUT",
-    headers: { "Content-Type": options?.contentType ?? "application/octet-stream" },
+    headers,
     body: data as BodyInit,
   });
+  if (res.status === 412) {
+    return { data: null, error: { message: "The resource already exists" } };
+  }
   if (!res.ok) return { data: null, error: { message: `R2 PUT ${res.status}` } };
   return { data: { path }, error: null };
 }

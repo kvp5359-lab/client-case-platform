@@ -52,14 +52,20 @@ export async function r2Upload(
   bucket: string,
   path: string,
   data: ArrayBuffer | Blob | Buffer | Uint8Array,
-  options?: { contentType?: string },
+  options?: { contentType?: string; upsert?: boolean },
 ): Promise<Res<{ path: string }>> {
+  const headers: Record<string, string> = {
+    "Content-Type": options?.contentType ?? "application/octet-stream",
+  };
+  // upsert:false → атомарный conditional PUT (см. _shared/r2.ts, Фаза 2.3).
+  if (options?.upsert === false) headers["If-None-Match"] = "*";
   const res = await r2.fetch(objectUrl(bucket, path), {
     method: "PUT",
-    headers: { "Content-Type": options?.contentType ?? "application/octet-stream" },
+    headers,
     // Node 20 fetch принимает Buffer/Uint8Array/Blob/ArrayBuffer; BodyInit в этом lib не объявлен.
     body: data as unknown as ArrayBuffer,
   })
+  if (res.status === 412) return { data: null, error: { message: "The resource already exists" } }
   if (!res.ok) return { data: null, error: { message: `R2 PUT ${res.status}` } }
   return { data: { path }, error: null }
 }

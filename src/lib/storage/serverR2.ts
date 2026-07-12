@@ -69,6 +69,10 @@ export async function serverUploadToStorage(
       : data instanceof ArrayBuffer ? new Uint8Array(data)
       : new Uint8Array(await (data as Blob).arrayBuffer())
     const contentType = options?.contentType ?? 'application/octet-stream'
+    const putHeaders: Record<string, string> = { 'Content-Type': contentType }
+    // upsert:false → атомарный conditional PUT (см. _shared/r2.ts, Фаза 2.3).
+    // If-None-Match входит в подпись SigV4, поэтому задаём его ДО r2.sign.
+    if (options?.upsert === false) putHeaders['If-None-Match'] = '*'
     // aws4fetch.fetch() оборачивает тело в Request → ReadableStream БЕЗ
     // Content-Length; пропатченный Next-ом fetch не проставляет его для крупных
     // тел → R2 отвечает 411 (Length Required). Поэтому: подписываем запрос через
@@ -76,10 +80,11 @@ export async function serverUploadToStorage(
     // Uint8Array-body напрямую — тогда undici выставляет Content-Length сам.
     const signed = await r2.sign(url, {
       method: 'PUT',
-      headers: { 'Content-Type': contentType },
+      headers: putHeaders,
       body: body as BodyInit,
     })
     const res = await fetch(url, { method: 'PUT', headers: signed.headers, body: body as BodyInit })
+    if (res.status === 412) return { error: { message: 'The resource already exists' } }
     return res.ok ? { error: null } : { error: { message: `R2 PUT ${res.status}` } }
   }
   return client.storage.from(bucket).upload(path, data, options)
