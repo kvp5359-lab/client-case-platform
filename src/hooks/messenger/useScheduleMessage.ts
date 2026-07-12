@@ -32,6 +32,8 @@ type ScheduleMessageParams = {
   senderParticipantId: string
   senderName: string
   senderRole: string | null
+  visibility?: 'client' | 'team' | 'self'
+  notifySubscribers?: boolean
 }
 
 export function useScheduleMessage(params: {
@@ -66,6 +68,8 @@ export function useScheduleMessage(params: {
         attachments: input.attachments,
         channel,
         threadId,
+        visibility: input.visibility,
+        notifySubscribers: input.notifySubscribers,
       })
 
       const { error } = await supabase

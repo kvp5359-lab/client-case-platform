@@ -73,6 +73,8 @@ type UseMessengerHandlersParams = {
       senderName: string
       senderRole: string | null
       attachments?: File[]
+      visibility?: 'client' | 'team' | 'self'
+      notifySubscribers?: boolean
     }) => void
     isPending: boolean
   }
@@ -338,7 +340,11 @@ export function useMessengerHandlers({
   )
 
   const handleSaveDraft = useCallback(
-    (content: string, files?: File[]) => {
+    (
+      content: string,
+      files?: File[],
+      options?: { visibility?: 'client' | 'team' | 'self'; notifySubscribers?: boolean },
+    ) => {
       if (!currentParticipant) return
       saveDraftMutation.mutate({
         content,
@@ -346,6 +352,8 @@ export function useMessengerHandlers({
         senderName: currentParticipant.name,
         senderRole: currentParticipant.role,
         attachments: files,
+        visibility: options?.visibility,
+        notifySubscribers: options?.notifySubscribers,
       })
     },
     [currentParticipant, saveDraftMutation],

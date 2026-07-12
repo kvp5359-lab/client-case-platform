@@ -63,13 +63,18 @@ type MessageInputProps = {
   onDocumentDrop?: (documentId: string) => void
   forwardedAttachments?: ForwardedAttachment[]
   onRemoveForwardedAttachment?: (index: number) => void
-  onSaveDraft?: (content: string, files?: File[]) => void
+  onSaveDraft?: (
+    content: string,
+    files?: File[],
+    options?: { visibility?: 'client' | 'team' | 'self'; notifySubscribers?: boolean },
+  ) => void
   isSavingDraft?: boolean
   onSchedule?: (
     sendAt: Date,
     content: string,
     replyToId?: string | null,
     files?: File[],
+    options?: { visibility?: 'client' | 'team' | 'self'; notifySubscribers?: boolean },
   ) => void
   /** Если задан — отправка заблокирована (тултип на кнопке + Enter не шлёт).
    *  Напр. email-черновик без темы/получателя. */
@@ -523,11 +528,16 @@ export function MessageInput({
       const htmlContent = editor.getHTML()
       if (!textContent && files.length === 0) return
 
+      // Видимость обязана уехать в черновик, иначе внутреннее сообщение
+      // («Команде»/«Заметка»/«Только я») созреет с DEFAULT 'client' и cron
+      // отправит его клиенту. Зеркалит handleSend. (Фаза 2.1 аудита.)
+      const vis = MODE_VISIBILITY[composerMode]
       onSchedule(
         sendAt,
         textContent ? htmlContent : '📎',
         replyTo?.id ?? null,
         files.length > 0 ? files : undefined,
+        { visibility: vis.visibility, notifySubscribers: vis.notifySubscribers },
       )
 
       editor.commands.clearContent()
@@ -536,7 +546,7 @@ export function MessageInput({
       clearDraft()
       onClearReply()
     },
-    [onSchedule, files, replyTo, clearFiles, clearDraft, onClearReply, sendBlockedReason],
+    [onSchedule, files, replyTo, clearFiles, clearDraft, onClearReply, sendBlockedReason, composerMode],
   )
 
   const handleSaveDraft = useCallback(() => {
@@ -554,7 +564,13 @@ export function MessageInput({
         newFiles: files,
       })
     } else if (onSaveDraft) {
-      onSaveDraft(textContent ? htmlContent : '', files.length > 0 ? files : undefined)
+      // Видимость в черновик — иначе при публикации внутренний черновик утечёт
+      // клиенту (publishDraftMessage гейтит по message.visibility из БД).
+      const vis = MODE_VISIBILITY[composerMode]
+      onSaveDraft(textContent ? htmlContent : '', files.length > 0 ? files : undefined, {
+        visibility: vis.visibility,
+        notifySubscribers: vis.notifySubscribers,
+      })
     } else {
       return
     }
@@ -577,6 +593,7 @@ export function MessageInput({
     onEdit,
     onClearEdit,
     skipDraftRestoreRef,
+    composerMode,
   ])
 
   const totalFiles = files.length + existingAttachments.length + forwardedAttachments.length

@@ -33,6 +33,8 @@ export function useSaveDraft(
       senderName: string
       senderRole: string | null
       attachments?: File[]
+      visibility?: 'client' | 'team' | 'self'
+      notifySubscribers?: boolean
     }) =>
       saveDraftMessage({
         projectId,
@@ -44,6 +46,8 @@ export function useSaveDraft(
         attachments: params.attachments,
         channel,
         threadId,
+        visibility: params.visibility,
+        notifySubscribers: params.notifySubscribers,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: messagesKey })

@@ -68,6 +68,8 @@ export function useDelayedSend(
       senderName: string
       senderRole: string | null
       attachments?: File[]
+      visibility?: 'client' | 'team' | 'self'
+      notifySubscribers?: boolean
     }): Promise<boolean> => {
       if (sendDelay <= 0) return false
 
@@ -82,6 +84,8 @@ export function useDelayedSend(
           attachments: params.attachments,
           channel,
           threadId,
+          visibility: params.visibility,
+          notifySubscribers: params.notifySubscribers,
         })
 
         // Set scheduled_send_at

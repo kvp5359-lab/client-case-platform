@@ -24,6 +24,15 @@ export type SaveDraftParams = {
   attachments?: File[]
   channel?: MessageChannel
   threadId?: string
+  /**
+   * Видимость сообщения (client/team/self). ОБЯЗАТЕЛЬНО сохранять в черновик:
+   * иначе колонка получит DEFAULT 'client', и при публикации (немедленной или
+   * по расписанию/cron) внутренний черновик «Команде/Заметка/Только я» утечёт
+   * клиенту в канал — гейт видимости в dispatch_message_to_channels и
+   * publishDraftMessage смотрит именно на это поле. См. Фаза 2.1 аудита.
+   */
+  visibility?: 'client' | 'team' | 'self'
+  notifySubscribers?: boolean
 }
 
 /**
@@ -44,6 +53,8 @@ export async function saveDraftMessage(params: SaveDraftParams): Promise<Project
       channel,
       ...(params.threadId ? { thread_id: params.threadId } : {}),
       is_draft: true,
+      visibility: params.visibility ?? 'client',
+      notify_subscribers: params.notifySubscribers ?? true,
       has_attachments: (params.attachments && params.attachments.length > 0) || false,
     })
     .select('*')

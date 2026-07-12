@@ -337,6 +337,7 @@ export function MessengerTabContent({
       content: string,
       replyToId?: string | null,
       files?: File[],
+      options?: { visibility?: 'client' | 'team' | 'self'; notifySubscribers?: boolean },
     ) => {
       if (!state.currentParticipant) return
       try {
@@ -348,6 +349,8 @@ export function MessengerTabContent({
           senderParticipantId: state.currentParticipant.participantId,
           senderName: state.currentParticipant.name,
           senderRole: state.currentParticipant.role,
+          visibility: options?.visibility,
+          notifySubscribers: options?.notifySubscribers,
         })
         state.setReplyTo(null)
         state.setSendTrigger((prev) => prev + 1)
