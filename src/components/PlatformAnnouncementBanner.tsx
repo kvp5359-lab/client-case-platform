@@ -36,8 +36,8 @@ export function PlatformAnnouncementBanner() {
     staleTime: 300_000,
     queryFn: async (): Promise<Announcement[]> => {
       const { data, error } = await supabase.rpc(
-        'get_active_announcements' as never,
-        { p_workspace_id: workspaceId } as never,
+        'get_active_announcements',
+        { p_workspace_id: workspaceId! },
       )
       if (error) return []
       return (data as unknown as Announcement[]) ?? []

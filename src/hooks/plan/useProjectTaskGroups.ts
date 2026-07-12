@@ -5,7 +5,6 @@
  *
  * Группа = раздел плана. Задачи/блоки ссылаются на неё через
  * project_threads.task_group_id / project_plan_blocks.group_id.
- * Доступ через `as never`-касты — таблица ещё не в database.ts (как usage-хуки).
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -13,7 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { planKeys, workspaceThreadKeys } from '@/hooks/queryKeys'
 import type { TaskGroupRow, TaskGroupUpdate } from '@/types/taskGroups'
 
-const TABLE = 'project_task_groups'
+const TABLE = 'project_task_groups' as const
 
 export const taskGroupKeys = {
   byProject: (projectId: string) => ['task-groups', projectId] as const,
@@ -32,13 +31,13 @@ export function useProjectThreadGroupMap(projectId: string | undefined) {
     staleTime: 60_000,
     queryFn: async (): Promise<Record<string, string | null>> => {
       const { data, error } = await supabase
-        .from('project_threads' as never)
+        .from('project_threads')
         .select('id, task_group_id')
-        .eq('project_id' as never, projectId as never)
-        .eq('is_deleted' as never, false as never)
+        .eq('project_id', projectId as string)
+        .eq('is_deleted', false)
       if (error) throw error
       const map: Record<string, string | null> = {}
-      for (const r of (data as unknown as { id: string; task_group_id: string | null }[]) ?? []) {
+      for (const r of data ?? []) {
         map[r.id] = r.task_group_id ?? null
       }
       return map
@@ -55,12 +54,12 @@ export function useProjectTaskGroups(projectId: string | undefined, workspaceId:
     staleTime: 60_000,
     queryFn: async (): Promise<TaskGroupRow[]> => {
       const { data, error } = await supabase
-        .from(TABLE as never)
+        .from(TABLE)
         .select('*')
         .eq('project_id', projectId as string)
         .order('sort_order', { ascending: true })
       if (error) throw error
-      return (data as unknown as TaskGroupRow[]) ?? []
+      return data ?? []
     },
   })
 
@@ -75,18 +74,18 @@ export function useProjectTaskGroups(projectId: string | undefined, workspaceId:
     mutationFn: async (input: { name?: string; sort_order?: number; accent_color?: string | null }): Promise<string> => {
       if (!projectId || !workspaceId) throw new Error('projectId/workspaceId required')
       const { data, error } = await supabase
-        .from(TABLE as never)
+        .from(TABLE)
         .insert({
           workspace_id: workspaceId,
           project_id: projectId,
           name: input.name ?? 'Новая группа',
           accent_color: input.accent_color ?? null,
           sort_order: input.sort_order ?? nextSortOrder(),
-        } as never)
+        })
         .select('id')
         .single()
       if (error) throw error
-      return (data as unknown as { id: string }).id
+      return data.id
     },
     onSuccess: invalidate,
   })
@@ -94,8 +93,8 @@ export function useProjectTaskGroups(projectId: string | undefined, workspaceId:
   const updateGroup = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: TaskGroupUpdate }) => {
       const { error } = await supabase
-        .from(TABLE as never)
-        .update({ ...updates, updated_at: new Date().toISOString() } as never)
+        .from(TABLE)
+        .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
       if (error) throw error
     },
@@ -120,7 +119,7 @@ export function useProjectTaskGroups(projectId: string | undefined, workspaceId:
     // Удаление группы: ON DELETE SET NULL у задач/блоков → они всплывают на
     // верхний уровень (не теряются). Порядок сохраняют свой sort_order.
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from(TABLE as never).delete().eq('id', id)
+      const { error } = await supabase.from(TABLE).delete().eq('id', id)
       if (error) throw error
     },
     onSuccess: () => {
@@ -138,9 +137,9 @@ export function useProjectTaskGroups(projectId: string | undefined, workspaceId:
   const assignThread = useMutation({
     mutationFn: async ({ threadId, groupId }: { threadId: string; groupId: string | null }) => {
       const { error } = await supabase
-        .from('project_threads' as never)
-        .update({ task_group_id: groupId } as never)
-        .eq('id' as never, threadId as never)
+        .from('project_threads')
+        .update({ task_group_id: groupId })
+        .eq('id', threadId)
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: taskGroupKeys.membership(projectId ?? '') }),
@@ -148,12 +147,12 @@ export function useProjectTaskGroups(projectId: string | undefined, workspaceId:
   const assignBlock = useMutation({
     mutationFn: async ({ blockId, groupId }: { blockId: string; groupId: string | null }) => {
       const { error } = await supabase
-        .from('project_plan_blocks' as never)
-        .update({ group_id: groupId } as never)
-        .eq('id' as never, blockId as never)
+        .from('project_plan_blocks')
+        .update({ group_id: groupId })
+        .eq('id', blockId)
       if (error) throw error
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['plan'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: planKeys.all }),
   })
 
   const setGroupOrders = useMutation({
@@ -161,10 +160,10 @@ export function useProjectTaskGroups(projectId: string | undefined, workspaceId:
       await Promise.all(
         updates.map((u) =>
           supabase
-            .from(TABLE as never)
-            .update({ sort_order: u.sort_order } as never)
+            .from(TABLE)
+            .update({ sort_order: u.sort_order })
             .eq('id', u.id)
-            .then(({ error }: { error: unknown }) => {
+            .then(({ error }) => {
               if (error) throw error
             }),
         ),

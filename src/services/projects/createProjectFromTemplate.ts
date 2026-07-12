@@ -325,18 +325,14 @@ export async function seedProjectContent(
       // построению, не зависит от порядка строк bulk-ответа и дублей sort_order.
       const groupMap = new Map<string, string>()
       const { data: tmplGroups } = await supabase
-        .from('project_template_task_groups' as never)
-        .select('id, name, sort_order, accent_color, visible_to_client' as never)
-        .eq('project_template_id' as never, templateId as never)
-        .order('sort_order' as never, { ascending: true } as never)
-      const tGroups =
-        (tmplGroups as unknown as {
-          id: string; name: string; sort_order: number
-          accent_color: string | null; visible_to_client: boolean
-        }[]) ?? []
+        .from('project_template_task_groups')
+        .select('id, name, sort_order, accent_color, visible_to_client')
+        .eq('project_template_id', templateId)
+        .order('sort_order', { ascending: true })
+      const tGroups = tmplGroups ?? []
       for (const g of tGroups) {
         const { data: newGroup } = await supabase
-          .from('project_task_groups' as never)
+          .from('project_task_groups')
           .insert({
             workspace_id: workspaceId,
             project_id: projectId,
@@ -344,11 +340,10 @@ export async function seedProjectContent(
             sort_order: g.sort_order,
             accent_color: g.accent_color,
             visible_to_client: g.visible_to_client,
-          } as never)
-          .select('id' as never)
+          })
+          .select('id')
           .single()
-        const created = newGroup as unknown as { id: string } | null
-        if (created) groupMap.set(g.id, created.id)
+        if (newGroup) groupMap.set(g.id, newGroup.id)
       }
 
       if (contentBlocks.length > 0 || tGroups.length > 0) {
@@ -384,9 +379,9 @@ export async function seedProjectContent(
           await Promise.all(
             threadGroupUpdates.map((u) =>
               supabase
-                .from('project_threads' as never)
-                .update({ task_group_id: u.groupId } as never)
-                .eq('id' as never, u.threadId as never),
+                .from('project_threads')
+                .update({ task_group_id: u.groupId })
+                .eq('id', u.threadId),
             ),
           )
         }
@@ -413,7 +408,7 @@ export async function seedProjectContent(
             ...r,
             group_id: r.group_id ? groupMap.get(r.group_id) ?? null : null,
           }))
-          const { error: planErr } = await supabase.from('project_plan_blocks').insert(rows as never)
+          const { error: planErr } = await supabase.from('project_plan_blocks').insert(rows)
           if (planErr) logger.warn(`Не удалось развернуть план: ${planErr.message}`)
         }
       }

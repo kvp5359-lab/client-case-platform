@@ -48,8 +48,8 @@ export function useWorkspaceUsageAndLimits(workspaceId: string | undefined) {
     staleTime: 60_000,
     queryFn: async (): Promise<WorkspaceUsage | null> => {
       const { data, error } = await supabase.rpc(
-        'get_workspace_usage_and_limits' as never,
-        { p_workspace_id: workspaceId } as never,
+        'get_workspace_usage_and_limits',
+        { p_workspace_id: workspaceId! },
       )
       if (error) throw error
       const rows = data as unknown as WorkspaceUsage[]
@@ -67,10 +67,10 @@ export function useUpdateWorkspaceLimits(workspaceId: string) {
       max_storage_mb: number | null
     }) => {
       const { error } = await supabase
-        .from('workspace_limits' as never)
+        .from('workspace_limits')
         .upsert(
-          { workspace_id: workspaceId, ...limits, updated_at: new Date().toISOString() } as never,
-          { onConflict: 'workspace_id' } as never,
+          { workspace_id: workspaceId, ...limits, updated_at: new Date().toISOString() },
+          { onConflict: 'workspace_id' },
         )
       if (error) throw error
     },
@@ -128,9 +128,9 @@ export function usePlans() {
     staleTime: 300_000,
     queryFn: async (): Promise<Plan[]> => {
       const { data, error } = await supabase
-        .from('plans' as never)
+        .from('plans')
         .select('*')
-        .order('sort_order' as never)
+        .order('sort_order')
       if (error) throw error
       return (data as unknown as Plan[]) ?? []
     },
@@ -164,8 +164,8 @@ export function useWorkspaceStats(workspaceId: string | undefined) {
     staleTime: 60_000,
     queryFn: async (): Promise<WorkspaceStats | null> => {
       const { data, error } = await supabase.rpc(
-        'get_workspace_stats' as never,
-        { p_workspace_id: workspaceId } as never,
+        'get_workspace_stats',
+        { p_workspace_id: workspaceId! },
       )
       if (error) throw error
       const rows = data as unknown as WorkspaceStats[]
@@ -179,8 +179,8 @@ export function useExportWorkspace(workspaceId: string) {
   return useMutation({
     mutationFn: async (): Promise<unknown> => {
       const { data, error } = await supabase.rpc(
-        'export_workspace_data' as never,
-        { p_workspace_id: workspaceId } as never,
+        'export_workspace_data',
+        { p_workspace_id: workspaceId! },
       )
       if (error) throw error
       return data

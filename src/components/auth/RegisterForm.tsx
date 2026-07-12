@@ -32,7 +32,7 @@ export function RegisterForm() {
     queryKey: ['registration-allowed'],
     staleTime: 60_000,
     queryFn: async (): Promise<boolean> => {
-      const { data, error } = await supabase.rpc('registration_allowed' as never, {} as never)
+      const { data, error } = await supabase.rpc('registration_allowed')
       if (error) return true // fail-open: не блокируем регистрацию из-за сбоя проверки
       return data === true
     },
@@ -89,8 +89,8 @@ export function RegisterForm() {
         return
       }
       const { data: inviteOk, error: inviteErr } = await supabase.rpc(
-        'consume_platform_invite' as never,
-        { p_code: inviteCode.trim() } as never,
+        'consume_platform_invite',
+        { p_code: inviteCode.trim() },
       )
       if (inviteErr || inviteOk !== true) {
         setError('Инвайт-код недействителен или исчерпан')
