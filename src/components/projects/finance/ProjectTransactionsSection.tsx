@@ -33,15 +33,10 @@ import {
   type TransactionType,
 } from '@/hooks/projects/useProjectTransactions'
 import { formatMoney } from '@/lib/currency'
+import { formatIsoDateNumeric } from '@/utils/format/dateFormat'
 import { InlineEditCell } from '@/components/ui/inline-edit-cell'
 import { InlineEditSelect } from '@/components/ui/inline-edit-select'
 import { ProjectTransactionFormDialog } from './ProjectTransactionFormDialog'
-
-const formatDate = (iso: string): string => {
-  // dd.MM.yyyy без часовой зоны (date — это просто дата без времени)
-  const [y, m, d] = iso.split('-')
-  return `${d}.${m}.${y}`
-}
 
 const TYPE_CONFIG: Record<
   TransactionType,
@@ -207,7 +202,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type, curre
   const askDelete = async (trx: ProjectTransaction) => {
     const ok = await confirm.confirm({
       title: type === 'income' ? 'Удалить доход?' : 'Удалить расход?',
-      description: `Запись на ${formatMoney(Number(trx.amount), currency)} от ${formatDate(trx.date)} будет удалена.`,
+      description: `Запись на ${formatMoney(Number(trx.amount), currency)} от ${formatIsoDateNumeric(trx.date)} будет удалена.`,
       confirmText: 'Удалить',
       variant: 'destructive',
     })

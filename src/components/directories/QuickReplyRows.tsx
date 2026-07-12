@@ -13,14 +13,9 @@ import type { QuickReply } from '@/hooks/quick-replies/useQuickReplies'
 import type { useQuickRepliesPage } from '@/hooks/quick-replies/useQuickRepliesPage'
 import { INDENT, BASE_PAD, ARTICLE_EXTRA } from '@/components/shared/tree/TreeConstants'
 import { TreeConnector } from '@/components/shared/tree/TreeConnector'
+import { stripHtml } from '@/utils/format/messengerHtml'
 
 type PageReturn = ReturnType<typeof useQuickRepliesPage>
-
-/** Убирает HTML-теги для превью */
-function stripHtml(html: string): string {
-  const doc = new DOMParser().parseFromString(html, 'text/html')
-  return doc.body.textContent || ''
-}
 
 // ---------- Shared reply row content ----------
 

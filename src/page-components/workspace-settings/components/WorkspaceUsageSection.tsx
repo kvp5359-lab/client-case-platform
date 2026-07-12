@@ -11,6 +11,7 @@ import {
   useExportWorkspace,
 } from '@/hooks/useWorkspaceUsage'
 import { getUserFacingErrorMessage } from '@/utils/errorMessage'
+import { downloadBlob } from '@/utils/files/downloadBlob'
 
 function UsageRow({ label, used, max, unit }: { label: string; used: number; max: number | null; unit?: string }) {
   const pct = max && max > 0 ? Math.min(100, Math.round((used / max) * 100)) : null
@@ -45,12 +46,7 @@ export function WorkspaceUsageSection({ workspaceId }: { workspaceId: string }) 
     try {
       const data = await exportWs.mutateAsync()
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `workspace-export-${new Date().toISOString().slice(0, 10)}.json`
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadBlob(blob, `workspace-export-${new Date().toISOString().slice(0, 10)}.json`)
       toast.success('Данные выгружены')
     } catch (e) {
       toast.error(getUserFacingErrorMessage(e, 'Не удалось выгрузить данные'))

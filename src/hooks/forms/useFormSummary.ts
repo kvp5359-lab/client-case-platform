@@ -11,6 +11,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { getCommentsByEntity } from '@/services/api/commentService'
 import { getSectionProgress } from '@/hooks/forms/useFormKitProgress'
+import { copyToClipboard } from '@/utils/clipboard'
 import type { FormSectionWithFields, CompositeFieldItem, FormData } from '@/types/forms'
 
 type UseFormSummaryParams = {
@@ -175,7 +176,7 @@ export function useFormSummary({ workspaceId }: UseFormSummaryParams) {
   )
 
   const handleCopySummary = useCallback(() => {
-    navigator.clipboard.writeText(summaryText)
+    void copyToClipboard(summaryText)
     setCopied(true)
     if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current)
     copiedTimerRef.current = setTimeout(() => setCopied(false), 2000)

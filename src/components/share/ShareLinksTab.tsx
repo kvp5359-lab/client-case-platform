@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
+import { escapeHtml } from '@/lib/html'
 import {
   getProjectShareableResources,
   ensureArticleShareLink,
@@ -105,9 +106,6 @@ function SelectBadge({ n, onClick }: { n: number | null; onClick: () => void }) 
     </button>
   )
 }
-
-const escapeHtml = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 export function ShareLinksTab({ editor, projectId, search, enabled, view, onInserted }: Props) {
   const qc = useQueryClient()

@@ -22,11 +22,7 @@ import {
   type FinanceService,
 } from '@/hooks/finance/useFinanceServices'
 import { FinanceServiceFormDialog } from './FinanceServiceFormDialog'
-
-const formatPrice = (value: number): string =>
-  new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
-    value,
-  )
+import { formatAmount } from '@/lib/currency'
 
 export function FinanceServicesDirectory() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -127,7 +123,7 @@ export function FinanceServicesDirectory() {
                     <tr key={service.id} className="border-t">
                       <td className="px-4 py-2">{service.name}</td>
                       <td className="px-4 py-2 text-right tabular-nums">
-                        {formatPrice(Number(service.base_price))}
+                        {formatAmount(Number(service.base_price))}
                       </td>
                       <td className="px-4 py-2 text-right">
                         <div className="flex items-center justify-end gap-1">

@@ -3,6 +3,8 @@
  * Клон DOM сохраняет текущее состояние раскрытых <details> (аккордеонов).
  */
 
+import { escapeHtml } from '@/lib/html'
+
 const PRINT_STYLES = `
   @page { margin: 16mm; }
 
@@ -183,15 +185,6 @@ const PRINT_STYLES = `
      на всякий случай скрываем интерактивные элементы. */
   button, .no-print { display: none !important; }
 `
-
-function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
 
 function waitForImages(doc: Document): Promise<void> {
   const images = Array.from(doc.images)

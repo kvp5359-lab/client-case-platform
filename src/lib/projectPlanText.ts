@@ -16,6 +16,8 @@
  *                 (без вложенных папок: слоты набора нумеруются подряд).
  */
 
+import { escapeHtml } from '@/lib/html'
+
 export type PlanLine = { text: string; bold?: boolean; strike?: boolean }
 
 export type PlanTaskInput = {
@@ -156,10 +158,6 @@ export function buildProjectPlanLines(input: {
 /** Склейка строк плана в plain-текст (для копирования в буфер обмена). */
 export function planLinesToText(lines: PlanLine[]): string {
   return lines.map((l) => l.text).join('\n')
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 /** Строки плана → HTML-параграфы для Tiptap-редактора (жирность/зачёркивание). */

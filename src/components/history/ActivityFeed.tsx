@@ -4,7 +4,7 @@
 
 import type { AuditLogEntry } from '@/types/history'
 import { ActivityItem } from './ActivityItem'
-import { formatLongDate } from '@/utils/format/dateFormat'
+import { formatDayHeader, dayKey } from './historyDateHelpers'
 
 type ActivityFeedProps = {
   entries: AuditLogEntry[]
@@ -12,29 +12,15 @@ type ActivityFeedProps = {
   statusNames?: Map<string, string>
 }
 
-function formatDayHeader(dateStr: string): string {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const entryDay = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-
-  const diffDays = Math.floor((today.getTime() - entryDay.getTime()) / 86_400_000)
-
-  if (diffDays === 0) return 'Сегодня'
-  if (diffDays === 1) return 'Вчера'
-  return formatLongDate(date)
-}
-
 function groupByDay(entries: AuditLogEntry[]): Map<string, AuditLogEntry[]> {
   const groups = new Map<string, AuditLogEntry[]>()
   for (const entry of entries) {
-    const date = new Date(entry.created_at)
-    const dayKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
-    const existing = groups.get(dayKey)
+    const key = dayKey(entry.created_at)
+    const existing = groups.get(key)
     if (existing) {
       existing.push(entry)
     } else {
-      groups.set(dayKey, [entry])
+      groups.set(key, [entry])
     }
   }
   return groups

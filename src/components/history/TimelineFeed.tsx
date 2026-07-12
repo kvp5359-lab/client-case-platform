@@ -18,7 +18,7 @@ import { MessengerProvider } from '@/components/messenger/MessengerContext'
 import { ServiceMessage } from '@/components/messenger/ServiceMessage'
 import { AuditPill } from './AuditPill'
 import type { AuditLogEntry } from '@/types/history'
-import { formatLongDate } from '@/utils/format/dateFormat'
+import { formatDayHeader, dayKey } from './historyDateHelpers'
 import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import type { TimelineMessageEntry } from '@/hooks/useTimelineMessages'
 import type { MessengerAccent } from '@/components/messenger/utils/messageStyles'
@@ -50,23 +50,6 @@ type TimelineFeedProps = {
   onOpenChat?: (threadId: string) => void
 }
 
-function formatDayHeader(dateStr: string): string {
-  const date = new Date(dateStr)
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const entryDay = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  const diffDays = Math.floor((today.getTime() - entryDay.getTime()) / 86_400_000)
-
-  if (diffDays === 0) return 'Сегодня'
-  if (diffDays === 1) return 'Вчера'
-  return formatLongDate(date)
-}
-
-function getDayKey(dateStr: string): string {
-  const d = new Date(dateStr)
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
-}
-
 function getCreatedAt(entry: TimelineEntry): string {
   return entry.kind === 'audit' ? entry.data.created_at : entry.entry.message.created_at
 }
@@ -85,7 +68,7 @@ function mergeTimeline(audits: AuditLogEntry[], messages: TimelineMessageEntry[]
 function groupByDay(entries: TimelineEntry[]): Map<string, TimelineEntry[]> {
   const groups = new Map<string, TimelineEntry[]>()
   for (const entry of entries) {
-    const key = getDayKey(getCreatedAt(entry))
+    const key = dayKey(getCreatedAt(entry))
     const existing = groups.get(key)
     if (existing) existing.push(entry)
     else groups.set(key, [entry])

@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
-import { currencySymbol, DEFAULT_CURRENCY } from '@/lib/currency'
+import { currencySymbol, DEFAULT_CURRENCY, formatAmount } from '@/lib/currency'
 import { useFinanceTxCategories } from '@/hooks/finance/useFinanceTransactionCategories'
 import { useFinanceTaxRates } from '@/hooks/finance/useFinanceTaxRates'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
@@ -143,9 +143,6 @@ export function ProjectTransactionFormDialog({
   const hasSuggestion =
     typeof suggestedAmount === 'number' && Number.isFinite(suggestedAmount) && suggestedAmount > 0
 
-  const fmt2 = (v: number) =>
-    new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v)
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -195,7 +192,7 @@ export function ProjectTransactionFormDialog({
                     title="Подставить сумму в поле"
                   >
                     <span>{suggestedLabel}:</span>
-                    <span className="font-semibold tabular-nums">{fmt2(suggestedAmount as number)}</span>
+                    <span className="font-semibold tabular-nums">{formatAmount(suggestedAmount as number)}</span>
                   </button>
                 )}
               </Label>

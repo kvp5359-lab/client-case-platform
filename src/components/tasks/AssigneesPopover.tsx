@@ -27,6 +27,7 @@ import {
 } from '@/components/participants/ParticipantAvatars'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
+import { pluralizeRu } from '@/utils/format/pluralize'
 import { useAuth } from '@/contexts/AuthContext'
 import { participantKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { useToggleAssignee } from './useTaskAssignees'
@@ -315,7 +316,7 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
           <span className="text-foreground truncate">
             {selectedList.length === 1
               ? `${selectedList[0].name}${selectedList[0].last_name ? ' ' + selectedList[0].last_name : ''}`
-              : `${selectedList.length} ${pluralizeAssignees(selectedList.length)}`}
+              : `${selectedList.length} ${pluralizeRu(selectedList.length, ['исполнитель', 'исполнителя', 'исполнителей'])}`}
           </span>
         </>
       )}
@@ -400,12 +401,4 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
       </PopoverContent>
     </Popover>
   )
-}
-
-function pluralizeAssignees(n: number): string {
-  const mod10 = n % 10
-  const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return 'исполнитель'
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'исполнителя'
-  return 'исполнителей'
 }

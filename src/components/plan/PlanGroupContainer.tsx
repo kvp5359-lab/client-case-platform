@@ -22,6 +22,7 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { pluralizeRu } from '@/utils/format/pluralize'
 import { ACCENT_COLORS, ACCENT_COLOR_GROUPS, COLOR_TEXT } from '@/components/messenger/threadConstants'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import type { TaskGroupRow } from '@/types/taskGroups'
@@ -40,15 +41,6 @@ type Props = {
   onMoveUp?: () => void
   onMoveDown?: () => void
   renderChild: (item: MergedItem) => React.ReactNode
-}
-
-/** Русское склонение: 1 задача, 2 задачи, 5 задач. */
-function taskWord(n: number): string {
-  const m10 = n % 10
-  const m100 = n % 100
-  if (m10 === 1 && m100 !== 11) return 'задача'
-  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return 'задачи'
-  return 'задач'
 }
 
 export function PlanGroupContainer({
@@ -142,7 +134,7 @@ export function PlanGroupContainer({
               {group.name || 'Без названия'}
             </button>
             {collapsed && count > 0 && (
-              <MutedPill variant="accent" className="ml-1.5">{count} {taskWord(count)}</MutedPill>
+              <MutedPill variant="accent" className="ml-1.5">{count} {pluralizeRu(count, ['задача', 'задачи', 'задач'])}</MutedPill>
             )}
             {canEdit && (
               <button

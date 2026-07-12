@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
 import { getUserFacingErrorMessage } from '@/utils/errorMessage'
+import { copyToClipboard } from '@/utils/clipboard'
 import { formKitKeys } from '@/hooks/queryKeys'
 
 type UseFormKitSyncProps = {
@@ -32,11 +33,9 @@ export function useFormKitSync({ formKitId, projectId, googleSheetId }: UseFormK
 
     const sheetUrl = `https://docs.google.com/spreadsheets/d/${googleSheetId}/edit`
 
-    try {
-      await navigator.clipboard.writeText(sheetUrl)
+    if (await copyToClipboard(sheetUrl)) {
       toast.success('Ссылка на таблицу скопирована в буфер обмена')
-    } catch (err) {
-      logger.error('Error copying to clipboard:', err)
+    } else {
       toast.error('Не удалось скопировать ссылку')
     }
   }

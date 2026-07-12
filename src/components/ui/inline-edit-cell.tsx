@@ -16,6 +16,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { formatIsoDateNumeric } from '@/utils/format/dateFormat'
 
 type FieldType = 'text' | 'number' | 'date'
 
@@ -132,7 +133,7 @@ export function InlineEditCell(props: Props) {
   const displayValue = (() => {
     if (format) return format(props.value)
     if (props.value == null || props.value === '') return emptyText
-    if (props.type === 'date') return formatDate(props.value)
+    if (props.type === 'date') return formatIsoDateNumeric(props.value)
     return String(props.value)
   })()
 
@@ -194,10 +195,4 @@ function inputType(t: FieldType): string {
   if (t === 'number') return 'number'
   if (t === 'date') return 'date'
   return 'text'
-}
-
-function formatDate(iso: string): string {
-  const [y, m, d] = iso.split('-')
-  if (!y || !m || !d) return iso
-  return `${d}.${m}.${y}`
 }

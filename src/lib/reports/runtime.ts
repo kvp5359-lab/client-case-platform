@@ -13,16 +13,10 @@ import type {
   ReportRow,
 } from '@/types/reports'
 import type { FilterGroup } from '@/lib/filters/types'
+import { formatDateToString as iso } from '@/utils/format/dateFormat'
 import { getDatasetDef, getMeasureDef } from './registry'
 
 // ── Период ────────────────────────────────────────────────
-
-function iso(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
 
 /** Пресет периода → конкретные даты [from, to] (включительно) или null (всё время). */
 export function resolvePeriodRange(

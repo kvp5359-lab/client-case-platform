@@ -67,11 +67,7 @@ import type {
   TransactionType,
 } from '@/hooks/projects/useProjectTransactions'
 import { ProjectTransactionFormDialog } from '@/components/projects/finance/ProjectTransactionFormDialog'
-
-const formatDate = (iso: string): string => {
-  const [y, m, d] = iso.split('-')
-  return `${d}.${m}.${y}`
-}
+import { formatDateToString, formatIsoDateNumeric } from '@/utils/format/dateFormat'
 
 type TypeFilter = 'all' | TransactionType
 type PeriodFilter = 'all' | 'this_month' | 'last_month' | 'this_year'
@@ -80,19 +76,17 @@ type PeriodFilter = 'all' | 'this_month' | 'last_month' | 'this_year'
 function periodRange(period: PeriodFilter): { from: string | null; to: string | null } {
   if (period === 'all') return { from: null, to: null }
   const now = new Date()
-  const iso = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   if (period === 'this_month') {
-    return { from: iso(new Date(now.getFullYear(), now.getMonth(), 1)), to: null }
+    return { from: formatDateToString(new Date(now.getFullYear(), now.getMonth(), 1)), to: null }
   }
   if (period === 'last_month') {
     return {
-      from: iso(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
-      to: iso(new Date(now.getFullYear(), now.getMonth(), 0)),
+      from: formatDateToString(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+      to: formatDateToString(new Date(now.getFullYear(), now.getMonth(), 0)),
     }
   }
   // this_year
-  return { from: iso(new Date(now.getFullYear(), 0, 1)), to: null }
+  return { from: formatDateToString(new Date(now.getFullYear(), 0, 1)), to: null }
 }
 
 /** «июль 2026 г.» → «Июль 2026». */
@@ -298,7 +292,7 @@ export default function WorkspaceFinancePage() {
   const askDelete = async (t: WorkspaceTransaction) => {
     const ok = await confirm.confirm({
       title: t.type === 'income' ? 'Удалить доход?' : 'Удалить расход?',
-      description: `Запись на ${formatMoney(Number(t.amount), rowCurrency(t))} от ${formatDate(t.date)} (${t.project_name}) будет удалена.`,
+      description: `Запись на ${formatMoney(Number(t.amount), rowCurrency(t))} от ${formatIsoDateNumeric(t.date)} (${t.project_name}) будет удалена.`,
       confirmText: 'Удалить',
       variant: 'destructive',
     })

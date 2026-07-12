@@ -167,3 +167,15 @@ export function formatNumericDate(dateStr: string | Date | null | undefined): st
   const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr
   return date.toLocaleDateString('ru-RU')
 }
+
+/**
+ * ISO-дата "YYYY-MM-DD" → "dd.MM.yyyy" строковым сплитом, БЕЗ `new Date()`.
+ * TZ-safe: для чистой даты (без времени) не ловит сдвиг дня из-за часового пояса.
+ * Некорректный вход возвращается как есть.
+ */
+export function formatIsoDateNumeric(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const [y, m, d] = iso.split('-')
+  if (!y || !m || !d) return iso
+  return `${d}.${m}.${y}`
+}

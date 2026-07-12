@@ -45,15 +45,10 @@ import {
   useCreateFinanceService,
 } from '@/hooks/finance/useFinanceServices'
 import { projectServiceKeys } from '@/hooks/queryKeys'
-import { formatMoney } from '@/lib/currency'
+import { formatMoney, formatAmount } from '@/lib/currency'
 import { InlineEditCell } from '@/components/ui/inline-edit-cell'
 import { InlineEditSelect } from '@/components/ui/inline-edit-select'
 import { ProjectServiceFormDialog } from './ProjectServiceFormDialog'
-
-const fmt = (value: number): string =>
-  new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
-    value,
-  )
 
 type Props = {
   projectId: string
@@ -309,11 +304,11 @@ export function ProjectServicesSection({ projectId, workspaceId, currency, baseC
                 <>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-gray-600">
                     <span className="text-gray-500">Пакет:</span>
-                    <span className="font-medium">{fmt(totals.packageTotal)}</span>
+                    <span className="font-medium">{formatAmount(totals.packageTotal)}</span>
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-gray-600">
                     <span className="text-gray-500">Допы:</span>
-                    <span className="font-medium">+{fmt(totals.extraTotal)}</span>
+                    <span className="font-medium">+{formatAmount(totals.extraTotal)}</span>
                   </span>
                 </>
               )}
@@ -321,11 +316,11 @@ export function ProjectServicesSection({ projectId, workspaceId, currency, baseC
                 <>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-gray-600">
                     <span className="text-gray-500">Без налога:</span>
-                    <span className="font-medium">{fmt(totals.subtotal)}</span>
+                    <span className="font-medium">{formatAmount(totals.subtotal)}</span>
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-gray-600">
                     <span className="text-gray-500">Налог:</span>
-                    <span className="font-medium">+{fmt(totals.tax)}</span>
+                    <span className="font-medium">+{formatAmount(totals.tax)}</span>
                   </span>
                 </>
               )}
@@ -463,7 +458,7 @@ function SortableServiceRow({
               type="number"
               value={Number(service.price)}
               className="text-xs"
-              format={(v) => (typeof v === 'number' ? fmt(v) : '—')}
+              format={(v) => (typeof v === 'number' ? formatAmount(v) : '—')}
               min={0}
               onCommit={(v) => {
                 if (v < 0) return

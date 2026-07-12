@@ -8,6 +8,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
+import { copyToClipboard } from '@/utils/clipboard'
 import { getCommentsByEntity } from '@/services/api/commentService'
 import type {
   DocumentKit,
@@ -152,8 +153,8 @@ export function useDocumentSummary({
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleCopySummary = useCallback(() => {
-    navigator.clipboard.writeText(summaryText).catch(() => {
-      toast.error('Не удалось скопировать')
+    void copyToClipboard(summaryText).then((ok) => {
+      if (!ok) toast.error('Не удалось скопировать')
     })
     setCopied(true)
     if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current)

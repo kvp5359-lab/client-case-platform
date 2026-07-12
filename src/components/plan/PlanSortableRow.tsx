@@ -10,6 +10,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Trash2, Pencil, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { stripHtml } from '@/utils/format/messengerHtml'
 import { TaskRow } from '@/components/tasks/TaskRow'
 import type { TaskItem } from '@/components/tasks/types'
 import type { TaskTimeValue } from '@/components/tasks/TaskTimePickerPopover'
@@ -196,7 +197,7 @@ export function SortableRow({
             >
               {collapsed ? (
                 <p className="truncate text-sm text-muted-foreground">
-                  {stripHtml(item.display.content) || 'Пустой текст'}
+                  {stripHtml(item.display.content ?? '') || 'Пустой текст'}
                 </p>
               ) : (
                 <p className="whitespace-pre-wrap text-sm leading-relaxed">
@@ -273,15 +274,4 @@ function PlanSlotItem({ fullSlot }: { fullSlot: FolderSlotWithDocument | null })
     )
   }
   return el
-}
-
-/** HTML → одна строка текста (для свёрнутого вида). */
-function stripHtml(html: string | null): string {
-  if (!html) return ''
-  return html
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/\s+/g, ' ')
-    .trim()
 }
