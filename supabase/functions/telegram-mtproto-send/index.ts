@@ -14,6 +14,7 @@
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { isInternalVisibility, assertWorkspaceMembership } from "../_shared/outgoing.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeadersFor } from "../_shared/edge.ts";
 import { markMessageFailed, markMessageSent } from "../_shared/messageSendStatus.ts";
@@ -73,8 +74,7 @@ Deno.serve(async (req: Request) => {
   // «Заметка»). Фронт уже гейтит внешнюю доставку по visibility, это защита
   // на уровне канала — утечка внутреннего сообщения клиенту критична
   // (баг 2026-07-08: внутреннее сообщение с файлом ушло клиенту в группу).
-  const visibility = ((msg as { visibility?: string | null }).visibility) ?? "client";
-  if (visibility !== "client") {
+  if (isInternalVisibility((msg as { visibility?: string | null }).visibility)) {
     await markMessageSent(service, msg.id, { channelFields: {} });
     return jsonResponse({ ok: true, skipped: "internal_visibility" }, 200, corsHeaders);
   }
@@ -88,14 +88,7 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "Not a MTProto thread" }, 400, corsHeaders);
   }
 
-  const { data: participant } = await service
-    .from("participants")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("workspace_id", msg.workspace_id)
-    .eq("is_deleted", false)
-    .maybeSingle();
-  if (!participant) {
+  if (!(await assertWorkspaceMembership(service, user.id, msg.workspace_id))) {
     return jsonResponse({ error: "Forbidden" }, 403, corsHeaders);
   }
 

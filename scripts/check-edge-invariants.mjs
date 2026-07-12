@@ -28,7 +28,9 @@ const MUST_GATE = [
 
 // Признак backstop'а: сравнение visibility с 'client'. Достаточно грубого
 // совпадения — важно, что проверка физически присутствует в коде.
-const GATE_RE = /visibility[^\n]*!==?\s*["']client["']|["']client["']\s*!==?[^\n]*visibility/
+// Признак backstop'а: явное сравнение visibility с 'client' ЛИБО вызов общего
+// предиката isInternalVisibility (_shared/outgoing.ts). Достаточно любого.
+const GATE_RE = /visibility[^\n]*!==?\s*["']client["']|["']client["']\s*!==?[^\n]*visibility|isInternalVisibility\s*\(/
 
 let failed = 0
 for (const fn of MUST_GATE) {

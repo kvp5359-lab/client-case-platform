@@ -19,6 +19,7 @@
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { isInternalVisibility, assertWorkspaceMembership } from "../_shared/outgoing.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeadersFor } from "../_shared/edge.ts";
 
@@ -75,7 +76,7 @@ Deno.serve(async (req: Request) => {
   }
   // Backstop видимости — единый контракт со всеми исходящими: правку
   // внутреннего (team/self) в канал не шлём.
-  if (((msg.visibility as string | null) ?? "client") !== "client") {
+  if (isInternalVisibility(msg.visibility as string | null)) {
     return jsonResponse({ ok: true, skipped: "internal_visibility" }, 200, corsHeaders);
   }
 
@@ -89,14 +90,7 @@ Deno.serve(async (req: Request) => {
   }
 
   // Членство — защита от чужих.
-  const { data: participant } = await service
-    .from("participants")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("workspace_id", msg.workspace_id)
-    .eq("is_deleted", false)
-    .maybeSingle();
-  if (!participant) {
+  if (!(await assertWorkspaceMembership(service, user.id, msg.workspace_id))) {
     return jsonResponse({ error: "Forbidden" }, 403, corsHeaders);
   }
 

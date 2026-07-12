@@ -14,6 +14,7 @@
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { isInternalVisibility, assertWorkspaceMembership } from "../_shared/outgoing.ts";
 import {
   preflight, jsonRes, getUser, getServiceClient,
 } from "../_shared/edge.ts";
@@ -39,14 +40,9 @@ Deno.serve(async (req: Request) => {
   if (!msg || !msg.thread_id) return jsonRes({ error: "message not found" }, 400, req);
 
   // Членство юзера в воркспейсе — защита от чужих (удаление деструктивно).
-  const { data: participant } = await service
-    .from("participants")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("workspace_id", msg.workspace_id)
-    .eq("is_deleted", false)
-    .maybeSingle();
-  if (!participant) return jsonRes({ error: "forbidden" }, 403, req);
+  if (!(await assertWorkspaceMembership(service, user.id, msg.workspace_id))) {
+    return jsonRes({ error: "forbidden" }, 403, req);
+  }
 
   const wazzupMessageId = body.wazzup_message_id ?? (msg.wazzup_message_id as string | null);
   if (!wazzupMessageId) {

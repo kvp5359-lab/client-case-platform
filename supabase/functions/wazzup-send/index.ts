@@ -18,6 +18,7 @@
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { isInternalVisibility, assertWorkspaceMembership } from "../_shared/outgoing.ts";
 import {
   preflight, jsonRes, okText, requireInternalSecret, getServiceClient,
   markOutgoingExternal,
@@ -64,8 +65,7 @@ Deno.serve(async (req: Request) => {
   // «Заметка»). Фронт уже гейтит внешнюю доставку по visibility, это защита
   // на уровне канала — утечка внутреннего сообщения клиенту критична
   // (баг 2026-07-08: внутреннее сообщение с файлом ушло клиенту в группу).
-  const visibility = (msg.visibility as string | null) ?? "client";
-  if (visibility !== "client") {
+  if (isInternalVisibility(msg.visibility as string | null)) {
     await markMessageSent(service, msg.id, { channelFields: {} });
     return jsonRes({ ok: true, skipped: "internal_visibility" }, 200, req);
   }

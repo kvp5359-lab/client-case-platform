@@ -18,6 +18,7 @@
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { isInternalVisibility, assertWorkspaceMembership } from "../_shared/outgoing.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { markMessageSent, markMessageFailed } from "../_shared/messageSendStatus.ts";
 import {
@@ -79,7 +80,7 @@ Deno.serve(async (req: Request) => {
   // Backstop видимости: внутреннее (team/self) не уходит клиенту, даже если
   // какой-то путь забудет фронт-гейт. Business-тред всегда клиентский, но
   // контракт единый со всеми send-функциями (закрытие дыры аудита 2026-07-12).
-  if (((msg.visibility as string | null) ?? "client") !== "client") {
+  if (isInternalVisibility(msg.visibility as string | null)) {
     await markMessageSent(service, msg.id, {});
     return jsonOk({ ok: true, skipped: "internal_visibility" });
   }

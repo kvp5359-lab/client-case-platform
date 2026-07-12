@@ -16,6 +16,7 @@
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { isInternalVisibility, assertWorkspaceMembership } from "../_shared/outgoing.ts";
 import {
   preflight, jsonRes, requireInternalSecret, getServiceClient, getUser,
   INTERNAL_FUNCTION_SECRET, SUPABASE_URL,
@@ -127,23 +128,16 @@ Deno.serve(async (req: Request) => {
   if (!viaInternalSecret) {
     const user = await getUser(req);
     if (!user) return jsonRes({ error: "unauthorized" }, 401, req);
-    const { data: member } = await service
-      .from("participants")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("workspace_id", m.workspace_id)
-      .eq("is_deleted", false)
-      .limit(1)
-      .maybeSingle();
-    if (!member) return jsonRes({ error: "forbidden" }, 403, req);
+    if (!(await assertWorkspaceMembership(service, user.id, m.workspace_id))) {
+      return jsonRes({ error: "forbidden" }, 403, req);
+    }
   }
 
   // 🔒 Backstop: НЕ отправляем во внешний канал внутренние сообщения (team/self/
   // «Заметка»). Фронт уже гейтит внешнюю доставку по visibility, это защита
   // на уровне канала — утечка внутреннего сообщения клиенту критична
   // (баг 2026-07-08: внутреннее сообщение с файлом ушло клиенту в группу).
-  const visibility = m.visibility ?? "client";
-  if (visibility !== "client") {
+  if (isInternalVisibility(m.visibility)) {
     await markMessageSent(service, m.id, { channelFields: {} });
     return jsonRes({ ok: true, skipped: "internal_visibility" }, 200, req);
   }
