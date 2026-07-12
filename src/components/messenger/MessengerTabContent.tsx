@@ -38,7 +38,6 @@ import { useUpdateEmailThreadMeta } from '@/hooks/messenger/useProjectThreads'
 import { useEmailSuggestions } from './hooks/useChatSettingsData'
 import { useMessengerState } from './hooks/useMessengerState'
 import { useMessengerHandlers } from './hooks/useMessengerHandlers'
-import { useOptimisticEmail } from './hooks/useOptimisticEmail'
 import { useProjectThreads, useProjectThreadById } from '@/hooks/messenger/useProjectThreads'
 import { useThreadHasClient } from '@/hooks/messenger/useThreadHasClient'
 import { isClientFacingThread } from '@/utils/messenger/isClientFacingThread'
@@ -304,7 +303,6 @@ export function MessengerTabContent({
     isEmailChat: state.isEmailChat,
     currentParticipant: state.currentParticipant,
     sendMessage: state.sendMessage,
-    sendEmail: state.sendEmail,
     editMessageMutation: state.editMessageMutation,
     saveDraftMutation: state.saveDraftMutation,
     updateDraftMutation: state.updateDraftMutation,
@@ -445,16 +443,10 @@ export function MessengerTabContent({
     [state, removeFromForwardBuffer],
   )
 
-  const displayMessages = useOptimisticEmail({
-    messages: state.messages,
-    searchResults: state.searchResults,
-    isSearchActive: state.isSearchActive,
-    projectId,
-    workspaceId,
-    threadId,
-    currentParticipant: state.currentParticipant,
-    sendEmail: state.sendEmail,
-  })
+  // Email-сообщения теперь идут обычным sendMessage → INSERT → Realtime, без
+  // отдельного оптимистичного пути (useOptimisticEmail удалён 2026-07-12 —
+  // был инертен). Лента = результаты поиска либо обычные сообщения.
+  const displayMessages = state.isSearchActive ? state.searchResults : state.messages
 
   // Заглушённый (mute) МНОЙ тред: непрочитанное не теряется — показываем его
   // внутри треда «тихой» серой подсветкой (в отличие от красной у подписанных)
@@ -721,7 +713,6 @@ export function MessengerTabContent({
           onSend={handlers.handleSend}
           isPending={
             state.sendMessage.isPending ||
-            state.sendEmail.isPending ||
             state.editMessageMutation.isPending
           }
           onTyping={state.startTyping}

@@ -42,7 +42,6 @@ import {
 import { useDelayedSend } from '@/hooks/messenger/useDelayedSend'
 import { useThreadAuditEvents } from '@/hooks/messenger/useThreadAuditEvents'
 import { useEmailLink } from '@/hooks/email/useEmailLink'
-import { useSendEmail } from '@/hooks/email/useSendEmail'
 import { useChatState } from '@/hooks/messenger/useChatState'
 import { useDocumentPickerLogic } from './useDocumentPickerLogic'
 import { useSidePanelStore } from '@/store/sidePanelStore'
@@ -155,8 +154,6 @@ export function useMessengerState({
     threadId,
     { isEmailChat },
   )
-  const sendEmail = useSendEmail(projectId ?? '', workspaceId, threadId)
-
   const editMessageMutation = useEditMessage(threadId)
   const deleteMessageMutation = useDeleteMessage(threadId)
   const saveDraftMutation = useSaveDraft(projectId, workspaceId, channel, threadId)
@@ -294,7 +291,6 @@ export function useMessengerState({
     latestPageMessageCount,
     // Mutations
     sendMessage,
-    sendEmail,
     editMessageMutation,
     deleteMessageMutation,
     saveDraftMutation,

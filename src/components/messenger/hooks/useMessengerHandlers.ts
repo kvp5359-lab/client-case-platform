@@ -57,7 +57,6 @@ type UseMessengerHandlersParams = {
       mentions?: string[]
     }) => void
   }
-  sendEmail: { mutate: (args: { threadId: string; content: string; files?: File[] }) => void }
   editMessageMutation: {
     mutate: (args: {
       messageId: string
@@ -128,7 +127,6 @@ export function useMessengerHandlers({
   isEmailChat,
   currentParticipant,
   sendMessage,
-  sendEmail,
   editMessageMutation,
   saveDraftMutation,
   updateDraftMutation,
@@ -167,9 +165,9 @@ export function useMessengerHandlers({
       // и зовёт email-internal-send (Gmail OAuth / Resend). Старый прямой путь
       // через gmail-send удалён — он минул триггер, цитировал по-старому и не
       // заполнял email_message_id/in_reply_to/references, из-за чего письма у
-      // клиента отделялись в новый тред.
-      void isEmailChat
-      void sendEmail
+      // клиента отделялись в новый тред. Старый хук useSendEmail (прямой invoke
+      // gmail-send) и оптимистичный useOptimisticEmail удалены 2026-07-12 —
+      // цепочка была инертна (mutate не вызывался), только путала.
 
       // Лимит email-вложений (15 МБ). Без проверки edge function падает по
       // WORKER_RESOURCE_LIMIT, и письмо вообще не уходит.
@@ -230,7 +228,6 @@ export function useMessengerHandlers({
     },
     [
       sendMessage,
-      sendEmail,
       isEmailChat,
       replyTo,
       forwardedAttachments,
