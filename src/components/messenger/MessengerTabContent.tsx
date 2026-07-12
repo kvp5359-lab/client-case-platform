@@ -22,6 +22,7 @@ import { ThreadSearchOverlay } from './search/ThreadSearchOverlay'
 import { ReadUnreadButton } from './ReadUnreadButton'
 import {
   ComposerVisibilitySwitch,
+  visibilityToMode,
   type ComposerMode,
 } from './ComposerVisibilitySwitch'
 import { useIsThreadMutedByMe } from '@/hooks/messenger/useThreadSubscription'
@@ -68,12 +69,6 @@ type MessengerTabContentProps = {
 
 const COMPOSER_MODES: ComposerMode[] = ['client', 'team', 'note', 'self']
 
-/** Видимость сообщения → режим композера (для подхвата режима при «Ответить»). */
-function visibilityToMode(msg: ProjectMessage): ComposerMode {
-  if (msg.visibility === 'self') return 'self'
-  if (msg.visibility === 'team') return msg.notify_subscribers === false ? 'note' : 'team'
-  return 'client' // client / undefined → «Всем»
-}
 function readStoredComposerMode(key: string | null): ComposerMode | null {
   if (!key || typeof window === 'undefined') return null
   try {
@@ -624,9 +619,8 @@ export function MessengerTabContent({
 
         <TypingIndicator typingUsers={state.typingUsers} />
 
-        {/* Селектор «Отправлять от» скрыт по просьбе — письма уходят от текущего
-            аккаунта треда (email_send_account_id). EmailSendMethodSelector оставлен
-            в коде на случай возврата. */}
+        {/* Селектор «Отправлять от» намеренно отсутствует — письма уходят от
+            текущего аккаунта треда (email_send_account_id). */}
 
         <ForwardBufferBar
           items={forwardBuffer}

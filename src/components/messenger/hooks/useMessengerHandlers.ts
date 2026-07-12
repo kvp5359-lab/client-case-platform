@@ -34,6 +34,7 @@ import { useSidePanelStore } from '@/store/sidePanelStore'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
 import { stripHtml } from '@/utils/format/messengerHtml'
 import { ATTACHMENT_PLACEHOLDER } from '@/lib/messenger/attachmentPlaceholder'
+import { isClientVisibleForDelivery } from '@/lib/messenger/visibility'
 
 type UseMessengerHandlersParams = {
   channel: MessageChannel
@@ -187,7 +188,7 @@ export function useMessengerHandlers({
       // Внутренние (team/self) идут сразу через mutate, минуя delay-путь.
       if (
         sendDelay > 0 &&
-        (options?.visibility ?? 'client') === 'client' &&
+        isClientVisibleForDelivery(options?.visibility) &&
         currentParticipant &&
         !replyToId &&
         forwardedAttachments.length === 0

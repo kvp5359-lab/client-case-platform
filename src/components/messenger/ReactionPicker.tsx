@@ -2,28 +2,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button'
 import { SmilePlus } from 'lucide-react'
 import { useState } from 'react'
-
-// Только эмодзи, поддерживаемые Telegram Bot API для реакций
-export const REACTIONS = [
-  '👍',
-  '❤️',
-  '🔥',
-  '🎉',
-  '👏',
-  '😁',
-  '🤔',
-  '🤯',
-  '😱',
-  '😢',
-  '🙏',
-  '🤝',
-  '💯',
-  '🤣',
-  '❤️‍🔥',
-  '👌',
-  '🏆',
-  '🤩',
-]
+import { REACTIONS } from '@/lib/messenger/reactions'
 
 type ReactionPickerProps = {
   onPick: (emoji: string) => void

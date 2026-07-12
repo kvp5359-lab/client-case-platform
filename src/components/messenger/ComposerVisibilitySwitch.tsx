@@ -78,6 +78,18 @@ export const MODE_VISIBILITY: Record<
   self: { visibility: 'self', notifySubscribers: false },
 }
 
+/**
+ * Обратная к MODE_VISIBILITY: видимость сообщения → режим композера
+ * (для подхвата режима при «Ответить»). Держать согласованной с MODE_VISIBILITY.
+ */
+export function visibilityToMode(
+  msg: { visibility?: MessageVisibility | null; notify_subscribers?: boolean | null },
+): ComposerMode {
+  if (msg.visibility === 'self') return 'self'
+  if (msg.visibility === 'team') return msg.notify_subscribers === false ? 'note' : 'team'
+  return 'client' // client / undefined → «Всем»
+}
+
 const MODES: {
   key: ComposerMode
   label: string

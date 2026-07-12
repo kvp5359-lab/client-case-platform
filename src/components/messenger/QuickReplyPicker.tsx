@@ -4,7 +4,7 @@
  * Новый формат: группы вместо папок, доступ через group_templates.
  */
 
-import { useState, useMemo, useCallback, useEffect, useRef, useLayoutEffect } from 'react'
+import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react'
 import { Zap, FolderOpen, Search, FileText, Pencil, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,6 +16,7 @@ import { QuickReplyFormDialog } from '@/components/directories/QuickReplyFormDia
 import { ShareLinksTab } from '@/components/share/ShareLinksTab'
 import { QaPickerTab } from '@/components/messenger/QaPickerTab'
 import { projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { stripHtml } from '@/utils/format/messengerHtml'
 import type { QuickReply } from '@/hooks/quick-replies/useQuickReplies'
 import type { Editor } from '@tiptap/react'
 
@@ -135,11 +136,6 @@ export function QuickReplyPicker({
 
     return { noGroup, groups: [...groupMap.entries()] }
   }, [replies, search])
-
-  const stripHtml = useCallback((html: string) => {
-    const doc = new DOMParser().parseFromString(html, 'text/html')
-    return (doc.body.textContent || '').trim()
-  }, [])
 
   const handleSelect = (content: string) => {
     editor.chain().focus().insertContent(content).run()
@@ -349,7 +345,6 @@ export function QuickReplyPicker({
                         idx={idx}
                         activeIndex={activeIndex}
                         indent={false}
-                        stripHtml={stripHtml}
                         onSelect={handleSelect}
                         onEdit={handleEditClick}
                       />
@@ -372,7 +367,6 @@ export function QuickReplyPicker({
                             idx={idx}
                             activeIndex={activeIndex}
                             indent={true}
-                            stripHtml={stripHtml}
                             onSelect={handleSelect}
                             onEdit={handleEditClick}
                           />
@@ -408,7 +402,6 @@ function ReplyRow({
   idx,
   activeIndex,
   indent,
-  stripHtml,
   onSelect,
   onEdit,
 }: {
@@ -416,7 +409,6 @@ function ReplyRow({
   idx: number
   activeIndex: number
   indent: boolean
-  stripHtml: (html: string) => string
   onSelect: (content: string) => void
   onEdit: (e: React.MouseEvent, reply: QuickReply) => void
 }) {

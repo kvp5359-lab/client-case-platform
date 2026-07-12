@@ -1,4 +1,4 @@
-import { REACTIONS } from '@/components/messenger/ReactionPicker'
+import { REACTIONS } from '@/lib/messenger/reactions'
 
 /**
  * Частые реакции пользователя. Сохраняется в localStorage — привычки
