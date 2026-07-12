@@ -27,6 +27,108 @@ import {
   DocumentFile,
 } from './types'
 
+/** Минимальный shape вложения-источника (drag из чата / «Добавить в проект»). */
+export type DocumentSourceAttachment = {
+  file_id: string | null
+  file_name: string
+  storage_path: string
+  file_size: number | null
+  mime_type: string | null
+}
+
+/**
+ * Создаёт документ проекта из существующего вложения мессенджера. Файл НЕ
+ * копируется — документ ссылается на тот же объект в хранилище.
+ *
+ * Вложения без file_id (напр. MTProto — файл в бакете message-attachments,
+ * только по storage_path) ломают резолв бакета: extract-text / открытие /
+ * скачивание при file_id=null уходят в document-files и файла не находят.
+ * Поэтому гарантируем files-строку с реальным бакетом вложения (правило
+ * системы: file_id=null → message-attachments), приводя документ к виду
+ * обычной загрузки.
+ *
+ * Единая точка для всех путей импорта вложения в документы (drag, «Добавить в
+ * проект»). Возвращает id созданного документа; бросает DocumentError.
+ */
+export async function createDocumentFromAttachment(
+  attachment: DocumentSourceAttachment,
+  params: {
+    name: string
+    kitId: string
+    folderId: string | null
+    projectId: string
+    workspaceId: string
+  },
+): Promise<{ id: string }> {
+  const { name, kitId, folderId, projectId, workspaceId } = params
+
+  const { data: newDoc, error: docError } = await supabase
+    .from('documents')
+    .insert({
+      name,
+      document_kit_id: kitId,
+      folder_id: folderId,
+      project_id: projectId,
+      workspace_id: workspaceId,
+      status: null,
+    })
+    .select('id')
+    .single()
+  if (docError || !newDoc) {
+    throw new DocumentError(docError?.message || 'Ошибка создания документа', docError)
+  }
+
+  let fileId = attachment.file_id
+  if (!fileId) {
+    // files имеет UNIQUE (bucket, storage_path) — строка для этого объекта
+    // могла уже существовать (прошлый импорт того же файла). Переиспользуем.
+    const { data: existing } = await supabase
+      .from('files')
+      .select('id')
+      .eq('bucket', STORAGE_BUCKETS.messageAttachments)
+      .eq('storage_path', attachment.storage_path)
+      .maybeSingle()
+    if (existing) {
+      fileId = existing.id
+    } else {
+      const { data: fileRow, error: fErr } = await supabase
+        .from('files')
+        .insert({
+          workspace_id: workspaceId,
+          bucket: STORAGE_BUCKETS.messageAttachments,
+          storage_path: attachment.storage_path,
+          file_name: attachment.file_name,
+          file_size: attachment.file_size || 0,
+          mime_type: attachment.mime_type || 'application/octet-stream',
+        })
+        .select('id')
+        .single()
+      if (fErr || !fileRow) {
+        await supabase.from('documents').delete().eq('id', newDoc.id)
+        throw new DocumentError(fErr?.message || 'Не удалось создать запись файла', fErr)
+      }
+      fileId = fileRow.id
+    }
+  }
+
+  const { error: dfError } = await supabase.from('document_files').insert({
+    document_id: newDoc.id,
+    workspace_id: workspaceId,
+    file_path: attachment.storage_path,
+    file_name: attachment.file_name,
+    file_size: attachment.file_size || 0,
+    mime_type: attachment.mime_type || 'application/octet-stream',
+    is_current: true,
+    file_id: fileId,
+  })
+  if (dfError) {
+    await supabase.from('documents').delete().eq('id', newDoc.id)
+    throw new DocumentError(dfError.message, dfError)
+  }
+
+  return { id: newDoc.id }
+}
+
 /**
  * Загрузка файла документа
  */

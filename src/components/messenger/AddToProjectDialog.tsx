@@ -4,11 +4,11 @@ import { Separator } from '@/components/ui/separator'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useDocumentKitsQuery } from '@/hooks/documents/useDocumentKitsQuery'
-import { supabase } from '@/lib/supabase'
 import type { MessageAttachment } from '@/services/api/messenger/messengerService'
 import { useQueryClient } from '@tanstack/react-query'
 import { documentKitKeys } from '@/hooks/queryKeys'
 import { toast } from 'sonner'
+import { createDocumentFromAttachment } from '@/services/documents/documentService'
 import { triggerTextExtraction } from '@/services/documents/textExtractionService'
 
 type AddToProjectDialogProps = {
@@ -34,39 +34,13 @@ export function AddToProjectDialog({
     if (saving) return
     setSaving(true)
     try {
-      // Создаём документ в БД (без загрузки файла — используем тот же file_id)
-      const { data: newDoc, error: docError } = await supabase
-        .from('documents')
-        .insert({
-          name: attachment.file_name.replace(/\.[^/.]+$/, ''),
-          document_kit_id: kitId,
-          folder_id: folderId,
-          status: null,
-          project_id: projectId,
-          workspace_id: workspaceId,
-        })
-        .select()
-        .single()
-
-      if (docError || !newDoc) throw new Error(docError?.message || 'Ошибка создания документа')
-
-      // Создаём document_files с тем же file_id — файл НЕ копируется
-      const { error: dfError } = await supabase.from('document_files').insert({
-        document_id: newDoc.id,
-        workspace_id: workspaceId,
-        file_path: attachment.storage_path,
-        file_name: attachment.file_name,
-        file_size: attachment.file_size || 0,
-        mime_type: attachment.mime_type || 'application/octet-stream',
-        is_current: true,
-        file_id: attachment.file_id || null,
+      const newDoc = await createDocumentFromAttachment(attachment, {
+        name: attachment.file_name.replace(/\.[^/.]+$/, ''),
+        kitId,
+        folderId,
+        projectId,
+        workspaceId,
       })
-
-      if (dfError) {
-        // Откат: удаляем документ
-        await supabase.from('documents').delete().eq('id', newDoc.id)
-        throw new Error(dfError.message)
-      }
 
       queryClient.invalidateQueries({ queryKey: documentKitKeys.byProject(projectId) })
       triggerTextExtraction(newDoc.id)

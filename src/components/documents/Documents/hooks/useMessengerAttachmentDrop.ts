@@ -6,7 +6,7 @@
 
 import { useCallback } from 'react'
 import { toast } from 'sonner'
-import { supabase } from '@/lib/supabase'
+import { createDocumentFromAttachment } from '@/services/documents/documentService'
 import { triggerTextExtraction } from '@/services/documents/textExtractionService'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
 
@@ -38,34 +38,14 @@ export function useMessengerAttachmentDrop({
       }
       const kitId = documentKits.find((k) => k.folders?.some((f) => f.id === folderId))?.id
       if (!kitId) throw new Error('Набор документов не найден')
-      const { data: newDoc, error: docError } = await supabase
-        .from('documents')
-        .insert({
-          name: attachment.file_name.replace(/\.[^/.]+$/, ''),
-          document_kit_id: kitId,
-          folder_id: folderId,
-          project_id: projectId,
-          workspace_id: workspaceId,
-          status: null,
-        })
-        .select()
-        .single()
-      if (docError || !newDoc) throw new Error(docError?.message || 'Ошибка создания документа')
 
-      const { error: dfError } = await supabase.from('document_files').insert({
-        document_id: newDoc.id,
-        workspace_id: workspaceId,
-        file_path: attachment.storage_path,
-        file_name: attachment.file_name,
-        file_size: attachment.file_size || 0,
-        mime_type: attachment.mime_type || 'application/octet-stream',
-        is_current: true,
-        file_id: attachment.file_id || null,
+      const newDoc = await createDocumentFromAttachment(attachment, {
+        name: attachment.file_name.replace(/\.[^/.]+$/, ''),
+        kitId,
+        folderId,
+        projectId,
+        workspaceId,
       })
-      if (dfError) {
-        await supabase.from('documents').delete().eq('id', newDoc.id)
-        throw new Error(dfError.message)
-      }
 
       // Fire-and-forget: после OCR обновим кэш, чтобы text_content стал доступен
       triggerTextExtraction(newDoc.id).then((extracted) => {
