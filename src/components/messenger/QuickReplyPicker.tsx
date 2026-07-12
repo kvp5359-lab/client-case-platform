@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase'
 import { useQuickRepliesForPicker, useUpdateQuickReply } from '@/hooks/quick-replies/useQuickReplies'
 import { QuickReplyFormDialog } from '@/components/directories/QuickReplyFormDialog'
 import { ShareLinksTab } from '@/components/share/ShareLinksTab'
+import { QaPickerTab } from '@/components/messenger/QaPickerTab'
 import { projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { QuickReply } from '@/hooks/quick-replies/useQuickReplies'
 import type { Editor } from '@tiptap/react'
@@ -37,7 +38,7 @@ export function QuickReplyPicker({
   const [open, setOpenState] = useState(false)
   const [search, setSearchState] = useState('')
   const [activeTab, setActiveTab] = useState<
-    'replies' | 'articles' | 'descriptions' | 'external'
+    'replies' | 'qa' | 'articles' | 'descriptions' | 'external'
   >('replies')
   const [activeIndex, setActiveIndex] = useState(-1)
   const openRef = useRef(false)
@@ -84,6 +85,14 @@ export function QuickReplyPicker({
       requestAnimationFrame(() => searchInputRef.current?.focus())
     }
   }, [open])
+
+  // Личный тред (без проекта) не имеет вкладок статей/документов/внешних —
+  // если активна была проектная вкладка, вернуться к «Быстрым ответам».
+  useEffect(() => {
+    if (!projectId && activeTab !== 'replies' && activeTab !== 'qa') {
+      setActiveTab('replies')
+    }
+  }, [projectId, activeTab])
 
   // Загружаем template_id проекта (prefetch — чтобы попап открывался мгновенно)
   const { data: projectTemplateId } = useQuery({
@@ -189,8 +198,28 @@ export function QuickReplyPicker({
 
   const hasReplies = replies.length > 0
   const hasResults = grouped.noGroup.length > 0 || grouped.groups.length > 0
-  // Вкладка «Ссылки» имеет смысл только для тредов с проектом.
-  const showTabs = !!projectId
+  // Быстрые ответы + Q&A доступны всегда (в т.ч. в личном треде без проекта —
+  // там Q&A отдаёт только режим «везде»). Ссылки на статьи/документы/внешние —
+  // только для тредов с проектом.
+  const qaProjectId = projectId || null
+  const tabList = (
+    qaProjectId
+      ? ([
+          ['replies', 'Быстрые ответы'],
+          ['qa', 'Q&A'],
+          ['articles', 'Статьи'],
+          ['descriptions', 'Описания документов'],
+          ['external', 'Внешние'],
+        ] as const)
+      : ([
+          ['replies', 'Быстрые ответы'],
+          ['qa', 'Q&A'],
+        ] as const)
+  ) as ReadonlyArray<readonly [typeof activeTab, string]>
+  const showTabs = true
+  // ShareLinksTab понимает только эти три вида.
+  const shareView =
+    activeTab === 'descriptions' || activeTab === 'external' ? activeTab : 'articles'
 
   return (
     <>
@@ -240,14 +269,7 @@ export function QuickReplyPicker({
                 На мобиле не переносятся, а скроллятся горизонтально. */}
             {showTabs && (
               <div className="flex items-center gap-1 border-b px-2 py-1 overflow-x-auto scrollbar-hide">
-                {(
-                  [
-                    ['replies', 'Быстрые ответы'],
-                    ['articles', 'Статьи'],
-                    ['descriptions', 'Описания документов'],
-                    ['external', 'Внешние'],
-                  ] as const
-                ).map(([id, label]) => (
+                {tabList.map(([id, label]) => (
                   <button
                     key={id}
                     type="button"
@@ -265,14 +287,30 @@ export function QuickReplyPicker({
               </div>
             )}
 
-            {showTabs && (
-              <div className={cn(activeTab === 'replies' && 'hidden')}>
+            {/* Вкладка Q&A — вставляет текст ответа (как быстрый ответ). */}
+            <div className={cn(activeTab !== 'qa' && 'hidden')}>
+              <QaPickerTab
+                editor={editor}
+                workspaceId={workspaceId}
+                projectId={qaProjectId}
+                search={search}
+                enabled={open}
+                onInserted={() => {
+                  setOpen(false)
+                  setSearch('')
+                }}
+              />
+            </div>
+
+            {/* Ссылки на статьи/документы/внешние — только для тредов с проектом. */}
+            {qaProjectId && (
+              <div className={cn((activeTab === 'replies' || activeTab === 'qa') && 'hidden')}>
                 <ShareLinksTab
                   editor={editor}
-                  projectId={projectId}
+                  projectId={qaProjectId}
                   search={search}
                   enabled={open}
-                  view={activeTab === 'replies' ? 'articles' : activeTab}
+                  view={shareView}
                   onInserted={() => {
                     setOpen(false)
                     setSearch('')

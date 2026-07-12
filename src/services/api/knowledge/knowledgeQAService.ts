@@ -147,3 +147,31 @@ export async function setQAGroups(qaId: string, groupIds: string[]): Promise<voi
   })
   if (error) throw new KnowledgeBaseError('Не удалось обновить группы Q&A', error)
 }
+
+// ─── Пикер «молнии»: доступные в проекте Q&A (вставка текста ответа) ─────────
+
+export type ShareableQA = {
+  qa_id: string
+  question: string
+  answer: string
+  /** Имя первой Q&A-группы или null («Без группы»). */
+  group_name: string | null
+}
+
+/**
+ * Опубликованные Q&A, доступные в контексте треда.
+ * - projectId задан → полная модель доступа (everywhere + selected + inherit).
+ * - projectId === null (личный тред) → только режим «везде» (everywhere).
+ * Доступ резолвится на сервере (get_shareable_qa), зеркалит модель статей.
+ */
+export async function getShareableQA(
+  workspaceId: string,
+  projectId: string | null,
+): Promise<ShareableQA[]> {
+  const { data, error } = await supabase.rpc('get_shareable_qa', {
+    p_workspace_id: workspaceId,
+    p_project_id: projectId,
+  })
+  if (error) throw new KnowledgeBaseError('Не удалось загрузить Q&A', error)
+  return (data ?? []) as unknown as ShareableQA[]
+}

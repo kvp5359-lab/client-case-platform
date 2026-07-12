@@ -10624,6 +10624,10 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: Json
       }
+      get_shareable_qa: {
+        Args: { p_workspace_id: string; p_project_id?: string | null }
+        Returns: Json
+      }
       get_short_id_by_uuid: {
         Args: { p_entity_type: string; p_uuid: string }
         Returns: number
@@ -10956,6 +10960,14 @@ export type Database = {
         }
         Returns: {
           article_id: string
+        }[]
+      }
+      resolve_template_qa_ids: {
+        Args: {
+          p_template_id: string
+        }
+        Returns: {
+          qa_id: string
         }[]
       }
       match_knowledge_chunks_by_sources: {

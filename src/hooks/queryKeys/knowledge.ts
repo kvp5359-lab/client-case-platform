@@ -31,6 +31,9 @@ export const knowledgeBaseKeys = {
   tags: (workspaceId: string) => ['knowledge-base', 'tags', workspaceId] as const,
   // Q&A
   qa: (workspaceId: string) => ['knowledge-base', 'qa', workspaceId] as const,
+  // Q&A для пикера «молнии» (доступные в контексте треда/проекта)
+  pickerQa: (workspaceId: string, projectId: string | null) =>
+    ['knowledge-base', 'picker-qa', workspaceId, projectId ?? 'no-project'] as const,
   // Сохранённые представления (наборы фильтров)
   views: (workspaceId: string) => ['knowledge-base', 'views', workspaceId] as const,
 }
