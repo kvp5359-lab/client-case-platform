@@ -5,7 +5,7 @@
  */
 
 import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react'
-import { Zap, FolderOpen, Search, FileText, Pencil, X } from 'lucide-react'
+import { Zap, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -13,10 +13,10 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useQuickRepliesForPicker, useUpdateQuickReply } from '@/hooks/quick-replies/useQuickReplies'
 import { QuickReplyFormDialog } from '@/components/directories/QuickReplyFormDialog'
+import { QuickReplyRepliesList } from '@/components/messenger/QuickReplyRepliesList'
 import { ShareLinksTab } from '@/components/share/ShareLinksTab'
 import { QaPickerTab } from '@/components/messenger/QaPickerTab'
 import { projectTemplateKeys, STALE_TIME } from '@/hooks/queryKeys'
-import { stripHtml } from '@/utils/format/messengerHtml'
 import type { QuickReply } from '@/hooks/quick-replies/useQuickReplies'
 import type { Editor } from '@tiptap/react'
 
@@ -47,7 +47,6 @@ export function QuickReplyPicker({
   const updateReply = useUpdateQuickReply(workspaceId)
   const containerRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
 
   const setOpen = (val: boolean) => {
     openRef.current = val
@@ -185,13 +184,6 @@ export function QuickReplyPicker({
     }
   }
 
-  // Скролл к активному элементу
-  useEffect(() => {
-    if (activeIndex < 0 || !listRef.current) return
-    const el = listRef.current.querySelector(`[data-idx="${activeIndex}"]`) as HTMLElement | null
-    el?.scrollIntoView({ block: 'nearest' })
-  }, [activeIndex])
-
   const hasReplies = replies.length > 0
   const hasResults = grouped.noGroup.length > 0 || grouped.groups.length > 0
   // Быстрые ответы + Q&A доступны всегда (в т.ч. в личном треде без проекта —
@@ -323,59 +315,16 @@ export function QuickReplyPicker({
                 showTabs && activeTab !== 'replies' && 'hidden',
               )}
             >
-              {isLoading ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">Загрузка...</div>
-              ) : !hasReplies ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  Нет доступных шаблонов
-                </div>
-              ) : !hasResults ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
-                  Ничего не найдено
-                </div>
-              ) : (
-                <div className="py-1" ref={listRef}>
-                  {/* Без группы */}
-                  {grouped.noGroup.map((r) => {
-                    const idx = flatItems.indexOf(r)
-                    return (
-                      <ReplyRow
-                        key={r.id}
-                        reply={r}
-                        idx={idx}
-                        activeIndex={activeIndex}
-                        indent={false}
-                        onSelect={handleSelect}
-                        onEdit={handleEditClick}
-                      />
-                    )
-                  })}
-
-                  {/* Группы */}
-                  {grouped.groups.map(([groupId, { name, items }]) => (
-                    <div key={groupId}>
-                      <div className="flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        <FolderOpen className="h-3 w-3" />
-                        {name}
-                      </div>
-                      {items.map((r) => {
-                        const idx = flatItems.indexOf(r)
-                        return (
-                          <ReplyRow
-                            key={r.id}
-                            reply={r}
-                            idx={idx}
-                            activeIndex={activeIndex}
-                            indent={true}
-                            onSelect={handleSelect}
-                            onEdit={handleEditClick}
-                          />
-                        )
-                      })}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <QuickReplyRepliesList
+                isLoading={isLoading}
+                hasReplies={hasReplies}
+                hasResults={hasResults}
+                grouped={grouped}
+                flatItems={flatItems}
+                activeIndex={activeIndex}
+                onSelect={handleSelect}
+                onEdit={handleEditClick}
+              />
             </div>
           </div>
         )}
@@ -392,53 +341,5 @@ export function QuickReplyPicker({
         saving={updateReply.isPending}
       />
     </>
-  )
-}
-
-// --- Строка шаблона с иконкой редактирования при ховере ---
-
-function ReplyRow({
-  reply,
-  idx,
-  activeIndex,
-  indent,
-  onSelect,
-  onEdit,
-}: {
-  reply: QuickReply & { group_name?: string }
-  idx: number
-  activeIndex: number
-  indent: boolean
-  onSelect: (content: string) => void
-  onEdit: (e: React.MouseEvent, reply: QuickReply) => void
-}) {
-  const isActive = activeIndex === idx
-
-  return (
-    <div
-      data-idx={idx}
-      className={`qr-row group relative flex items-center min-w-0 ${indent ? 'pl-7' : 'pl-3'} pr-3 py-1 transition-colors cursor-pointer overflow-hidden ${isActive ? 'bg-accent' : 'hover:bg-accent'}`}
-      onClick={() => onSelect(reply.content)}
-    >
-      <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0 mr-2" />
-      <span className="text-sm font-medium shrink-0 mr-1 max-w-[40%] truncate">{reply.name}</span>
-      {reply.content && (
-        <span className="text-xs text-muted-foreground truncate">{stripHtml(reply.content)}</span>
-      )}
-      {/* Кнопка редактирования — поверх текста справа с градиентным fade */}
-      <div
-        className="absolute right-0 top-0 bottom-0 flex items-center pr-1.5 pl-6 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto"
-        style={{ background: 'linear-gradient(to right, transparent, var(--color-accent) 40%)' }}
-      >
-        <button
-          type="button"
-          onClick={(e) => onEdit(e, reply)}
-          className="p-1 rounded hover:bg-muted-foreground/15 text-muted-foreground hover:text-foreground"
-          title="Редактировать шаблон"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    </div>
   )
 }
