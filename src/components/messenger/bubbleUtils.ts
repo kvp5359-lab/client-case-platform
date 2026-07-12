@@ -1,13 +1,15 @@
 import { Check, CheckCheck, Clock } from 'lucide-react'
 import { createElement } from 'react'
 import { cn } from '@/lib/utils'
+import type { DeliveryStatus as FullDeliveryStatus } from '@/types/delivery'
 
 /**
- * Универсальный статус доставки для DeliveryIcon. 'failed' рендерится
- * отдельным бейджем (DeliveryFailedBadge), сюда не попадает.
- * Логика расчёта вынесена в `useDeliveryStatus` (DeliveryIndicator.tsx).
+ * Статус доставки для DeliveryIcon — СУЖЕНИЕ канона `@/types/delivery` без
+ * 'failed' ('failed' рендерится отдельным бейджем DeliveryFailedBadge, до иконки
+ * не доходит — маппится в null). Не отдельное определение, а Exclude от канона:
+ * новый статус в каноне автоматически попадёт сюда, расхождение невозможно.
  */
-export type DeliveryStatus = 'pending' | 'sent' | 'read' | null
+export type DeliveryStatus = Exclude<FullDeliveryStatus, 'failed'>
 
 export function formatTime(dateStr: string): string {
   const date = new Date(dateStr)
