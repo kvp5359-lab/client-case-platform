@@ -39,6 +39,11 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Инварианты edge-отправки — валит, если любая send/edit-функция потеряла
+      # visibility-backstop (защита от утечки внутреннего сообщения клиенту,
+      # инцидент 2026-07-08). Статический, без БД/сети.
+      - name: Инварианты edge-отправки
+        run: node scripts/check-edge-invariants.mjs
       - name: Здоровье каналов мессенджера
         run: node scripts/channel-health.mjs
         env:
