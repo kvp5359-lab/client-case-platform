@@ -35,6 +35,7 @@ import {
   type ChatBinding,
 } from "../_shared/syncTelegramIncomingMessage.ts";
 import { syncTelegramReactions } from "../_shared/syncTelegramReactions.ts";
+import { resolveChannelDefault } from "../_shared/channelDefaults.ts";
 import {
   maybeSyncBusinessEmojiReaction,
   deleteBusinessReactionsByMessageIds,
@@ -526,26 +527,6 @@ async function handleBusinessMessage(
 // Helpers: Business-тред (личный диалог сотрудника, без проекта)
 // ===========================================================================
 
-/**
- * Дефолтные иконка+цвет нового чата канала из workspaces.channel_defaults
- * (через SQL-хелпер resolve_channel_default — единый источник фолбэков).
- */
-async function resolveChannelDefault(
-  service: SupabaseClient,
-  workspaceId: string,
-  channelKey: string,
-): Promise<{ icon: string; accent_color: string }> {
-  const { data } = await service.rpc("resolve_channel_default", {
-    p_workspace_id: workspaceId,
-    p_channel_key: channelKey,
-  });
-  const r = Array.isArray(data) ? data[0] : data;
-  return {
-    icon: (r?.icon as string) ?? "telegram",
-    accent_color: (r?.accent_color as string) ?? "blue",
-  };
-}
-
 async function ensureBusinessThread(
   service: SupabaseClient,
   ownerUserId: string,
@@ -570,7 +551,10 @@ async function ensureBusinessThread(
     p_telegram_user_id: clientTgUserId,
   });
 
-  const def = await resolveChannelDefault(service, workspaceId, "telegram_personal");
+  const def = await resolveChannelDefault(service, workspaceId, "telegram_personal", {
+    icon: "telegram",
+    accent_color: "blue",
+  });
 
   const { data: created, error } = await service
     .from("project_threads")

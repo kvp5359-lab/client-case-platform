@@ -21,6 +21,7 @@ import {
   isOutgoingEcho,
 } from "../_shared/edge.ts";
 import { storeAttachment } from "../_shared/storeAttachment.ts";
+import { resolveChannelDefault } from "../_shared/channelDefaults.ts";
 
 interface WazzupMessage {
   messageId: string;
@@ -473,26 +474,6 @@ async function handleChannelUpdate(
 // Helpers: Wazzup-тред (личный диалог сотрудника, без проекта)
 // ===========================================================================
 
-/**
- * Дефолтные иконка+цвет нового чата канала из workspaces.channel_defaults
- * (через SQL-хелпер resolve_channel_default — единый источник фолбэков).
- */
-async function resolveChannelDefault(
-  service: SupabaseClient,
-  workspaceId: string,
-  channelKey: string,
-): Promise<{ icon: string; accent_color: string }> {
-  const { data } = await service.rpc("resolve_channel_default", {
-    p_workspace_id: workspaceId,
-    p_channel_key: channelKey,
-  });
-  const r = Array.isArray(data) ? data[0] : data;
-  return {
-    icon: (r?.icon as string) ?? "whatsapp",
-    accent_color: (r?.accent_color as string) ?? "emerald",
-  };
-}
-
 async function ensureWazzupThread(
   service: SupabaseClient,
   args: {
@@ -519,7 +500,10 @@ async function ensureWazzupThread(
     p_phone: phoneCandidate,
   });
 
-  const def = await resolveChannelDefault(service, args.workspaceId, "wazzup");
+  const def = await resolveChannelDefault(service, args.workspaceId, "wazzup", {
+    icon: "whatsapp",
+    accent_color: "emerald",
+  });
 
   const { data: created, error } = await service.from("project_threads").insert({
     project_id: null,
