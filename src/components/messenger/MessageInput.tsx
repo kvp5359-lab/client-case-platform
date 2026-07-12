@@ -21,6 +21,7 @@ import { useDraftMessage } from './hooks/useDraftMessage'
 import { useMessageFiles } from './hooks/useMessageFiles'
 import { useEditorResizer } from './hooks/useEditorResizer'
 import { useQuoteInsertion } from './hooks/useQuoteInsertion'
+import { useComposerTranslation } from './hooks/useComposerTranslation'
 
 type MessageInputProps = {
   projectId: string
@@ -139,19 +140,6 @@ export function MessageInput({
   const [hasText, setHasText] = useState(false)
   const [editor, setEditor] = useState<Editor | null>(null)
   const [openQuickReplyPicker, setOpenQuickReplyPicker] = useState(false)
-  // Состояние перевода исходящего: если задано — пользователь нажал «Перевести»,
-  // в редакторе сейчас лежит перевод, оригинал хранится тут и уйдёт в БД
-  // как `original_content` при отправке.
-  //
-  // translatedHtml — html в редакторе сразу после установки перевода (для
-  // сравнения: если юзер начал править — translation сбрасывается). Также
-  // используется при восстановлении состояния после перезагрузки страницы.
-  const [translation, setTranslation] = useState<{
-    originalContent: string
-    translatedHtml: string
-    targetLanguage: string
-    sourceLanguage: string | null
-  } | null>(null)
   const editorRef = useRef<Editor | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   // Отмечает, был ли редактор сфокусирован хотя бы раз в текущем треде.
@@ -166,25 +154,6 @@ export function MessageInput({
   const translationKey = threadId
     ? `msg_translation:${threadId}`
     : `msg_translation:${projectId}:${channel}`
-
-  // localStorage helpers для persistence плашки «Переведено».
-  const persistTranslation = useCallback(
-    (t: NonNullable<typeof translation>) => {
-      try {
-        localStorage.setItem(translationKey, JSON.stringify(t))
-      } catch {
-        /* quota / SSR */
-      }
-    },
-    [translationKey],
-  )
-  const clearPersistedTranslation = useCallback(() => {
-    try {
-      localStorage.removeItem(translationKey)
-    } catch {
-      /* SSR */
-    }
-  }, [translationKey])
 
   const isTaskThread = statusPending?.isTaskThread ?? false
   const effectivePendingStatusId = statusPending?.effectivePendingStatusId ?? null
@@ -216,56 +185,6 @@ export function MessageInput({
     editingMessage,
     setHasText,
   )
-
-  // Восстановление плашки «Переведено» после перезагрузки страницы.
-  // useDraftMessage уже вставил html в редактор; здесь проверяем — если он
-  // совпадает с translatedHtml, значит черновик и есть перевод → показываем
-  // банер. Если юзер успел поправить — translation в localStorage устарел,
-  // удаляем. Зависимости совпадают с useDraftMessage, чтобы эффект прошёл
-  // после его восстановления.
-  useEffect(() => {
-    if (!editor || editingMessage) return
-    let saved: string | null
-    try {
-      saved = localStorage.getItem(translationKey)
-    } catch {
-      saved = null
-    }
-    if (!saved) return
-    let parsed: {
-      originalContent: string
-      translatedHtml: string
-      targetLanguage: string
-      sourceLanguage: string | null
-    } | null = null
-    try {
-      parsed = JSON.parse(saved)
-    } catch {
-      /* corrupted */
-    }
-    if (!parsed) {
-      try {
-        localStorage.removeItem(translationKey)
-      } catch {
-        /* SSR */
-      }
-      return
-    }
-    // useDraftMessage гидратирует html синхронно в своём useEffect; к моменту
-    // нашего useEffect editor.getHTML() уже актуальный. Синхронизация state
-    // из localStorage на mount — нормальный паттерн, lazy useState тут не
-    // подходит: editor.getHTML() недоступен до коммита эффектов.
-    if (editor.getHTML() === parsed.translatedHtml) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setTranslation(parsed)
-    } else {
-      try {
-        localStorage.removeItem(translationKey)
-      } catch {
-        /* SSR */
-      }
-    }
-  }, [translationKey, editor, editingMessage])
 
   // Auto-focus editor when thread changes or component mounts (задержка — анимация панели).
   // На мобиле НЕ фокусируем при открытии треда — иначе сразу всплывает экранная
@@ -334,6 +253,16 @@ export function MessageInput({
   }, [threadId])
 
   useQuoteInsertion(editor, quoteText, quoteNonce, hasBeenFocusedRef, onClearQuote)
+
+  // Плашка «Переведено»: состояние перевода, его persistence, восстановление
+  // после reload, применение/откат. Связная забота — вынесена в хук.
+  const {
+    translation,
+    setTranslation,
+    clearPersistedTranslation,
+    handleTranslated,
+    handleRevertTranslation,
+  } = useComposerTranslation({ editorRef, editor, translationKey, editingMessage, setHasText })
 
   // Вставка готового HTML в редактор (буфер пересылки, режим «как оригинал»/
   // «как цитата»). Позиция — как в useQuoteInsertion: в курсор, если редактор
@@ -478,46 +407,11 @@ export function MessageInput({
     effectivePendingStatusId,
     statusPending,
     translation,
+    setTranslation,
     clearPersistedTranslation,
     composerMode,
     sendBlockedReason,
   ])
-
-  const handleTranslated = useCallback(
-    (input: {
-      originalContent: string
-      translatedContent: string
-      targetLanguage: string
-      sourceLanguage: string | null
-    }) => {
-      const editor = editorRef.current
-      if (!editor) return
-      editor.commands.setContent(input.translatedContent)
-      setHasText(!!editor.getText().trim())
-      // translatedHtml — то, что РЕАЛЬНО лежит в редакторе после setContent
-      // (tiptap может слегка нормализовать html). По этому полю на маунте
-      // мы будем понимать, что текст в редакторе всё ещё перевод, а не правки.
-      const translatedHtml = editor.getHTML()
-      const next = {
-        originalContent: input.originalContent,
-        translatedHtml,
-        targetLanguage: input.targetLanguage,
-        sourceLanguage: input.sourceLanguage,
-      }
-      setTranslation(next)
-      persistTranslation(next)
-    },
-    [persistTranslation],
-  )
-
-  const handleRevertTranslation = useCallback(() => {
-    const editor = editorRef.current
-    if (!editor || !translation) return
-    editor.commands.setContent(translation.originalContent)
-    setHasText(!!editor.getText().trim())
-    setTranslation(null)
-    clearPersistedTranslation()
-  }, [translation, clearPersistedTranslation])
 
   const handleSchedule = useCallback(
     (sendAt: Date) => {

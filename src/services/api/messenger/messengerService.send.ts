@@ -6,6 +6,7 @@
 
 import { supabase } from '@/lib/supabase'
 import { ATTACHMENT_PLACEHOLDER } from '@/lib/messenger/attachmentPlaceholder'
+import { isClientVisibleForDelivery } from '@/lib/messenger/visibility'
 import { ConversationError } from '@/services/errors/AppError'
 import { logger } from '@/utils/logger'
 import { uploadAttachments } from './messengerAttachmentService'
@@ -213,7 +214,7 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
   // триггер БД (dispatch_message_to_channels), но вложения идут ФРОНТ-invoke'ом
   // мимо триггера. Без этого гейта внутреннее сообщение с файлом утекало клиенту
   // в канал (баг 2026-07-08). Вложение при этом всё равно загружено в сервис.
-  const isClientVisible = (params.visibility ?? 'client') === 'client'
+  const isClientVisible = isClientVisibleForDelivery(params.visibility)
 
   if (params.replyToMessageId || hasAnyAttachments) {
     const { data: fullMessage } = await supabase

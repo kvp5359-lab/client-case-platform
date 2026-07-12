@@ -8,6 +8,7 @@ import { ConversationError } from '@/services/errors/AppError'
 import { logger } from '@/utils/logger'
 import { uploadAttachments, deleteAttachmentFileIfOrphaned } from './messengerAttachmentService'
 import { resolveThreadChannel, type ThreadChannelSignals } from './resolveThreadChannel'
+import { isClientVisibleForDelivery } from '@/lib/messenger/visibility'
 import {
   MESSAGE_SELECT,
   castToProjectMessage,
@@ -201,7 +202,7 @@ export async function publishDraftMessage(
   // серверный гейт диспетчера (утечка 2026-07-08). Прочие каналы уже доставлены
   // deliver_message выше.
   const hasAttachments = !!message.attachments && message.attachments.length > 0
-  const isClientVisible = ((message.visibility as string | undefined) ?? 'client') === 'client'
+  const isClientVisible = isClientVisibleForDelivery(message.visibility as string | undefined)
   if (hasAttachments && isClientVisible && message.thread_id) {
     const { data: t } = await supabase
       .from('project_threads')
