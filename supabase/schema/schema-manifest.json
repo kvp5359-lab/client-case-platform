@@ -1136,6 +1136,21 @@
       "table_name": "knowledge_qa_tags"
     },
     {
+      "name": "kqt_delete",
+      "def_md5": "4b441387bba7cead3601f650c10663ab",
+      "table_name": "knowledge_qa_templates"
+    },
+    {
+      "name": "kqt_insert",
+      "def_md5": "5afca5ae3c0e04e5b2cc9f7802370d3a",
+      "table_name": "knowledge_qa_templates"
+    },
+    {
+      "name": "kqt_select",
+      "def_md5": "2da0a4040ef51c7b547636bc4be62978",
+      "table_name": "knowledge_qa_templates"
+    },
+    {
       "name": "knowledge_tags_delete",
       "def_md5": "88e5be963cf16412a3633d42c68373d5",
       "table_name": "knowledge_tags"
@@ -3857,7 +3872,7 @@
     {
       "args": "",
       "name": "_schema_invariants",
-      "body_md5": "dcf800eb5ac853e86dacf62638503c9c"
+      "body_md5": "8218223b497e170334783caf0d8c9e71"
     },
     {
       "args": "",
@@ -4427,7 +4442,12 @@
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_accessible_projects",
-      "body_md5": "57109abaf44fbb666a45925c0af3cb4e"
+      "body_md5": "b5d17f0b34582a46a6153f944d9e64e1"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_accessible_projects_impl",
+      "body_md5": "8cca0fbfe4bac8772d69d436ab7a21cb"
     },
     {
       "args": "p_workspace_id uuid",
@@ -4462,7 +4482,12 @@
     {
       "args": "p_thread_id uuid, p_user_id uuid, p_project_id uuid, p_workspace_id uuid",
       "name": "get_chat_state",
-      "body_md5": "098251fc080ee806345a9574737a1b95"
+      "body_md5": "a6bf32c977397cb015eacf15a95fe456"
+    },
+    {
+      "args": "p_thread_id uuid, p_user_id uuid, p_project_id uuid, p_workspace_id uuid",
+      "name": "get_chat_state_impl",
+      "body_md5": "508c11c98cc2056c8327b47367ec3ed3"
     },
     {
       "args": "",
@@ -4492,62 +4517,122 @@
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_inbox_awaiting_reply_threads",
-      "body_md5": "87b8fb3c6c746bc26d0e86e044802bdf"
+      "body_md5": "12825e9813b1588bd1e5a4fc3c099aa1"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_inbox_awaiting_reply_threads_impl",
+      "body_md5": "b8b6610846d42d00961b7b9adf4b3e8a"
     },
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_inbox_message_status",
-      "body_md5": "3434bfcdb52d4ef2b84f2b7f1fac289a"
+      "body_md5": "6d4786c8961d41b2998b1989bfcc55af"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_inbox_message_status_impl",
+      "body_md5": "7dd8bd4458b716d7b83a5ee29d7c2500"
     },
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_inbox_muted_threads",
-      "body_md5": "26b491c8b859f54dfcf6e89177abe5a3"
+      "body_md5": "de236d3f9a8557d779785c20b278b858"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_inbox_muted_threads_impl",
+      "body_md5": "158bf94f52c3fb1abe86e90353bdc477"
     },
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_inbox_needs_reply_threads",
-      "body_md5": "9a7709ae4ce860efa1a37475c5fcb548"
+      "body_md5": "49d01075cbb2dd008936d73dd648bd52"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_inbox_needs_reply_threads_impl",
+      "body_md5": "498f7f7bdd16a12509e1dc0373e35161"
     },
     {
       "args": "p_workspace_id uuid, p_user_id uuid, p_query text, p_limit integer",
       "name": "get_inbox_search_threads",
-      "body_md5": "e1325bf21689d9f1177f1f20179bc61d"
+      "body_md5": "43cfb6cee3590dc620aea5fb91a7d2e6"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid, p_query text, p_limit integer",
+      "name": "get_inbox_search_threads_impl",
+      "body_md5": "6cdbb65a9d9d833e863acaf7b602124f"
     },
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_inbox_thread_aggregates",
-      "body_md5": "538cb980b799e363c3f8ad4d7babb97d"
+      "body_md5": "d623993eb39a93631f7e1368e749e6ec"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_inbox_thread_aggregates_impl",
+      "body_md5": "7e21fbb85778f20652eb417c57b230d4"
     },
     {
       "args": "p_workspace_id uuid, p_user_id uuid, p_thread_id uuid",
       "name": "get_inbox_thread_one",
-      "body_md5": "050a47c0ae6163dbc1faa57ddd55ee80"
+      "body_md5": "330b072d1d64afc82c980664235b3e13"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid, p_thread_id uuid",
+      "name": "get_inbox_thread_one_impl",
+      "body_md5": "9276d849d585ba2e35a6168864760ffd"
     },
     {
       "args": "p_workspace_id uuid, p_user_id uuid, p_cursor_sort_at timestamp with time zone, p_cursor_thread_id uuid, p_limit integer",
       "name": "get_inbox_threads_page",
-      "body_md5": "22a79d9209c9d904cfc909a0b6680efa"
+      "body_md5": "6019ed24f1f2884228aca4c32bdaeb09"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid, p_cursor_sort_at timestamp with time zone, p_cursor_thread_id uuid, p_limit integer",
+      "name": "get_inbox_threads_page_impl",
+      "body_md5": "f4dc197dd7fe38fdc8314e05e3b39a89"
     },
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_inbox_threads_v2",
-      "body_md5": "6fdc3c7cd98826416990c5aee2f5de2d"
+      "body_md5": "f5d79a40478dce35b2f69002f000cc8b"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_inbox_threads_v2_impl",
+      "body_md5": "b0d6b43e7efbe90a6575d5d248e04ba3"
     },
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_inbox_threads_v3",
-      "body_md5": "b8966151fa963ea4ec0133a11f5166f5"
+      "body_md5": "c2e739c4ca337fcb195e518c78eb7796"
     },
     {
       "args": "p_workspace_id uuid, p_user_id uuid, p_thread_ids uuid[]",
       "name": "get_inbox_threads_v3_for",
-      "body_md5": "2700cad8d0a1a1fcef9ca4b9b8a15d57"
+      "body_md5": "8e10ba0968745f31e4f1f0af464d74d8"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid, p_thread_ids uuid[]",
+      "name": "get_inbox_threads_v3_for_impl",
+      "body_md5": "d397d8451917c36260ed3f5a360704cc"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_inbox_threads_v3_impl",
+      "body_md5": "ecaa2dd224aefb1aa2f94706060e89b1"
     },
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_inbox_unread_threads",
-      "body_md5": "cede30f78e46d5b91f008de05d04695a"
+      "body_md5": "04a177c82674d4a64fcd046cc893f51f"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_inbox_unread_threads_impl",
+      "body_md5": "4c74282df3d3097d96a5f685e3256496"
     },
     {
       "args": "p_workspace_id uuid",
@@ -4607,7 +4692,12 @@
     {
       "args": "p_project_id uuid, p_cursor timestamp with time zone, p_limit integer, p_resource_types text[], p_actions text[], p_user_id uuid",
       "name": "get_project_history",
-      "body_md5": "74df9688154eebbc7bd51e9010be3d48"
+      "body_md5": "3120c281c299b6533db55a62bdb29e60"
+    },
+    {
+      "args": "p_project_id uuid, p_cursor timestamp with time zone, p_limit integer, p_resource_types text[], p_actions text[], p_user_id uuid",
+      "name": "get_project_history_impl",
+      "body_md5": "7d5c84a1b8dc5f1480a1b0ea178a7047"
     },
     {
       "args": "",
@@ -4622,7 +4712,7 @@
     {
       "args": "p_project_id uuid",
       "name": "get_project_shareable_resources",
-      "body_md5": "c2a0bfe37c43a206b50ee4f8194d6ea1"
+      "body_md5": "88a13533ddaf9874ab64ac7dfc06dc5b"
     },
     {
       "args": "p_workspace_id uuid, p_period_start timestamp with time zone, p_period_end timestamp with time zone",
@@ -4633,6 +4723,11 @@
       "args": "p_workspace_id uuid, p_limit integer",
       "name": "get_recently_viewed",
       "body_md5": "e4ce1b807f8343b236c5253ed45c73eb"
+    },
+    {
+      "args": "p_workspace_id uuid, p_project_id uuid",
+      "name": "get_shareable_qa",
+      "body_md5": "bae3864f2d7accbae35f0cb32526ef34"
     },
     {
       "args": "p_token text",
@@ -4647,7 +4742,12 @@
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_sidebar_data",
-      "body_md5": "cf46d4bf3d59b1039b9a186d77cd8718"
+      "body_md5": "352cc59ddd89798d51ca338777a08680"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_sidebar_data_impl",
+      "body_md5": "7e763a3504ee9d0618c3a4ef1d04b5b7"
     },
     {
       "args": "p_workspace_id uuid",
@@ -4672,7 +4772,12 @@
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_total_unread_count",
-      "body_md5": "3655ae656e0a606c8f8f817c93e4c38b"
+      "body_md5": "8bb4e106649c5aafc9546d56c881a4b6"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_total_unread_count_impl",
+      "body_md5": "2e108b230a736d9af4a2d44f10159065"
     },
     {
       "args": "p_participant_id uuid, p_project_id uuid, p_channel text, p_thread_id uuid",
@@ -4682,7 +4787,12 @@
     {
       "args": "p_workspace_id uuid, p_user_id uuid, p_can_view_all boolean",
       "name": "get_user_projects",
-      "body_md5": "fc9d96a81af5a5d2d578bd82b76f31c2"
+      "body_md5": "8b9aa40694309d915ca4432774d91f23"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid, p_can_view_all boolean",
+      "name": "get_user_projects_impl",
+      "body_md5": "291c3696e73cdf97bd7a643b11ad6518"
     },
     {
       "args": "p_workspace_id uuid, p_period date",
@@ -4717,7 +4827,12 @@
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_workspace_threads",
-      "body_md5": "8e6a1527b5fb4626ef8c0a8537be4cb1"
+      "body_md5": "a7fe743322af2702b7218345b870a831"
+    },
+    {
+      "args": "p_workspace_id uuid, p_user_id uuid",
+      "name": "get_workspace_threads_impl",
+      "body_md5": "0517c9a4de5c71775731edc383f16533"
     },
     {
       "args": "p_workspace_id uuid",
@@ -4732,7 +4847,12 @@
     {
       "args": "p_user_id uuid",
       "name": "get_workspaces_with_counts",
-      "body_md5": "ef0aa7d66e4b02139ec38cccd1678530"
+      "body_md5": "eaaae146c53119cc37c7aa1176f6020c"
+    },
+    {
+      "args": "p_user_id uuid",
+      "name": "get_workspaces_with_counts_impl",
+      "body_md5": "b4296c707923ae1267a18eba49e89573"
     },
     {
       "args": "text, internal, smallint, internal, internal, internal, internal",
@@ -4967,7 +5087,12 @@
     {
       "args": "p_article_id uuid, p_from_group_id uuid, p_to_group_id uuid",
       "name": "move_article_to_group",
-      "body_md5": "7473bbceb32778131b3f3cfa1f67aefd"
+      "body_md5": "f7ae3825441367384ef6986f5e9223d5"
+    },
+    {
+      "args": "p_qa_id uuid, p_from_group_id uuid, p_to_group_id uuid",
+      "name": "move_qa_to_group",
+      "body_md5": "a38a864d94653f1577c9455644bf7674"
     },
     {
       "args": "p_thread_id uuid, p_target_project_id uuid",
@@ -5098,6 +5223,26 @@
       "args": "p_workspace_id uuid, p_entity_type text, p_short_id integer",
       "name": "resolve_short_id",
       "body_md5": "03fd90cb931663071aa776139e93ef74"
+    },
+    {
+      "args": "p_template_id uuid",
+      "name": "resolve_template_article_ids",
+      "body_md5": "99bbb485dec3a27a107f51439f0ea3cd"
+    },
+    {
+      "args": "p_template_id uuid",
+      "name": "resolve_template_article_ids_impl",
+      "body_md5": "656c99856535885ff8dad0d5b4f8c0dd"
+    },
+    {
+      "args": "p_template_id uuid",
+      "name": "resolve_template_qa_ids",
+      "body_md5": "47c273fda82153aa1e3c539bf544a76f"
+    },
+    {
+      "args": "p_template_id uuid",
+      "name": "resolve_template_qa_ids_impl",
+      "body_md5": "f85111b20f83c627ff2b7cdc716f5fc4"
     },
     {
       "args": "p_host text",
