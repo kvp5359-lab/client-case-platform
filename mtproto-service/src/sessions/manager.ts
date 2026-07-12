@@ -34,7 +34,17 @@ export function getClient(userId: string): TelegramClient | undefined {
 }
 
 export function setClient(userId: string, client: TelegramClient): void {
+  const prev = clients.get(userId)
   clients.set(userId, client)
+  // Переавторизация при живой сессии: gramjs-клиент старого коннекта иначе
+  // осиротеет (не disconnect'ится) → утечка сокета/памяти. Гасим прежний
+  // (fire-and-forget — ждать его teardown незачем, новый уже в map).
+  if (prev && prev !== client) {
+    void prev
+      .disconnect()
+      .then(() => prev.destroy())
+      .catch((err) => logger.warn("[sessions] stale client disconnect error for", userId, err))
+  }
 }
 
 export function getAllUserIds(): string[] {
