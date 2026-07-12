@@ -14,7 +14,6 @@
 import type { FastifyPluginAsync } from "fastify"
 import bigInt from "big-integer"
 import { Api } from "telegram"
-import { CustomFile } from "telegram/client/uploads.js"
 import { z } from "zod"
 import { config } from "../config.js"
 import { safeSecretEqual } from "../utils/secret.js"
@@ -25,10 +24,10 @@ import { fetchAndStoreAvatar } from "../handlers/avatar.js"
 import { ensureClientParticipant } from "../handlers/inbox.js"
 import {
   throttleBackfill,
-  isTelegramPhotoMime,
   prepareTelegramText,
   resolvePeer,
   fetchAttachments,
+  sendMtprotoFiles,
   humanError,
   floodAwareError,
 } from "./commandHelpers.js"
@@ -81,50 +80,15 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
         const captionText = prepareTelegramText(body.data.text)
         const caption = captionText.length > 0 ? captionText : undefined
 
-        if (files.length === 1) {
-          // Одиночный файл. Оборачиваем в CustomFile, чтобы gramjs увидел
-          // имя/расширение — без этого Buffer летит как «unnamed» без типа.
-          // Для поддерживаемых фото-mime ставим forceDocument=false → Telegram
-          // отрисует inline-картинку, а не иконку файла.
-          const f = files[0]!
-          const isPhoto = isTelegramPhotoMime(f.mimeType)
-          const customFile = new CustomFile(f.fileName, f.buffer.length, "", f.buffer)
-          const sent = await client.sendFile(peer, {
-            file: customFile,
-            caption,
-            parseMode: caption ? "html" : undefined,
-            forceDocument: !isPhoto,
-            replyTo: body.data.reply_to_telegram_message_id ?? undefined,
-          })
-          if (sent && "id" in sent) {
-            sentIds.push(Number((sent as { id: number | bigint }).id))
-            firstDate = (sent as { date?: number }).date
-          }
-        } else {
-          // Несколько файлов — альбом (groupedId), TG показывает как одну
-          // карточку. CustomFile несёт имя файла; для фото это не мешает —
-          // gramjs в album-режиме определяет тип по расширению / mime.
-          const customFiles = files.map(
-            (f) => new CustomFile(f.fileName, f.buffer.length, "", f.buffer),
-          )
-          const allPhotos = files.every((f) => isTelegramPhotoMime(f.mimeType))
-          const sentList = await client.sendFile(peer, {
-            file: customFiles,
-            caption,
-            parseMode: caption ? "html" : undefined,
-            forceDocument: !allPhotos,
-            replyTo: body.data.reply_to_telegram_message_id ?? undefined,
-          }) as unknown as Api.Message | Api.Message[]
-          const arr = Array.isArray(sentList) ? sentList : [sentList]
-          for (const m of arr) {
-            if (m && "id" in m) {
-              sentIds.push(Number((m as { id: number | bigint }).id))
-              if (firstDate === undefined) {
-                firstDate = (m as { date?: number }).date
-              }
-            }
-          }
-        }
+        const sent = await sendMtprotoFiles(
+          client,
+          peer,
+          files,
+          caption,
+          body.data.reply_to_telegram_message_id ?? undefined,
+        )
+        sentIds.push(...sent.sentIds)
+        firstDate = sent.firstDate
 
         if (sentIds.length === 0) {
           throw new Error("Не удалось отправить ни одного файла.")

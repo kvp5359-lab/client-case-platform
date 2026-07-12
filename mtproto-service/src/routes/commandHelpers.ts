@@ -8,9 +8,12 @@
 import type { FastifyReply } from "fastify"
 import bigInt from "big-integer"
 import { Api, TelegramClient } from "telegram"
+import { CustomFile } from "telegram/client/uploads.js"
 import { storageDownload } from "../storage.js"
 import { supabase } from "../db.js"
 import { htmlToTelegramHtml, isHtmlContent, escapeHtmlEntities } from "../utils/htmlFormatting.js"
+
+export type MtprotoAttachment = { buffer: Buffer; fileName: string; mimeType: string | null; attachmentId: string }
 
 
 /**
@@ -192,4 +195,67 @@ export function floodAwareError(reply: FastifyReply, err: unknown) {
       .send({ error: "FLOOD_WAIT", retry_after_seconds: seconds })
   }
   return reply.code(500).send({ error: humanError(err) })
+}
+
+/**
+ * Отправляет вложения MTProto-сообщения: одиночный файл (inline-фото для
+ * поддерживаемых mime, иначе документ) либо альбом (groupedId — одна карточка).
+ * Возвращает telegram_message_id каждого файла (в порядке `files`, для per-file
+ * адресации) + дату первого. Вынесено из /messages/send (аудит 2026-07-13) —
+ * логика не менялась.
+ */
+export async function sendMtprotoFiles(
+  client: TelegramClient,
+  peer: Api.TypeInputPeer,
+  files: MtprotoAttachment[],
+  caption: string | undefined,
+  replyTo: number | undefined,
+): Promise<{ sentIds: number[]; firstDate: number | undefined }> {
+  const sentIds: number[] = []
+  let firstDate: number | undefined
+
+  if (files.length === 1) {
+    // Одиночный файл. Оборачиваем в CustomFile, чтобы gramjs увидел
+    // имя/расширение — без этого Buffer летит как «unnamed» без типа.
+    // Для поддерживаемых фото-mime ставим forceDocument=false → Telegram
+    // отрисует inline-картинку, а не иконку файла.
+    const f = files[0]!
+    const isPhoto = isTelegramPhotoMime(f.mimeType)
+    const customFile = new CustomFile(f.fileName, f.buffer.length, "", f.buffer)
+    const sent = await client.sendFile(peer, {
+      file: customFile,
+      caption,
+      parseMode: caption ? "html" : undefined,
+      forceDocument: !isPhoto,
+      replyTo: replyTo ?? undefined,
+    })
+    if (sent && "id" in sent) {
+      sentIds.push(Number((sent as { id: number | bigint }).id))
+      firstDate = (sent as { date?: number }).date
+    }
+  } else {
+    // Несколько файлов — альбом (groupedId), TG показывает как одну карточку.
+    const customFiles = files.map(
+      (f) => new CustomFile(f.fileName, f.buffer.length, "", f.buffer),
+    )
+    const allPhotos = files.every((f) => isTelegramPhotoMime(f.mimeType))
+    const sentList = (await client.sendFile(peer, {
+      file: customFiles,
+      caption,
+      parseMode: caption ? "html" : undefined,
+      forceDocument: !allPhotos,
+      replyTo: replyTo ?? undefined,
+    })) as unknown as Api.Message | Api.Message[]
+    const arr = Array.isArray(sentList) ? sentList : [sentList]
+    for (const m of arr) {
+      if (m && "id" in m) {
+        sentIds.push(Number((m as { id: number | bigint }).id))
+        if (firstDate === undefined) {
+          firstDate = (m as { date?: number }).date
+        }
+      }
+    }
+  }
+
+  return { sentIds, firstDate }
 }
