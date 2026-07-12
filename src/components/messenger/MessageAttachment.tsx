@@ -31,6 +31,9 @@ type MessageAttachmentsProps = {
   /** Таймстамп, встраиваемый в строку ЕДИНСТВЕННОГО файла (без картинок/аудио),
    *  чтобы не оставлять пустой «подвал» под баблом. */
   fileTimestamp?: ReactNode
+  /** Таймстамп оверлеем в правом нижнем углу последней аудио-плашки (бабл только
+   *  из аудио, без картинок/файлов/текста). */
+  audioTimestamp?: ReactNode
   /** Убрать верхний отступ у первого блока (бабл только из вложений — padding
    *  бабла даёт равномерный отступ). */
   flushTop?: boolean
@@ -46,6 +49,7 @@ export function MessageAttachments({
   threadId,
   imageTimestampOverlay,
   fileTimestamp,
+  audioTimestamp,
   flushTop,
 }: MessageAttachmentsProps) {
   const images = attachments.filter((a) => isImage(a.mime_type))
@@ -87,8 +91,14 @@ export function MessageAttachments({
       )}
       {audios.length > 0 && (
         <div className={`space-y-1 ${topMargin('audios')}`}>
-          {audios.map((att) => (
-            <AudioAttachmentPlayer key={att.id} attachment={att} isOwn={isOwn} />
+          {audios.map((att, idx) => (
+            <AudioAttachmentPlayer
+              key={att.id}
+              attachment={att}
+              isOwn={isOwn}
+              // Время — оверлеем в правом нижнем углу ПОСЛЕДНЕЙ аудио-плашки.
+              timestampOverlay={idx === audios.length - 1 ? audioTimestamp : undefined}
+            />
           ))}
         </div>
       )}

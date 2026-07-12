@@ -137,7 +137,8 @@ export function FileAttachment({
           </p>
         )}
       </div>
-      {/* При бейдже времени внизу поднимаем меню «…» вверх, чтобы не пересекались. */}
+      {/* При бейдже времени внизу поднимаем меню «…» вверх (self-start) и делаем
+          его низким (compact), чтобы не перекрывать бейдж времени в углу. */}
       <div className={cn('shrink-0', timestamp && 'self-start')}>
         <AttachmentMenuButton
           attachment={attachment}
@@ -148,6 +149,7 @@ export function FileAttachment({
           openLabel="Открыть документ"
           loading={loading}
           setLoading={setLoading}
+          compact={!!timestamp}
         />
       </div>
       {/* Время сообщения — оверлеем в правом нижнем углу последнего файла. */}

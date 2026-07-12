@@ -41,6 +41,9 @@ type AttachmentMenuButtonProps = {
   openLabel?: string
   loading: boolean
   setLoading: (v: boolean) => void
+  /** Компактная (низкая) кнопка — чтобы не пересекаться с бейджем времени в
+   *  правом нижнем углу плашки (последний файл). */
+  compact?: boolean
 }
 
 export function AttachmentMenuButton({
@@ -53,6 +56,7 @@ export function AttachmentMenuButton({
   openLabel = 'Открыть документ',
   loading,
   setLoading,
+  compact,
 }: AttachmentMenuButtonProps) {
   const [addToProjectOpen, setAddToProjectOpen] = useState(false)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
@@ -144,7 +148,7 @@ export function AttachmentMenuButton({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 shrink-0"
+              className={cn('shrink-0', compact ? 'h-5 w-7' : 'h-7 w-7')}
               onClick={(e) => e.stopPropagation()}
               aria-label="Меню вложения"
             >

@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { Loader2, Mic, Music, Play, Pause, Languages, ChevronDown, ChevronUp, Download } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   getAttachmentUrl,
@@ -21,9 +22,13 @@ function formatTime(sec: number) {
 export function AudioAttachmentPlayer({
   attachment,
   isOwn = false,
+  timestampOverlay,
 }: {
   attachment: AttachmentType
   isOwn?: boolean
+  /** Время сообщения — оверлеем в правый нижний угол плашки (последнее аудио
+   *  в баббле без текста), как у файлов/картинок. */
+  timestampOverlay?: ReactNode
 }) {
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -177,7 +182,7 @@ export function AudioAttachmentPlayer({
     <div className={containerCls}>
       {audioUrl && <audio ref={audioRef} src={audioUrl} preload="metadata" />}
 
-      <div className="flex items-center gap-2">
+      <div className="relative flex items-center gap-2">
         {sourceError ? (
           /* Fallback: браузер не поддерживает формат (VS Code Simple Browser и т.п.) */
           <>
@@ -224,19 +229,27 @@ export function AudioAttachmentPlayer({
 
             {/* Progress + info */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 mb-1">
+              {/* При бейдже времени кнопка транскрипции уходит в правый верхний
+                  угол (absolute) — освобождаем правый край названию/прогрессу, а
+                  мета-строка тянется до края, прижимая время к нему. */}
+              <div className={cn('flex items-center gap-1.5 mb-1', timestampOverlay && 'pr-7')}>
                 <Icon className={`h-3.5 w-3.5 ${iconCls} shrink-0`} />
                 <span className="text-xs font-medium truncate">
                   {voice ? 'Голосовое сообщение' : attachment.file_name}
                 </span>
               </div>
 
-              {/* Progress bar */}
-              <div className={`h-1.5 rounded-full ${progressBgCls} cursor-pointer`} onClick={handleSeek}>
-                <div
-                  className={`h-full rounded-full ${progressFillCls} transition-[width] duration-100`}
-                  style={{ width: `${progress * 100}%` }}
-                />
+              {/* Progress bar. При бейдже времени сужаем трек справа (pr-7 на
+                  обёртке, не на самом баре — иначе поедет заливка), чтобы его
+                  правый край не уходил под absolute-кнопку транскрипции и seek
+                  конца оставался кликабельным. */}
+              <div className={cn(timestampOverlay && 'pr-7')}>
+                <div className={`h-1.5 rounded-full ${progressBgCls} cursor-pointer`} onClick={handleSeek}>
+                  <div
+                    className={`h-full rounded-full ${progressFillCls} transition-[width] duration-100`}
+                    style={{ width: `${progress * 100}%` }}
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-between mt-0.5">
@@ -244,6 +257,7 @@ export function AudioAttachmentPlayer({
                   {formatTime(audioRef.current?.currentTime ?? 0)}
                   {duration ? ` / ${formatTime(duration)}` : ''}
                 </span>
+                {/* Скорость + размер + время — одной группой, прижаты к правому краю. */}
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
@@ -258,44 +272,54 @@ export function AudioAttachmentPlayer({
                       {formatSize(attachment.file_size)}
                     </span>
                   )}
+                  {timestampOverlay}
                 </div>
               </div>
             </div>
           </>
         )}
 
-        {/* Transcription toggle */}
-        {!transcription ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className={`h-7 w-7 shrink-0 ${isOwn ? 'text-white hover:bg-white/15 hover:text-white' : ''}`}
-            onClick={handleTranscribe}
-            disabled={transcribing}
-            title="Распознать текст"
-            aria-label="Распознать текст"
-          >
-            {transcribing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Languages className="h-4 w-4" />
-            )}
-          </Button>
-        ) : (
-          <button
-            type="button"
-            className={`h-7 w-7 shrink-0 flex items-center justify-center rounded-md ${hoverBtnCls} transition-colors`}
-            onClick={() => setTranscriptionOpen(!transcriptionOpen)}
-            title={transcriptionOpen ? 'Свернуть' : 'Показать текст'}
-            aria-label={transcriptionOpen ? 'Свернуть' : 'Показать текст'}
-          >
-            {transcriptionOpen ? (
-              <ChevronUp className={`h-4 w-4 ${iconCls}`} />
-            ) : (
-              <ChevronDown className={`h-4 w-4 ${iconCls}`} />
-            )}
-          </button>
-        )}
+        {/* Transcription toggle. При бейдже времени — в правом верхнем углу
+            (absolute), чтобы info-блок дотянулся до края и время прижалось к нему. */}
+        <div className={cn(timestampOverlay && 'absolute top-0 right-0')}>
+          {!transcription ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                'h-7 w-7 shrink-0',
+                isOwn && 'text-white hover:bg-white/15 hover:text-white',
+              )}
+              onClick={handleTranscribe}
+              disabled={transcribing}
+              title="Распознать текст"
+              aria-label="Распознать текст"
+            >
+              {transcribing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Languages className="h-4 w-4" />
+              )}
+            </Button>
+          ) : (
+            <button
+              type="button"
+              className={cn(
+                'h-7 w-7 shrink-0 flex items-center justify-center rounded-md transition-colors',
+                hoverBtnCls,
+              )}
+              onClick={() => setTranscriptionOpen(!transcriptionOpen)}
+              title={transcriptionOpen ? 'Свернуть' : 'Показать текст'}
+              aria-label={transcriptionOpen ? 'Свернуть' : 'Показать текст'}
+            >
+              {transcriptionOpen ? (
+                <ChevronUp className={`h-4 w-4 ${iconCls}`} />
+              ) : (
+                <ChevronDown className={`h-4 w-4 ${iconCls}`} />
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Transcription text */}
