@@ -123,12 +123,22 @@ export function useDelayedSend(
         // Start countdown timer
         const timer = setTimeout(async () => {
           try {
-            await publishDraftMessage(message.id, params.senderName, params.senderRole)
-            // Clear scheduled_send_at
-            await supabase
+            // Атомарный захват против гонки с pg-cron dispatch_scheduled_messages:
+            // снимаем is_draft ТОЛЬКО если строка ещё черновик. 0 строк → cron уже
+            // забрал и отправил это сообщение (FOR UPDATE SKIP LOCKED WHERE
+            // is_draft=true) → выходим тихо, не дублируем. Кто первым снял флаг —
+            // тот и шлёт. (Фаза 2.2 аудита.)
+            const { data: claimed, error: claimErr } = await supabase
               .from('project_messages')
-              .update({ scheduled_send_at: null } as Record<string, unknown>)
+              .update({ is_draft: false, scheduled_send_at: null } as Record<string, unknown>)
               .eq('id', message.id)
+              .eq('is_draft', true)
+              .select('id')
+            if (claimErr) throw claimErr
+            if (claimed && claimed.length > 0) {
+              // Мы выиграли гонку — публикуем клиентским путём.
+              await publishDraftMessage(message.id, params.senderName, params.senderRole)
+            }
           } catch {
             toast.error('Не удалось отправить сообщение')
           }
@@ -183,11 +193,17 @@ export function useDelayedSend(
 
         const timer = setTimeout(async () => {
           try {
-            await publishDraftMessage(messageId, senderName, senderRole)
-            await supabase
+            // Атомарный захват против гонки с pg-cron (см. sendWithDelay выше).
+            const { data: claimed, error: claimErr } = await supabase
               .from('project_messages')
-              .update({ scheduled_send_at: null } as Record<string, unknown>)
+              .update({ is_draft: false, scheduled_send_at: null } as Record<string, unknown>)
               .eq('id', messageId)
+              .eq('is_draft', true)
+              .select('id')
+            if (claimErr) throw claimErr
+            if (claimed && claimed.length > 0) {
+              await publishDraftMessage(messageId, senderName, senderRole)
+            }
           } catch {
             toast.error('Не удалось отправить сообщение')
           }
