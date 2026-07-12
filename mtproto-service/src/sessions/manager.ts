@@ -33,10 +33,6 @@ export function getClient(userId: string): TelegramClient | undefined {
   return clients.get(userId)
 }
 
-export function hasClient(userId: string): boolean {
-  return clients.has(userId)
-}
-
 export function setClient(userId: string, client: TelegramClient): void {
   clients.set(userId, client)
 }
