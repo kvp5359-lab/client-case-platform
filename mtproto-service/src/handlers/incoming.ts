@@ -12,9 +12,7 @@
  */
 
 import type { NewMessageEvent } from "telegram/events/NewMessage.js"
-import { STORAGE_BUCKETS, storageUpload, storageGetPublicUrl } from "../storage.js"
 import { Api, TelegramClient } from "telegram"
-import { randomBytes } from "node:crypto"
 import { supabase } from "../db.js"
 import { logger } from "../utils/logger.js"
 import {
@@ -22,6 +20,8 @@ import {
   ensureMTProtoThread,
   resolveSessionParticipant,
 } from "./inbox.js"
+import { extractMediaInfo, downloadAndStoreMedia } from "./media.js"
+import { fetchAndStoreAvatar } from "./avatar.js"
 import type { SessionContext } from "./types.js"
 
 /**
@@ -334,180 +334,4 @@ export async function ingestMtprotoMessage(args: {
   }
 
   return { inserted: !!inserted, messageId: inserted?.id }
-}
-
-interface MediaInfo {
-  fileName: string
-  fileSize: number
-  mimeType: string | null
-}
-
-function extractMediaInfo(msg: Api.Message): MediaInfo | null {
-  const media = msg.media
-  if (!media) return null
-
-  if (media instanceof Api.MessageMediaDocument && media.document instanceof Api.Document) {
-    const doc = media.document
-    let fileName = `file_${Number(doc.id)}`
-    const mimeType: string | null = doc.mimeType ?? null
-    for (const a of doc.attributes ?? []) {
-      if (a instanceof Api.DocumentAttributeFilename) fileName = a.fileName
-    }
-    // Если у документа нет расширения, но есть mime — добавим.
-    if (!fileName.includes(".") && mimeType) {
-      const ext = mimeExtension(mimeType)
-      if (ext) fileName = `${fileName}.${ext}`
-    }
-    return {
-      fileName,
-      fileSize: Number(doc.size),
-      mimeType,
-    }
-  }
-
-  if (media instanceof Api.MessageMediaPhoto && media.photo instanceof Api.Photo) {
-    return {
-      fileName: `photo_${Number(media.photo.id)}.jpg`,
-      fileSize: 0, // считается после скачивания
-      mimeType: "image/jpeg",
-    }
-  }
-
-  return null
-}
-
-function mimeExtension(mime: string): string | null {
-  const map: Record<string, string> = {
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp",
-    "image/gif": "gif",
-    "video/mp4": "mp4",
-    "audio/ogg": "ogg",
-    "audio/mpeg": "mp3",
-    "audio/mp4": "m4a",
-    "application/pdf": "pdf",
-  }
-  return map[mime] ?? null
-}
-
-async function downloadAndStoreMedia(args: {
-  client: TelegramClient
-  message: Api.Message
-  info: MediaInfo
-  workspaceId: string
-  threadId: string
-  messageId: string
-}): Promise<void> {
-  const buffer = await args.client.downloadMedia(args.message)
-  if (!buffer || !(buffer instanceof Buffer)) {
-    throw new Error("downloadMedia returned no data")
-  }
-
-  const ext = args.info.fileName.includes(".")
-    ? args.info.fileName.split(".").pop()!
-    : "bin"
-  const random = randomBytes(4).toString("hex")
-  // У личных диалогов нет project_id, используем thread_id в storage path,
-  // чтобы вложения не сваливались в одну папку «null» и были привязаны
-  // к треду.
-  const storagePath = `${args.workspaceId}/${args.threadId}/${args.messageId}/${Date.now()}-${random}.${ext}`
-
-  const { error: uploadError } = await storageUpload(STORAGE_BUCKETS.messageAttachments, storagePath, buffer, {
-      contentType: args.info.mimeType ?? "application/octet-stream",
-      upsert: false,
-    })
-  if (uploadError) {
-    throw new Error(`Storage upload failed: ${uploadError.message}`)
-  }
-
-  const { error: insertError } = await supabase.from("message_attachments").insert({
-    message_id: args.messageId,
-    file_name: args.info.fileName,
-    file_size: args.info.fileSize > 0 ? args.info.fileSize : buffer.length,
-    mime_type: args.info.mimeType,
-    storage_path: storagePath,
-  })
-  if (insertError) {
-    throw new Error(`message_attachments insert failed: ${insertError.message}`)
-  }
-}
-
-/** Минимальный интервал между попытками рефреша аватара (24ч). */
-const AVATAR_REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000
-
-/**
- * Качает profile photo клиента через gramjs и сохраняет URL в participants.
- *
- * Логика «когда пробовать»:
- *   - avatar_url IS NULL → всегда пробовать.
- *   - avatar_fetched_at IS NULL → пробовать (никогда не пытались).
- *   - avatar_fetched_at старше 24ч → пробовать (рефреш).
- *   - Иначе — пропустить, чтобы не спамить Telegram при каждом сообщении.
- *
- * Storage overwrite через upsert: при смене аватара клиентом URL остаётся
- * прежний (та же path `tg/<id>.jpg`), но мы обновляем `?v=<timestamp>` —
- * это инвалидирует CDN-кеш у получателя.
- *
- * Экспортируется, чтобы /messages/send (commands.ts) тоже мог дёргать.
- */
-export async function fetchAndStoreAvatar(
-  client: import("telegram").TelegramClient,
-  args: {
-    participantId: string
-    clientTgUserId: number
-    peerUser: Api.PeerUser
-  },
-): Promise<void> {
-  const { data: row } = await supabase
-    .from("participants")
-    .select("avatar_url, avatar_fetched_at")
-    .eq("id", args.participantId)
-    .maybeSingle()
-
-  const fetchedAt = row?.avatar_fetched_at ? new Date(row.avatar_fetched_at as string).getTime() : null
-  const isFresh =
-    !!row?.avatar_url &&
-    fetchedAt !== null &&
-    Date.now() - fetchedAt < AVATAR_REFRESH_INTERVAL_MS
-  if (isFresh) return
-
-  const entity = await client.getEntity(args.peerUser)
-  const hasPhoto = entity && "photo" in entity &&
-    entity.photo && entity.photo.className !== "UserProfilePhotoEmpty"
-  if (!hasPhoto) {
-    // Стампим попытку даже при отсутствии фото — иначе будем долбить
-    // getEntity на каждое сообщение клиента без аватарки.
-    await supabase
-      .from("participants")
-      .update({ avatar_fetched_at: new Date().toISOString() })
-      .eq("id", args.participantId)
-    return
-  }
-
-  const buf = await client.downloadProfilePhoto(entity, { isBig: true })
-  if (!buf || (buf as Buffer).length === 0) {
-    await supabase
-      .from("participants")
-      .update({ avatar_fetched_at: new Date().toISOString() })
-      .eq("id", args.participantId)
-    return
-  }
-
-  const path = `tg/${args.clientTgUserId}.jpg`
-  const { error: upErr } = await storageUpload(STORAGE_BUCKETS.participantAvatars, path, buf as Buffer, {
-      contentType: "image/jpeg",
-      upsert: true,
-    })
-  if (upErr) {
-    logger.warn({ err: upErr, clientTgUserId: args.clientTgUserId }, "avatar storage upload failed")
-    return
-  }
-  const { data: pub } = storageGetPublicUrl(STORAGE_BUCKETS.participantAvatars, path)
-  const avatarUrl = `${pub.publicUrl}?v=${Date.now()}`
-
-  await supabase
-    .from("participants")
-    .update({ avatar_url: avatarUrl, avatar_fetched_at: new Date().toISOString() })
-    .eq("id", args.participantId)
 }

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback, useMemo, Fragment } from 'react'
+import { useRef, useEffect, useCallback, useMemo, Fragment } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Loader2 } from 'lucide-react'
 import { MessageBubble } from './MessageBubble'
@@ -12,6 +12,9 @@ import { useDeleteMessage } from '@/hooks/messenger/useDeleteMessage'
 import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 import { perfEnd } from '@/utils/perfTrace'
 import { wrapOrphanListItems } from '@/utils/messenger/listAwareCopy'
+import { DateSeparator, UnreadSeparator, isSameDay } from './messageListParts'
+import { buildMessageTimeline, timelineItemDate } from './buildMessageTimeline'
+import { useFloatingDateBadge } from './hooks/useFloatingDateBadge'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 
 type MessageListProps = {
@@ -67,48 +70,6 @@ type MessageListProps = {
   viewerGetsEvents?: boolean
   /** Шапка-слот в начале ленты (бабл описания треда) — скроллится вместе с лентой. */
   headerSlot?: React.ReactNode
-}
-
-/** Разделитель дат */
-/** Метка дня: «Сегодня» / «Вчера» / «5 июня 2026». Общая для инлайн-разделителя
- *  и плавающего бейджа даты. */
-function formatDayLabel(date: string): string {
-  const d = new Date(date)
-  const today = new Date()
-  const yesterday = new Date()
-  yesterday.setDate(yesterday.getDate() - 1)
-  if (d.toDateString() === today.toDateString()) return 'Сегодня'
-  if (d.toDateString() === yesterday.toDateString()) return 'Вчера'
-  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
-}
-
-function DateSeparator({ date }: { date: string }) {
-  // data-sep-day — маркер для плавающего бейджа: по разделителям (их мало, по
-  // одному на день) дёшево определяем текущий день при скролле.
-  return (
-    <div className="flex justify-center py-3" data-sep-day={formatDayLabel(date)}>
-      <span className="text-xs text-muted-foreground bg-muted/60 px-3 py-1 rounded-full">
-        {formatDayLabel(date)}
-      </span>
-    </div>
-  )
-}
-
-/** Разделитель непрочитанных */
-function UnreadSeparator({ tone = 'red' }: { tone?: 'red' | 'slate' }) {
-  const line = tone === 'slate' ? 'border-slate-400' : 'border-red-400'
-  const text = tone === 'slate' ? 'text-slate-500' : 'text-red-500'
-  return (
-    <div className="flex items-center gap-3 py-2">
-      <div className={cn('flex-1 border-t', line)} />
-      <span className={cn('text-xs font-medium', text)}>Непрочитанные</span>
-      <div className={cn('flex-1 border-t', line)} />
-    </div>
-  )
-}
-
-function isSameDay(a: string, b: string): boolean {
-  return new Date(a).toDateString() === new Date(b).toDateString()
 }
 
 export function MessageList({
@@ -197,41 +158,8 @@ export function MessageList({
   // Высота viewport ДО добавления старых сообщений — нужна для компенсации scrollTop
   const preLoadScrollHeightRef = useRef<number | null>(null)
 
-  // Плавающий бейдж даты: при прокрутке показывает текущий день и гаснет в
-  // простое (как в Telegram/WhatsApp). Без rAF — обработчик считает по
-  // разделителям дат (`[data-sep-day]`, их мало) текущий день: последний
-  // разделитель, чей верх уже выше/на уровне верха вьюпорта. setState только
-  // при смене дня → лишних ре-рендеров нет даже при частых scroll-событиях.
-  const [floatingDate, setFloatingDate] = useState<string | null>(null)
-  const [floatingVisible, setFloatingVisible] = useState(false)
-  const floatingHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => {
-    const el = scrollAreaRef.current
-    if (!el) return
-    const update = () => {
-      const seps = el.querySelectorAll<HTMLElement>('[data-sep-day]')
-      if (!seps.length) return
-      const top = el.getBoundingClientRect().top
-      let label = seps[0].dataset.sepDay ?? null
-      for (const sep of seps) {
-        if (sep.getBoundingClientRect().top <= top + 24) label = sep.dataset.sepDay ?? label
-        else break
-      }
-      if (!label) return
-      setFloatingDate((prev) => (prev === label ? prev : label))
-      setFloatingVisible(true)
-      if (floatingHideTimerRef.current) clearTimeout(floatingHideTimerRef.current)
-      floatingHideTimerRef.current = setTimeout(() => setFloatingVisible(false), 1800)
-    }
-    el.addEventListener('scroll', update, { passive: true })
-    return () => {
-      el.removeEventListener('scroll', update)
-      if (floatingHideTimerRef.current) clearTimeout(floatingHideTimerRef.current)
-    }
-    // Зависимость от isLoading ОБЯЗАТЕЛЬНА: при первой загрузке треда рендерится
-    // скелетон (early return ниже), и scrollAreaRef.current === null на маунте.
-    // Без переподключения после isLoading→false слушатель скролла не повесился бы.
-  }, [isLoading])
+  // Плавающий бейдж даты (Telegram-стиль) — изолированный хук.
+  const { floatingDate, floatingVisible } = useFloatingDateBadge(scrollAreaRef, isLoading)
 
   const getViewport = useCallback((): HTMLElement | null => {
     return scrollAreaRef.current
@@ -403,72 +331,18 @@ export function MessageList({
     )
   }, [messages, lastReadAtMs, currentParticipantId, suppressUnread])
 
-  // Build a set of audit event timestamps to insert between messages
-  // Each event maps to: insert AFTER the last message with created_at <= event.created_at.
-  // Прочитанные события одного типа, идущие подряд (без сообщения между ними),
-  // складываются в 'event-group' — чтобы «Кирилл перенёс срок» изо дня в день
-  // не забивали ленту. Непрочитанные события в группу не попадают (kind 'event').
-  type TimelineItem =
-    | { kind: 'message'; msg: ProjectMessage; idx: number }
-    | { kind: 'event'; event: ThreadAuditEvent }
-    | { kind: 'event-group'; events: ThreadAuditEvent[] }
-
-  const timeline = useMemo<TimelineItem[]>(() => {
-    if (auditEvents.length === 0) return messages.map((msg, idx) => ({ kind: 'message' as const, msg, idx }))
-
-    // Событие непрочитано (чужое и после last_read_at) — та же формула, что при рендере.
-    // Перенос срока (change_deadline) непрочитанным НЕ считается — фоновое движение
-    // планов, согласовано с сервером (recompute_thread_unread_for исключает его из инбокса).
-    const isEventUnread = (ev: ThreadAuditEvent) =>
-      !suppressUnread &&
-      viewerGetsEvents &&
-      isLastReadAtLoaded &&
-      ev.action !== 'change_deadline' &&
-      ev.user_id !== currentUserId &&
-      (lastReadAtMs === null || Date.parse(ev.created_at) > lastReadAtMs)
-
-    const items: TimelineItem[] = []
-    // Кладём событие: прочитанные однотипные, идущие подряд, копятся в группу.
-    const pushEvent = (ev: ThreadAuditEvent) => {
-      if (isEventUnread(ev)) {
-        items.push({ kind: 'event', event: ev })
-        return
-      }
-      const last = items[items.length - 1]
-      if (last && last.kind === 'event-group' && last.events[0].action === ev.action) {
-        last.events.push(ev)
-      } else {
-        items.push({ kind: 'event-group', events: [ev] })
-      }
-    }
-
-    let ei = 0
-    for (let mi = 0; mi < messages.length; mi++) {
-      // Insert events that happened before this message
-      while (ei < auditEvents.length && auditEvents[ei].created_at <= messages[mi].created_at) {
-        pushEvent(auditEvents[ei])
-        ei++
-      }
-      items.push({ kind: 'message', msg: messages[mi], idx: mi })
-    }
-    // Remaining events after last message
-    while (ei < auditEvents.length) {
-      pushEvent(auditEvents[ei])
-      ei++
-    }
-    return items
-  }, [messages, auditEvents, suppressUnread, viewerGetsEvents, isLastReadAtLoaded, currentUserId, lastReadAtMs])
-
-  // Дата элемента ленты (сообщение / событие / группа событий) — для разделителя
-  // даты. Разделитель считается по ВСЕЙ ленте, а не только по сообщениям, иначе
-  // тред из одних событий (напр. только «создал(а)», без сообщений) остаётся без
-  // даты — видно лишь время.
-  const timelineItemDate = (it: TimelineItem): string =>
-    it.kind === 'message'
-      ? it.msg.created_at
-      : it.kind === 'event'
-        ? it.event.created_at
-        : it.events[0].created_at
+  // Лента = сообщения + служебные события (чистая функция, тестируется отдельно).
+  const timeline = useMemo(
+    () =>
+      buildMessageTimeline(messages, auditEvents, {
+        suppressUnread,
+        viewerGetsEvents,
+        isLastReadAtLoaded,
+        currentUserId,
+        lastReadAtMs,
+      }),
+    [messages, auditEvents, suppressUnread, viewerGetsEvents, isLastReadAtLoaded, currentUserId, lastReadAtMs],
+  )
 
   if (isLoading) {
     return (

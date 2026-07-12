@@ -20,7 +20,8 @@ import { config } from "../config.js"
 import { safeSecretEqual } from "../utils/secret.js"
 import { supabase } from "../db.js"
 import { getClient } from "../sessions/manager.js"
-import { ingestMtprotoMessage, fetchAndStoreAvatar } from "../handlers/incoming.js"
+import { ingestMtprotoMessage } from "../handlers/incoming.js"
+import { fetchAndStoreAvatar } from "../handlers/avatar.js"
 import { ensureClientParticipant } from "../handlers/inbox.js"
 import {
   throttleBackfill,
