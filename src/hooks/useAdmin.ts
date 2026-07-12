@@ -21,6 +21,10 @@ export const adminKeys = {
   invites: ['admin-invites'] as const,
   health: ['admin-health'] as const,
   usage: ['admin-usage'] as const,
+  users: (search: string) => ['admin-users', search] as const,
+  usersAll: ['admin-users'] as const,
+  announcements: ['admin-announcements'] as const,
+  growthMetrics: ['admin-growth-metrics'] as const,
 }
 
 export type AdminWorkspace = {
@@ -508,7 +512,7 @@ export type AdminAnnouncement = {
 
 export function useAdminUsers(search: string, enabled: boolean) {
   return useQuery({
-    queryKey: ['admin-users', search],
+    queryKey: adminKeys.users(search),
     enabled,
     staleTime: 30_000,
     queryFn: async (): Promise<AdminUser[]> => {
@@ -533,7 +537,7 @@ export function useSetUserBanned() {
       if (error) throw error
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-users'] })
+      qc.invalidateQueries({ queryKey: adminKeys.usersAll })
       qc.invalidateQueries({ queryKey: adminKeys.audit })
     },
   })
@@ -541,7 +545,7 @@ export function useSetUserBanned() {
 
 export function useAdminAnnouncements(enabled: boolean) {
   return useQuery({
-    queryKey: ['admin-announcements'],
+    queryKey: adminKeys.announcements,
     enabled,
     staleTime: 15_000,
     queryFn: async (): Promise<AdminAnnouncement[]> => {
@@ -560,7 +564,7 @@ export function useUpsertAnnouncement() {
       if (error) throw error
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-announcements'] })
+      qc.invalidateQueries({ queryKey: adminKeys.announcements })
       qc.invalidateQueries({ queryKey: adminKeys.audit })
     },
   })
@@ -574,7 +578,7 @@ export function useDeleteAnnouncement() {
       if (error) throw error
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin-announcements'] })
+      qc.invalidateQueries({ queryKey: adminKeys.announcements })
       qc.invalidateQueries({ queryKey: adminKeys.audit })
     },
   })
@@ -608,7 +612,7 @@ export type GrowthMetrics = {
 
 export function useGrowthMetrics(enabled: boolean) {
   return useQuery({
-    queryKey: ['admin-growth-metrics'],
+    queryKey: adminKeys.growthMetrics,
     enabled,
     staleTime: 60_000,
     queryFn: async (): Promise<GrowthMetrics | null> => {

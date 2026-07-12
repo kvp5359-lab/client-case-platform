@@ -35,7 +35,7 @@
 | Tiptap | 3.x | Rich text editor |
 | @dnd-kit | latest | Drag & drop |
 | Supabase JS | 2.x | БД, Auth, Storage, Realtime |
-| Vitest | 4.x | Тесты (~640 кейсов) |
+| Vitest | 4.x | Тесты (~950 кейсов) |
 
 ## Архитектура
 
@@ -261,7 +261,7 @@ npm install
 npm run dev          # http://localhost:8080 (Webpack, не Turbopack — см. gotchas)
 npm run build        # production build
 npm run lint         # ESLint, --max-warnings 0
-npm test             # Vitest run (~640 кейсов)
+npm test             # Vitest run (~950 кейсов)
 npm run test:watch   # Vitest watch
 npm test -- path/to/file.test.ts   # один файл
 npm test -- -t "имя теста"         # один кейс
