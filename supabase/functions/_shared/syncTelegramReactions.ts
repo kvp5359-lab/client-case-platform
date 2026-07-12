@@ -1,7 +1,7 @@
 /**
  * Сохраняет реакции из Telegram в нашу таблицу message_reactions.
  *
- * Используется и обычным групповым webhook'ом (`telegram-webhook`), и
+ * Используется и групповым webhook'ом (`telegram-webhook-v2`), и
  * Business-webhook'ом (`telegram-business-webhook`) — логика поиска
  * исходного сообщения и хранения реакций общая, потому что таблица
  * `message_reactions` не различает источник.

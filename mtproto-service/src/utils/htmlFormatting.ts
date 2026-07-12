@@ -2,7 +2,7 @@
  * Конвертация Tiptap HTML → Telegram-совместимый HTML.
  * ⚠️ ПАРИТЕТ с supabase/functions/_shared/htmlFormatting.ts — держать синхронно
  * (иерархическая нумерация списков 1/1.1 + уважение <ol start=>). Тест-паритет
- * в utils/htmlFormatting.test.ts.
+ * в tests/htmlFormatting-parity.test.ts (корень репо, сверяет обе копии).
  * Telegram (и Bot API, и MTProto) поддерживает: <b>, <i>, <u>, <s>, <code>,
  * <pre>, <blockquote>, <a href="">. Остальное надо разворачивать в текст.
  */

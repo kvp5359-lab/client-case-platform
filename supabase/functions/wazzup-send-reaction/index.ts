@@ -17,6 +17,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
   preflight, jsonRes, getUser, getServiceClient, markOutgoingExternal,
 } from "../_shared/edge.ts";
+import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { stripHtmlBasic } from "../_shared/channelText.ts";
 
 Deno.serve(async (req: Request) => {
@@ -46,14 +47,9 @@ Deno.serve(async (req: Request) => {
   if (!msg.wazzup_message_id) return jsonRes({ skip: "not a wazzup message" }, 200, req);
 
   // Членство вызывающего в воркспейсе сообщения (зеркало wazzup-delete).
-  const { data: participant } = await service
-    .from("participants")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("workspace_id", msg.workspace_id)
-    .eq("is_deleted", false)
-    .maybeSingle();
-  if (!participant) return jsonRes({ error: "forbidden" }, 403, req);
+  if (!(await checkWorkspaceMembership(service, user.id, msg.workspace_id))) {
+    return jsonRes({ error: "forbidden" }, 403, req);
+  }
 
   // Fallback-цитата в текст: Wazzup quotedMessageId не работает для исходящих,
   // поэтому добавляем «> текст оригинала\nэмодзи». Без этого клиент видит просто

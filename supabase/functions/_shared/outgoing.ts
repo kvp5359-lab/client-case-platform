@@ -1,5 +1,3 @@
-import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-
 /**
  * Общие куски исходящих edge-функций (send/edit/delete/react) — единый слой
  * вместо вербатим-копий в каждой функции.
@@ -15,21 +13,8 @@ export function isInternalVisibility(visibility: string | null | undefined): boo
 }
 
 /**
- * Членство пользователя в воркспейсе (защита от чужих в JWT-пути). Единый
- * helper вместо ручного participants-select, скопированного в mtproto/business/
- * wazzup/email/delete/react функциях. Возвращает true, если участник активен.
+ * Членство пользователя в воркспейсе. Единая реализация — `checkWorkspaceMembership`
+ * (`_shared/safeErrorResponse.ts`). Здесь оставлен алиас `assertWorkspaceMembership`,
+ * чтобы исходящие функции, уже импортящие его отсюда, не переписывать. Тело — одно.
  */
-export async function assertWorkspaceMembership(
-  service: SupabaseClient,
-  userId: string,
-  workspaceId: string,
-): Promise<boolean> {
-  const { data } = await service
-    .from("participants")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("workspace_id", workspaceId)
-    .eq("is_deleted", false)
-    .maybeSingle();
-  return !!data;
-}
+export { checkWorkspaceMembership as assertWorkspaceMembership } from "./safeErrorResponse.ts";

@@ -18,7 +18,7 @@
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { isInternalVisibility, assertWorkspaceMembership } from "../_shared/outgoing.ts";
+import { isInternalVisibility } from "../_shared/outgoing.ts";
 import {
   preflight, jsonRes, okText, requireInternalSecret, getServiceClient,
   markOutgoingExternal,

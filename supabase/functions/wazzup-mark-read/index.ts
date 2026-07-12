@@ -10,6 +10,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
   preflight, jsonRes, getUser, getServiceClient,
 } from "../_shared/edge.ts";
+import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return preflight(req);
@@ -45,14 +46,9 @@ Deno.serve(async (req: Request) => {
   if (!channel) return jsonRes({ skip: "channel not found" }, 200, req);
 
   // Членство вызывающего в воркспейсе канала (зеркало wazzup-delete).
-  const { data: participant } = await service
-    .from("participants")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("workspace_id", channel.workspace_id)
-    .eq("is_deleted", false)
-    .maybeSingle();
-  if (!participant) return jsonRes({ error: "forbidden" }, 403, req);
+  if (!(await checkWorkspaceMembership(service, user.id, channel.workspace_id))) {
+    return jsonRes({ error: "forbidden" }, 403, req);
+  }
 
   const { data: settings } = await service
     .from("wazzup_settings")

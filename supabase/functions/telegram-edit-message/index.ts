@@ -9,6 +9,7 @@ import { corsHeadersFor } from "../_shared/edge.ts";
 import { safeJsonParse, findMissingField, isValidUUID } from "../_shared/validation.ts";
 import { htmlToTelegramHtml, escapeHtmlEntities, isHtmlContent } from "../_shared/htmlFormatting.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
+import { isInternalVisibility } from "../_shared/outgoing.ts";
 import { resolveBotToken, resolveTokenByIntegrationId } from "../_shared/telegramBotToken.ts";
 
 interface RequestBody {
@@ -109,7 +110,7 @@ Deno.serve(async (req: Request) => {
           .maybeSingle();
         // Backstop видимости: правку внутреннего (team/self) в Telegram не шлём —
         // единый контракт со всеми send-функциями (аудит 2026-07-12).
-        if (((msgRow?.visibility as string | null) ?? "client") !== "client") {
+        if (isInternalVisibility(msgRow?.visibility as string | null)) {
           return new Response(
             JSON.stringify({ ok: true, skipped: "internal_visibility" }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
