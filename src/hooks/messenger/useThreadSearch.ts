@@ -15,7 +15,7 @@ import {
   type ThreadSearchFilters,
 } from '@/services/api/messenger/messengerSearchService'
 import type { MessageAttachment } from '@/services/api/messenger/messengerService'
-import { isImage, isAudioAttachment } from '@/components/messenger/utils/attachmentHelpers'
+import { isImage, isAudioAttachment } from '@/lib/messenger/attachmentHelpers'
 import { extractLinks } from '@/utils/messenger/extractLinks'
 
 export type ThreadSearchView = 'messages' | 'gallery'

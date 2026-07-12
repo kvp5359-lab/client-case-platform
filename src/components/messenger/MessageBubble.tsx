@@ -1,9 +1,10 @@
 import { memo, useState } from 'react'
+import { ATTACHMENT_PLACEHOLDER } from '@/lib/messenger/attachmentPlaceholder'
 import { CornerDownRight, Loader2, Trash2, BellOff, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MessageAttachments } from './MessageAttachment'
-import { isImage, isAudio } from './utils/attachmentHelpers'
+import { isImage, isAudio } from '@/lib/messenger/attachmentHelpers'
 import { getInitials, getAvatarColor } from '@/utils/avatarHelpers'
 import { useContactCardStore } from '@/store/contactCardStore'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
@@ -151,7 +152,7 @@ function MessageBubbleImpl({
   const hasAttachments = !!message.attachments?.length
   const hasAttachmentsOnly = !!(
     hasAttachments &&
-    (message.content === '📎' || !message.content.trim())
+    (message.content === ATTACHMENT_PLACEHOLDER || !message.content.trim())
   )
   const hasImages = !!message.attachments?.some((a) => isImage(a.mime_type))
   const hasAudio = !!message.attachments?.some((a) => isAudio(a.mime_type))

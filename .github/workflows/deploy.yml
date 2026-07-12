@@ -164,7 +164,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
-          fetch-depth: 2  # нужен предыдущий коммит для git-diff
+          fetch-depth: 0  # полная история: github.event.before резолвится даже
+          # для многокоммитного пуша → git-diff видит ВЕСЬ диапазон пуша, а не
+          # только HEAD~1 (иначе изменения в ранних коммитах пуша, напр. mtproto,
+          # пропускались и авто-деплой их не подхватывал — инцидент 2026-07-12).
 
       - name: Detect changed backend paths
         id: changes

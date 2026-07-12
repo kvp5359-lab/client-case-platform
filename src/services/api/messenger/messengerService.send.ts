@@ -5,6 +5,7 @@
  */
 
 import { supabase } from '@/lib/supabase'
+import { ATTACHMENT_PLACEHOLDER } from '@/lib/messenger/attachmentPlaceholder'
 import { ConversationError } from '@/services/errors/AppError'
 import { logger } from '@/utils/logger'
 import { uploadAttachments } from './messengerAttachmentService'
@@ -75,7 +76,7 @@ export function shouldSplitTextAndFiles(params: {
     !!params.content &&
     params.content.trim() !== '' &&
     params.content !== '<p></p>' &&
-    params.content !== '📎'
+    params.content !== ATTACHMENT_PLACEHOLDER
   return hasText && totalAttachments >= 2
 }
 
@@ -150,7 +151,7 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
       // В split-варианте текст уже в отдельной записи — здесь placeholder 📎,
       // который UI (MessageBubble) скрывает, а edge function трактует как
       // «только вложения без caption». Пустую строку БД не принимает (CHECK).
-      content: shouldSplit ? '📎' : params.content,
+      content: shouldSplit ? ATTACHMENT_PLACEHOLDER : params.content,
       // Reply-to цепляем к текстовой записи (если split — к текстовой, иначе
       // к первой и единственной).
       reply_to_message_id: shouldSplit ? null : params.replyToMessageId ?? null,
@@ -318,7 +319,7 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
             project_id: params.projectId,
             // В split-варианте текст уже ушёл триггером как отдельное сообщение —
             // здесь отправляем только файлы, без caption (placeholder 📎).
-            content: shouldSplit ? '📎' : params.content,
+            content: shouldSplit ? ATTACHMENT_PLACEHOLDER : params.content,
             sender_name: params.senderName,
             sender_role: params.senderRole,
             telegram_chat_id: tgLink.telegram_chat_id,

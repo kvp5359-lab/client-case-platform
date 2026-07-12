@@ -2,6 +2,7 @@
  * Utilities for parsing and grouping new message toast payloads.
  */
 import { supabase } from '@/lib/supabase'
+import { ATTACHMENT_PLACEHOLDER } from '@/lib/messenger/attachmentPlaceholder'
 import { stripHtmlIgnoreQuotes } from '@/utils/format/messengerHtml'
 
 // Реестр тостов вынесен в leaf-слой (`lib/messenger/toastRegistry`), чтобы его
@@ -60,7 +61,7 @@ export async function fetchAvatarUrl(participantId: string): Promise<string | nu
  */
 export async function parseTextLine(rawContent: string, messageId: string): Promise<string> {
   const text = stripHtmlIgnoreQuotes(rawContent)
-  if (text !== '📎' && text.trim()) {
+  if (text !== ATTACHMENT_PLACEHOLDER && text.trim()) {
     return truncateLine(text)
   }
 

@@ -8,7 +8,7 @@ import {
 import { supabase } from '@/lib/supabase'
 import { formatSize } from '@/utils/files/formatSize'
 import { toast } from 'sonner'
-import { isVoice } from './utils/attachmentHelpers'
+import { isVoice } from '@/lib/messenger/attachmentHelpers'
 import { useAudioPlaybackRate } from '@/hooks/useAudioPlaybackRate'
 
 function formatTime(sec: number) {

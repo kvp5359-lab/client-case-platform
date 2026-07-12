@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { ATTACHMENT_PLACEHOLDER } from '@/lib/messenger/attachmentPlaceholder'
 import { Forward, X, ChevronDown, ChevronUp, Check, Paperclip, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -16,7 +17,7 @@ type ForwardBufferBarProps = {
 function itemPreview(item: ForwardBufferItem): string {
   if (item.kind === 'file') return item.attachments[0]?.file_name ?? 'Файл'
   const text = stripHtml(item.content).trim()
-  return text && text !== '📎' ? text : 'Сообщение'
+  return text && text !== ATTACHMENT_PLACEHOLDER ? text : 'Сообщение'
 }
 
 /**

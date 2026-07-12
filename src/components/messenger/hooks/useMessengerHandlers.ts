@@ -33,6 +33,7 @@ import { type ProjectMessage } from '@/services/api/messenger/messengerService'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
 import { stripHtml } from '@/utils/format/messengerHtml'
+import { ATTACHMENT_PLACEHOLDER } from '@/lib/messenger/attachmentPlaceholder'
 
 type UseMessengerHandlersParams = {
   channel: MessageChannel
@@ -301,7 +302,7 @@ export function useMessengerHandlers({
     (msg: ProjectMessage) => {
       let added = 0
       const text = stripHtml(msg.content).trim()
-      if (text && text !== '📎') {
+      if (text && text !== ATTACHMENT_PLACEHOLDER) {
         addToForwardBuffer({
           id: crypto.randomUUID(),
           kind: 'text',

@@ -5,14 +5,14 @@ import {
   downloadAttachmentBlob,
   type MessageAttachment as AttachmentType,
 } from '@/services/api/messenger/messengerService'
-import { isImage, isAudio } from './utils/attachmentHelpers'
+import { isImage, isAudio } from '@/lib/messenger/attachmentHelpers'
 import { ImageLightbox } from './ImageLightbox'
 import { AttachmentMenuButton } from './AttachmentMenuButton'
 import { AudioAttachmentPlayer } from './AudioAttachmentPlayer'
 import { FileAttachment } from './FileAttachment'
 
 // Re-export for external consumers
-export { isAudio } from './utils/attachmentHelpers'
+export { isAudio } from '@/lib/messenger/attachmentHelpers'
 
 /**
  * Wrapper: splits images (grid), audios, and files (list)

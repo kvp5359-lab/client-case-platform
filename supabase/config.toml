@@ -347,3 +347,46 @@ s3_region = "env(S3_REGION)"
 s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# verify_jwt по функциям (декларативно, 2026-07-12). Раньше режим жил ТОЛЬКО во
+# флаге --no-verify-jwt при деплое (scripts/deploy-edge.sh) → класс ошибок
+# «забыл флаг». Теперь CLI читает это при `supabase functions deploy`; флаг в
+# скрипте остаётся подстраховкой. Функции без записи → verify_jwt=true (дефолт).
+# Список синхронизирован с NO_JWT_FUNCTIONS в scripts/deploy-edge.sh.
+[functions.telegram-webhook]
+verify_jwt = false
+[functions.telegram-webhook-v2]
+verify_jwt = false
+[functions.telegram-business-webhook]
+verify_jwt = false
+[functions.telegram-send-message]
+verify_jwt = false
+[functions.telegram-business-send]
+verify_jwt = false
+[functions.telegram-delete-message]
+verify_jwt = false
+[functions.telegram-edit-message]
+verify_jwt = false
+[functions.wazzup-webhook]
+verify_jwt = false
+[functions.wazzup-send]
+verify_jwt = false
+[functions.attachment-proxy]
+verify_jwt = false
+[functions.gmail-webhook]
+verify_jwt = false
+[functions.email-internal-send]
+verify_jwt = false
+[functions.impersonate-start]
+verify_jwt = false
+[functions.fetch-telegram-avatar]
+verify_jwt = false
+[functions.telegram-mtproto-delete]
+verify_jwt = false
+[functions.telegram-business-delete]
+verify_jwt = false
+[functions.wazzup-delete]
+verify_jwt = false
+[functions.sync-source-documents]
+verify_jwt = false

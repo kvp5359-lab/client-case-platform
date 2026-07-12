@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { ATTACHMENT_PLACEHOLDER } from '@/lib/messenger/attachmentPlaceholder'
 import type { Editor } from '@tiptap/react'
 import type { ProjectMessage, MessageVisibility } from '@/services/api/messenger/messengerService'
 import type { MessengerAccent } from './MessageBubble'
@@ -429,7 +430,7 @@ export function MessageInput({
         mentions,
       }
       onSend(
-        textContent ? htmlContent : '📎',
+        textContent ? htmlContent : ATTACHMENT_PLACEHOLDER,
         replyTo?.id,
         files.length > 0 ? files : undefined,
         options,
@@ -534,7 +535,7 @@ export function MessageInput({
       const vis = MODE_VISIBILITY[composerMode]
       onSchedule(
         sendAt,
-        textContent ? htmlContent : '📎',
+        textContent ? htmlContent : ATTACHMENT_PLACEHOLDER,
         replyTo?.id ?? null,
         files.length > 0 ? files : undefined,
         { visibility: vis.visibility, notifySubscribers: vis.notifySubscribers },

@@ -8,6 +8,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { ATTACHMENT_PLACEHOLDER } from '@/lib/messenger/attachmentPlaceholder'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
 import {
@@ -196,7 +197,7 @@ export function useSendMessage(
         ? [
             makeOptimistic('text', { content, attachments: [] }),
             makeOptimistic('files', {
-              content: '📎',
+              content: ATTACHMENT_PLACEHOLDER,
               reply_to_message_id: null,
               reply_to_message: null,
               attachments: optimisticFilesAttachments,
@@ -238,7 +239,7 @@ export function useSendMessage(
         queryClient.setQueryData(messagesKey, context.previous)
       }
       // Возвращаем неотправленный текст в черновик и удаляем outbox-копию.
-      if (threadId && vars.content && vars.content !== '📎') {
+      if (threadId && vars.content && vars.content !== ATTACHMENT_PLACEHOLDER) {
         try {
           localStorage.setItem(`msg_draft:${threadId}`, vars.content)
           localStorage.removeItem(`msg_outbox:${threadId}`)
