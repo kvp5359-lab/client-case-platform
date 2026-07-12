@@ -1,6 +1,6 @@
 /**
  * HTTP-эндпоинты для команд от Edge Functions / pg-триггера:
- * отправка сообщений, реакции, прочитанность, редактирование, удаление.
+ * отправка сообщений, реакции, редактирование, удаление, backfill истории.
  *
  * Каждая команда:
  *  1. Достаёт активный TelegramClient сотрудника из sessions manager.
@@ -12,7 +12,6 @@
  */
 
 import type { FastifyPluginAsync } from "fastify"
-import { STORAGE_BUCKETS, storageUpload, storageGetPublicUrl } from "../storage.js"
 import bigInt from "big-integer"
 import { Api } from "telegram"
 import { CustomFile } from "telegram/client/uploads.js"
@@ -361,128 +360,6 @@ export const commandsRoutes: FastifyPluginAsync = async (app) => {
       return { ok: true }
     } catch (err) {
       app.log.error({ err }, "reactions/set failed")
-      return floodAwareError(reply, err)
-    }
-  })
-
-  // ------------------------------------------------------------------
-  // POST /threads/read
-  // ------------------------------------------------------------------
-  // Отметить все входящие в чате до указанного message_id как прочитанные.
-  // Вызывается с фронта, когда сотрудник открыл тред.
-  app.post("/threads/read", async (req, reply) => {
-    const body = z
-      .object({
-        user_id: z.string().uuid(),
-        client_tg_user_id: z.number().int(),
-        // До какого message_id отметить прочитанным (включительно).
-        // Если не указано — Telegram отметит все непрочитанные.
-        max_telegram_message_id: z.number().int().optional(),
-      })
-      .safeParse(req.body)
-    if (!body.success) {
-      return reply.code(400).send({ error: "Invalid body", details: body.error.issues })
-    }
-
-    const client = getClient(body.data.user_id)
-    if (!client) {
-      return reply.code(409).send({ error: "Session not connected" })
-    }
-
-    try {
-      const peer = await resolvePeer(client, body.data.client_tg_user_id)
-      await client.markAsRead(
-        peer,
-        body.data.max_telegram_message_id,
-      )
-      return { ok: true }
-    } catch (err) {
-      app.log.error({ err }, "threads/read failed")
-      return floodAwareError(reply, err)
-    }
-  })
-
-  // ------------------------------------------------------------------
-  // POST /users/fetch-avatar
-  // ------------------------------------------------------------------
-  // Качает profile photo клиента через gramjs и сохраняет URL в
-  // participants.avatar_url. Bot API не работает для MTProto-юзеров;
-  // только клиентский MTProto может достать фото. Идемпотентно: если у
-  // participant'а уже есть avatar_url — пропускаем (force=true перепишет).
-  app.post("/users/fetch-avatar", async (req, reply) => {
-    const body = z
-      .object({
-        user_id: z.string().uuid(),
-        workspace_id: z.string().uuid(),
-        client_tg_user_id: z.number().int(),
-        force: z.boolean().optional().default(false),
-      })
-      .safeParse(req.body)
-    if (!body.success) {
-      return reply.code(400).send({ error: "Invalid body", details: body.error.issues })
-    }
-
-    const client = getClient(body.data.user_id)
-    if (!client) {
-      return reply.code(409).send({ error: "Session not connected" })
-    }
-
-    try {
-      // 1. Резолвим participant'а — без него некуда писать avatar_url.
-      const { data: participant } = await supabase
-        .from("participants")
-        .select("id, avatar_url")
-        .eq("workspace_id", body.data.workspace_id)
-        .eq("telegram_user_id", body.data.client_tg_user_id)
-        .eq("is_deleted", false)
-        .maybeSingle()
-      if (!participant) {
-        return reply.code(404).send({ error: "Participant not found" })
-      }
-      if (participant.avatar_url && !body.data.force) {
-        return { ok: true, cached: true, avatar_url: participant.avatar_url }
-      }
-
-      // 2. Получаем entity клиента (с photo внутри).
-      const peerUser = new Api.PeerUser({ userId: bigInt(body.data.client_tg_user_id) })
-      const entity = await client.getEntity(peerUser)
-      const hasPhoto = entity && "photo" in entity &&
-        entity.photo && entity.photo.className !== "UserProfilePhotoEmpty"
-      if (!hasPhoto) {
-        return { ok: true, avatar_url: null, no_photo: true }
-      }
-
-      // 3. Скачиваем фото (большой размер).
-      const buffer = await client.downloadProfilePhoto(entity, { isBig: true })
-      if (!buffer || (buffer as Buffer).length === 0) {
-        return { ok: true, avatar_url: null, no_photo: true }
-      }
-
-      // 4. Заливаем в Supabase Storage.
-      const path = `tg/${body.data.client_tg_user_id}.jpg`
-      const { error: uploadErr } = await storageUpload(STORAGE_BUCKETS.participantAvatars, path, buffer as Buffer, {
-          contentType: "image/jpeg",
-          upsert: true,
-        })
-      if (uploadErr) {
-        return reply.code(500).send({ error: "Storage upload failed", detail: uploadErr.message })
-      }
-
-      const { data: pub } = storageGetPublicUrl(STORAGE_BUCKETS.participantAvatars, path)
-      const avatarUrl = `${pub.publicUrl}?v=${Date.now()}`
-
-      // 5. Апдейтим participants.avatar_url + стампим avatar_fetched_at (B9),
-      // чтобы хелпер fetchAndStoreAvatar (hot-path входящих) считал аватар
-      // свежим и не перекачивал его в течение TTL. Без стампа каждое входящее
-      // от этого клиента заново дёргало getEntity/downloadProfilePhoto.
-      await supabase
-        .from("participants")
-        .update({ avatar_url: avatarUrl, avatar_fetched_at: new Date().toISOString() })
-        .eq("id", participant.id)
-
-      return { ok: true, avatar_url: avatarUrl }
-    } catch (err) {
-      app.log.error({ err }, "users/fetch-avatar failed")
       return floodAwareError(reply, err)
     }
   })
