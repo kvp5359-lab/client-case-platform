@@ -170,7 +170,7 @@ export async function getShareableQA(
 ): Promise<ShareableQA[]> {
   const { data, error } = await supabase.rpc('get_shareable_qa', {
     p_workspace_id: workspaceId,
-    p_project_id: projectId,
+    p_project_id: projectId ?? undefined,
   })
   if (error) throw new KnowledgeBaseError('Не удалось загрузить Q&A', error)
   return (data ?? []) as unknown as ShareableQA[]

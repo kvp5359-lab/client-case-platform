@@ -49,7 +49,7 @@ export async function searchThreadMessages(
     p_want_images: filters.wantImages,
     p_want_links: filters.wantLinks,
     p_want_audio: filters.wantAudio,
-    p_sender_participant_id: filters.senderParticipantId,
+    p_sender_participant_id: filters.senderParticipantId ?? undefined,
     p_limit: 200,
   })
   if (rpcError) throw rpcError

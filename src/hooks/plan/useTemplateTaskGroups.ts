@@ -3,7 +3,8 @@
 /**
  * CRUD «Групп задач» в шаблоне проекта (project_template_task_groups).
  * Блоки шаблона (project_template_plan_blocks) ссылаются на группу через group_id.
- * Доступ через `as never`-касты — таблица ещё не в database.ts.
+ * Типобезопасно: все таблицы есть в database.ts (Фаза 4 аудита — типы
+ * регенерированы, `as never`-касты сняты).
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -11,7 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { planKeys, threadTemplateKeys } from '@/hooks/queryKeys'
 import type { TemplateTaskGroupRow } from '@/types/taskGroups'
 
-const TABLE = 'project_template_task_groups'
+const TABLE = 'project_template_task_groups' as const
 
 export const templateTaskGroupKeys = {
   byTemplate: (templateId: string) => ['template-task-groups', templateId] as const,
@@ -26,7 +27,7 @@ export function useTemplateTaskGroups(templateId: string | undefined, workspaceI
     staleTime: 60_000,
     queryFn: async (): Promise<TemplateTaskGroupRow[]> => {
       const { data, error } = await supabase
-        .from(TABLE as never)
+        .from(TABLE)
         .select('*')
         .eq('project_template_id', templateId as string)
         .order('sort_order', { ascending: true })
@@ -47,13 +48,13 @@ export function useTemplateTaskGroups(templateId: string | undefined, workspaceI
     mutationFn: async (name?: string): Promise<string> => {
       if (!templateId || !workspaceId) throw new Error('templateId/workspaceId required')
       const { data, error } = await supabase
-        .from(TABLE as never)
+        .from(TABLE)
         .insert({
           workspace_id: workspaceId,
           project_template_id: templateId,
           name: name ?? 'Новая группа',
           sort_order: nextSortOrder(),
-        } as never)
+        })
         .select('id')
         .single()
       if (error) throw error
@@ -65,8 +66,8 @@ export function useTemplateTaskGroups(templateId: string | undefined, workspaceI
   const renameGroup = useMutation({
     mutationFn: async ({ id, name }: { id: string; name: string }) => {
       const { error } = await supabase
-        .from(TABLE as never)
-        .update({ name, updated_at: new Date().toISOString() } as never)
+        .from(TABLE)
+        .update({ name, updated_at: new Date().toISOString() })
         .eq('id', id)
       if (error) throw error
     },
@@ -75,7 +76,7 @@ export function useTemplateTaskGroups(templateId: string | undefined, workspaceI
 
   const deleteGroup = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from(TABLE as never).delete().eq('id', id)
+      const { error } = await supabase.from(TABLE).delete().eq('id', id)
       if (error) throw error
     },
     onSuccess: () => {
@@ -89,8 +90,8 @@ export function useTemplateTaskGroups(templateId: string | undefined, workspaceI
       await Promise.all(
         updates.map((u) =>
           supabase
-            .from(TABLE as never)
-            .update({ sort_order: u.sort_order } as never)
+            .from(TABLE)
+            .update({ sort_order: u.sort_order })
             .eq('id', u.id)
             .then(({ error }: { error: unknown }) => {
               if (error) throw error
@@ -105,9 +106,9 @@ export function useTemplateTaskGroups(templateId: string | undefined, workspaceI
   const assignBlock = useMutation({
     mutationFn: async ({ blockId, groupId }: { blockId: string; groupId: string | null }) => {
       const { error } = await supabase
-        .from('project_template_plan_blocks' as never)
-        .update({ group_id: groupId } as never)
-        .eq('id' as never, blockId as never)
+        .from('project_template_plan_blocks')
+        .update({ group_id: groupId })
+        .eq('id', blockId)
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: planKeys.templateByTemplate(templateId ?? '') }),
@@ -119,9 +120,9 @@ export function useTemplateTaskGroups(templateId: string | undefined, workspaceI
   const assignThread = useMutation({
     mutationFn: async ({ threadTemplateId, groupId }: { threadTemplateId: string; groupId: string | null }) => {
       const { error } = await supabase
-        .from('thread_templates' as never)
-        .update({ task_group_id: groupId } as never)
-        .eq('id' as never, threadTemplateId as never)
+        .from('thread_templates')
+        .update({ task_group_id: groupId })
+        .eq('id', threadTemplateId)
       if (error) throw error
     },
     onSuccess: () =>
