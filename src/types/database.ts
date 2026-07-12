@@ -10492,6 +10492,10 @@ export type Database = {
         Args: { workspace_uuid: string }
         Returns: boolean
       }
+      deliver_message: {
+        Args: { p_message_id: string }
+        Returns: undefined
+      }
       dispatch_message_to_channels: {
         Args: { p_force_attachments?: boolean; p_message_id: string }
         Returns: undefined

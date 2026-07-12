@@ -4225,6 +4225,11 @@
       "body_md5": "51ec194ebc943bc257286e8c3fd712c9"
     },
     {
+      "args": "p_message_id uuid",
+      "name": "deliver_message",
+      "body_md5": "2ed395ee0c28d184ff9b5e2af06265fc"
+    },
+    {
       "args": "p_message_id uuid, p_force_attachments boolean",
       "name": "dispatch_message_to_channels",
       "body_md5": "3e7db0ccee61db65d4da824e5114a19f"

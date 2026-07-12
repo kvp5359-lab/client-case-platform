@@ -1,26 +1,29 @@
 /**
- * Регрессия под инцидент утечки 2026-07-08 (worst-case): публикация черновика
- * ОБЯЗАНА уходить во внешний канал ТОЛЬКО для visibility='client'. Внутренние
- * (team/self) остаются в сервисе — иначе внутреннее сообщение/файл утекает
- * клиенту в Telegram. Это единственная автопроверка гейта publishDraftMessage
- * (снижает bus factor — грабля больше не «в голове»).
+ * D3.1 (гибрид): publishDraftMessage доставляет через канонический серверный
+ * диспетчер deliver_message (текст + не-email вложения + гейт visibility в БД),
+ * а email-вложения дошлёт фронт-invoke с гейтом isClientVisible (этот путь
+ * минует серверный гейт — защита от утечки 2026-07-08).
+ *
+ * Проверяем: (1) deliver_message зовётся всегда; (2) email-вложения client →
+ * фронт-invoke email-internal-send; (3) email-вложения team → НЕ шлём (гейт);
+ * (4) не-email тред → email-invoke не зовётся (его доставил deliver_message).
+ * Серверный гейт visibility для не-email покрыт смоком internal-vis + SQL-тестом
+ * dispatch, здесь не дублируется.
  */
-
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Полный мок клиента через фабрику: supabase.functions — getter-only в
-// supabase-js, присвоить его автомоку нельзя, поэтому задаём shape сами.
+const rpcMock = vi.fn()
 const invokeMock = vi.fn()
 const fromMock = vi.fn()
 const getSessionMock = vi.fn()
 vi.mock('@/lib/supabase', () => ({
   supabase: {
+    rpc: (...a: unknown[]) => rpcMock(...a),
     from: (...a: unknown[]) => fromMock(...a),
     functions: { invoke: (...a: unknown[]) => invokeMock(...a) },
     auth: { getSession: (...a: unknown[]) => getSessionMock(...a) },
   },
 }))
-// hydrateReplyMessages делает свои запросы — глушим, остальное (cast, SELECT) реально.
 vi.mock('./messengerService.helpers', async (orig) => ({
   ...(await orig<typeof import('./messengerService.helpers')>()),
   hydrateReplyMessages: vi.fn().mockResolvedValue(undefined),
@@ -28,13 +31,18 @@ vi.mock('./messengerService.helpers', async (orig) => ({
 
 import { publishDraftMessage } from './messengerDraftService'
 
-function setup(visibility: string | null) {
+function setup(opts: { visibility?: string; withAttachment?: boolean; emailThread?: boolean }) {
+  rpcMock.mockResolvedValue({ error: null })
   invokeMock.mockResolvedValue({ data: null, error: null })
   getSessionMock.mockResolvedValue({ data: { session: null } })
   const messageRow = {
-    id: 'm1', thread_id: 't1', project_id: 'p1', content: 'внутренний секрет',
-    visibility, reply_to_message_id: null, channel: 'client', attachments: [],
+    id: 'm1', thread_id: 't1', project_id: 'p1', content: 'текст',
+    visibility: opts.visibility ?? 'client', reply_to_message_id: null, channel: 'client',
+    attachments: opts.withAttachment ? [{ id: 'a1' }] : [],
   }
+  const threadRow = opts.emailThread
+    ? { type: 'email', email_send_account_id: 'acc1' }
+    : { type: 'chat', wazzup_channel_id: null, mtproto_session_user_id: null, business_connection_id: null }
   fromMock.mockImplementation((table: string) => {
     if (table === 'project_messages') {
       return {
@@ -42,38 +50,41 @@ function setup(visibility: string | null) {
         select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: messageRow, error: null }) }) }),
       }
     }
-    // project_telegram_chats: select → eq(is_active) → eq(thread_id) → maybeSingle
-    return {
-      select: () => ({ eq: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { telegram_chat_id: 999 }, error: null }) }) }) }),
-    }
+    // project_threads
+    return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: threadRow, error: null }) }) }) }
   })
-  return invokeMock
 }
 
-describe('publishDraftMessage — гейт внешней доставки по visibility', () => {
+describe('publishDraftMessage — доставка через deliver_message + email-вложения', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it("visibility='team' → НЕ уходит в канал (нет invoke telegram-send)", async () => {
-    const invoke = setup('team')
-    await publishDraftMessage('m1', 'Кирилл', 'Администратор')
-    expect(invoke).not.toHaveBeenCalled()
+  it('всегда зовёт deliver_message (канонический диспетчер)', async () => {
+    setup({})
+    await publishDraftMessage('m1')
+    expect(rpcMock).toHaveBeenCalledWith('deliver_message', { p_message_id: 'm1' })
   })
 
-  it("visibility='self' → НЕ уходит в канал", async () => {
-    const invoke = setup('self')
-    await publishDraftMessage('m1', 'Кирилл', 'Администратор')
-    expect(invoke).not.toHaveBeenCalled()
+  it('без вложений → email-invoke не зовётся', async () => {
+    setup({ withAttachment: false })
+    await publishDraftMessage('m1')
+    expect(invokeMock).not.toHaveBeenCalled()
   })
 
-  it("visibility='client' → уходит (invoke telegram-send-message)", async () => {
-    const invoke = setup('client')
-    await publishDraftMessage('m1', 'Кирилл', 'Администратор')
-    expect(invoke).toHaveBeenCalledWith('telegram-send-message', expect.anything())
+  it('email-тред + вложения + client → фронт-invoke email-internal-send', async () => {
+    setup({ withAttachment: true, emailThread: true, visibility: 'client' })
+    await publishDraftMessage('m1')
+    expect(invokeMock).toHaveBeenCalledWith('email-internal-send', expect.anything())
   })
 
-  it('visibility=null трактуется как client → уходит (обратная совместимость)', async () => {
-    const invoke = setup(null)
-    await publishDraftMessage('m1', 'Кирилл', 'Администратор')
-    expect(invoke).toHaveBeenCalledWith('telegram-send-message', expect.anything())
+  it('email-тред + вложения + team → НЕ шлём (гейт утечки)', async () => {
+    setup({ withAttachment: true, emailThread: true, visibility: 'team' })
+    await publishDraftMessage('m1')
+    expect(invokeMock).not.toHaveBeenCalled()
+  })
+
+  it('не-email тред + вложения → email-invoke не зовётся (доставил deliver_message)', async () => {
+    setup({ withAttachment: true, emailThread: false, visibility: 'client' })
+    await publishDraftMessage('m1')
+    expect(invokeMock).not.toHaveBeenCalled()
   })
 })

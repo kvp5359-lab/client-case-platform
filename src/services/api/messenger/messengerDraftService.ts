@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { ConversationError } from '@/services/errors/AppError'
 import { logger } from '@/utils/logger'
 import { uploadAttachments, deleteAttachmentFileIfOrphaned } from './messengerAttachmentService'
+import { resolveThreadChannel, type ThreadChannelSignals } from './resolveThreadChannel'
 import {
   MESSAGE_SELECT,
   castToProjectMessage,
@@ -152,74 +153,71 @@ export async function updateDraftMessage(
 }
 
 /**
- * Publish a draft — set is_draft=false and send to Telegram
+ * Опубликовать черновик/отложенное — снять is_draft и доставить во ВСЕ каналы.
+ *
+ * D3.1 (гибрид): доставку текста и НЕ-email вложений делает единый серверный
+ * диспетчер `deliver_message` → `dispatch_message_to_channels` (тот же канон,
+ * что триггер/cron: маршрутизация + гейт visibility). Раньше фронт слал сам и
+ * ТОЛЬКО в TG-группу (email/wazzup/mtproto-черновики не уходили). Email-вложения
+ * диспетчер архитектурно пропускает (гонка загрузки файлов) → их дошлём фронтом.
+ *
+ * `senderName`/`senderRole` больше не нужны для доставки (диспетчер берёт из
+ * сообщения), но параметры сохранены — их передают существующие вызывающие.
+ * is_draft снимается здесь idempotent'но: для delayed-CAS он уже снят
+ * захватом, для кнопки — снимается тут.
  */
 export async function publishDraftMessage(
   messageId: string,
-  senderName: string,
-  senderRole: string | null,
+  _senderName?: string,
+  _senderRole?: string | null,
 ): Promise<ProjectMessage> {
   const { error: updateError } = await supabase
     .from('project_messages')
     .update({ is_draft: false })
     .eq('id', messageId)
-
   if (updateError)
     throw new ConversationError(`Ошибка публикации черновика: ${updateError.message}`)
+
+  // Канонический серверный диспетчер: текст + не-email вложения во все каналы,
+  // с гейтом visibility (внутреннее клиенту не уйдёт). Единый путь с триггером/cron.
+  const { error: deliverError } = await supabase.rpc('deliver_message', {
+    p_message_id: messageId,
+  })
+  if (deliverError)
+    throw new ConversationError(`Ошибка доставки сообщения: ${deliverError.message}`)
 
   const { data, error } = await supabase
     .from('project_messages')
     .select(MESSAGE_SELECT)
     .eq('id', messageId)
     .single()
-
   if (error) throw new ConversationError(`Ошибка загрузки сообщения: ${error.message}`)
 
   const message = castToProjectMessage(data)
   await hydrateReplyMessages([message])
 
-  // Send to Telegram (same logic as sendMessage)
-  let tgQuery = supabase
-    .from('project_telegram_chats')
-    .select('telegram_chat_id')
-    .eq('is_active', true)
-  if (message.thread_id) {
-    tgQuery = tgQuery.eq('thread_id', message.thread_id)
-  } else {
-    tgQuery = tgQuery
-      .eq('project_id', message.project_id ?? '')
-      .eq('channel', message.channel ?? 'client')
-  }
-  const { data: tgLink } = await tgQuery.maybeSingle()
-
-  // 🔒 Только клиентские сообщения уходят в канал. Публикация черновика — это
-  // UPDATE is_draft=false (триггер БД на него не срабатывает), поэтому отправку
-  // инициирует ТОЛЬКО этот путь. Без гейта внутренний (team/self) черновик
-  // утёк бы клиенту в Telegram — и текст, и вложения (баг 2026-07-08).
+  // Email-вложения диспетчер НЕ шлёт (архитектурно только фронт, из-за гонки
+  // загрузки) → дошлём здесь. Гейт isClientVisible обязателен: этот путь минует
+  // серверный гейт диспетчера (утечка 2026-07-08). Прочие каналы уже доставлены
+  // deliver_message выше.
+  const hasAttachments = !!message.attachments && message.attachments.length > 0
   const isClientVisible = ((message.visibility as string | undefined) ?? 'client') === 'client'
-
-  if (tgLink?.telegram_chat_id && isClientVisible) {
-    const hasAttachments = message.attachments && message.attachments.length > 0
-
-    // Refresh session to ensure fresh JWT for Edge Function auth
-    await supabase.auth.getSession()
-
-    // Single call: with attachments_only if has files, otherwise plain text
-    supabase.functions
-      .invoke('telegram-send-message', {
-        body: {
-          message_id: message.id,
-          project_id: message.project_id,
-          content: message.content,
-          sender_name: senderName,
-          sender_role: senderRole,
-          telegram_chat_id: tgLink.telegram_chat_id,
-          ...(hasAttachments ? { attachments_only: true } : {}),
-        },
-      })
-      .catch((err) => {
-        logger.error('Failed to send published draft to Telegram:', err)
-      })
+  if (hasAttachments && isClientVisible && message.thread_id) {
+    const { data: t } = await supabase
+      .from('project_threads')
+      .select(
+        'type, email_send_account_id, wazzup_channel_id, wazzup_chat_id, mtproto_session_user_id, mtproto_client_tg_user_id, business_connection_id',
+      )
+      .eq('id', message.thread_id)
+      .maybeSingle()
+    if (resolveThreadChannel((t as ThreadChannelSignals) ?? {}) === 'email') {
+      await supabase.auth.getSession()
+      supabase.functions
+        .invoke('email-internal-send', { body: { message_id: messageId } })
+        .catch((err) => {
+          logger.error('Failed to send published email draft attachments:', err)
+        })
+    }
   }
 
   return message
