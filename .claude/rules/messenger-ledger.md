@@ -46,6 +46,13 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-07-12 — ⭐ ДЕПЛОЙ всего накопленного batch'а + смок ЗЕЛЁНЫЙ (весь день 07-12 выкачен)
+- **Выкатили всё, что копилось за 07-12** (консолидация отправки, visibility-backstop'ы, `_shared/outgoing`, распил mtproto, R2-дедуп, ALS-токен, чистка мёртвого email/эндпоинтов): фронт (CI blue/green ✓), **13 edge-функций** (CI `deploy-edge.sh`, `SUPABASE_ACCESS_TOKEN` задан ✓), mtproto (**вручную** rsync+docker — CI-детектор изменений его пропустил; контейнер healthy, сессия up tg_user_id=6418103940), edge `gmail-send` **снята с прода** + исходники удалены.
+- **Смок-матрица ЗЕЛЁНАЯ** по всем 5 группам (mtproto/wazzup/2×tg_group/email): text/reply/file/file+text/album/internal-vis/reaction/edit/delete (где применимо) — все ✓. Регрессий от консолидации/чистки нет.
+- **🪤 Поймано смоком:** `smoke_send_test` (RPC, миграция `20260712140000`) писал `p_visibility text` в enum-колонку `project_messages.visibility` без каста → `column visibility is of type message_visibility but expression is of type text`. Только смок-инфра, реальная доставка не затронута (file/album проходили). Фикс — `::message_visibility` (миграция `20260712160000`). Грабля: смок-RPC, пишущие в enum-колонки, кастовать явно.
+- **🪤 CI-детектор изменений backend пропустил mtproto** при push (хотя `mtproto-service/` менялся в диапазоне) — деплоить mtproto вручную (rsync+docker), не полагаться на авто-джоб при накопленных коммитах. Эталон дрейфа обновлён (`--update`).
+- Все `⏳ ЖДЁТ ДЕПЛОЯ + СМОК` записи ниже за 07-12 — **закрыты** (задеплоены + смок).
+
 ### 2026-07-12 — Чистота, задачи 1-3 владельца: общий слой отправки + распил mtproto commands + мёртвый email/эндпоинты ⏳ ФРОНТ КОММИЧЕН (НЕ ПУШЕН), EDGE/MTPROTO ЖДУТ ДЕПЛОЯ
 - **Задача владельца (3 по порядку):** (1) свести 5 функций отправки к общим кускам; (2) распилить файл-свалку личного Telegram (818 стр); (3) дочистить мёртвый код (старая отправка почты + пара команд) — деликатно.
 - **(1) Общий слой отправки `_shared/outgoing.ts`** (D2.3, коммичено ранее): `isInternalVisibility(visibility)` + `assertWorkspaceMembership(service, userId, workspaceId)` — заменили инлайн-дубли в 9 функциях (telegram-send-message, telegram-business-send, telegram-mtproto-send/edit/delete, telegram-business-delete, wazzup-send/delete, email-internal-send). deno check чист на всех 9, гард `check-edge-invariants` зелёный.
