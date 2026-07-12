@@ -23,15 +23,12 @@ import { ReadUnreadButton } from './ReadUnreadButton'
 import {
   ComposerVisibilitySwitch,
   type ComposerMode,
-  type NotifyRecipients,
 } from './ComposerVisibilitySwitch'
-import { useThreadSubscribers, useIsThreadMutedByMe } from '@/hooks/messenger/useThreadSubscription'
-import { CLIENT_ROLES } from './chatSettingsTypes'
+import { useIsThreadMutedByMe } from '@/hooks/messenger/useThreadSubscription'
 import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 import { useTaskStatusPending } from './hooks/useTaskStatusPending'
-import { useProjectParticipants, useThreadMembers } from './hooks/useChatSettingsData'
-import { useTaskAssigneeIds } from '@/components/tasks/useTaskAssignees'
-import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
+import { useMentionItems } from './hooks/useMentionItems'
+import { useComposerRecipients } from './hooks/useComposerRecipients'
 import { EmailSubjectBar } from './EmailSubjectBar'
 import { ThreadDescriptionBlock } from './ThreadDescriptionBlock'
 import { useUpdateEmailThreadMeta } from '@/hooks/messenger/useProjectThreads'
@@ -141,37 +138,14 @@ export function MessengerTabContent({
     isEmailTypeThread ? workspaceId : undefined,
   )
   const hasClientParticipant = useThreadHasClient(currentThread)
-  // Кандидаты для @-упоминаний — ТОЛЬКО люди, связанные с этой задачей:
-  // участники проекта ∪ участники задачи (thread members) ∪ исполнители.
-  // Больше никого (лишние сотрудники воркспейса не выводятся). Берём только с
-  // аккаунтом (user_id) — telegram-контакты упоминать бессмысленно, они не видят ЛК.
-  const { data: projectParticipants = [] } = useProjectParticipants(
-    currentThread?.project_id ?? undefined,
-  )
-  const { data: threadMemberIds } = useThreadMembers(threadId)
-  const { data: assigneeIds = [] } = useTaskAssigneeIds(threadId)
-  // Полный справочник участников воркспейса — источник имён/аватаров/user_id для
-  // резолва id (участники проекта/треда/исполнители — все участники воркспейса).
-  const { data: workspaceParticipants = [] } = useWorkspaceParticipants(workspaceId)
-  const mentionItems = useMemo(() => {
-    // Множество id, кому разрешено попасть в список: три источника.
-    const allowed = new Set<string>()
-    for (const p of projectParticipants) allowed.add(p.id)
-    if (threadMemberIds) for (const id of threadMemberIds) allowed.add(id)
-    for (const id of assigneeIds) allowed.add(id)
-    return workspaceParticipants
-      .filter(
-        (p) =>
-          p.user_id && // только с аккаунтом (без telegram-контактов)
-          p.user_id !== user?.id && // себя не упоминаем
-          allowed.has(p.id),
-      )
-      .map((p) => ({
-        id: p.id,
-        label: [p.name, p.last_name].filter(Boolean).join(' '),
-        avatarUrl: p.avatar_url,
-      }))
-  }, [workspaceParticipants, projectParticipants, threadMemberIds, assigneeIds, user?.id])
+  // Кандидаты @-упоминаний + id исполнителей — в useMentionItems (распил
+  // оркестратора). assigneeIds ещё нужен viewerGetsEvents ниже.
+  const { mentionItems, assigneeIds } = useMentionItems({
+    threadId,
+    threadProjectId: currentThread?.project_id,
+    workspaceId,
+    currentUserId: user?.id,
+  })
   // Пикер статуса (Planfix-style) — поднят сюда, чтобы стоять в одной линии с
   // кнопкой read/unread и селектором видимости. Статус коммитится при отправке
   // (логика в MessageInput, ему передаём statusPending).
@@ -244,57 +218,17 @@ export function MessengerTabContent({
   const effectiveComposerMode: ComposerMode =
     !allowClientMode && composerMode === 'client' ? 'team' : composerMode
 
-  // «Кто получит уведомление» для подсказки при наведении на режим. Лениво:
-  // подписчики тянутся только после первого наведения (primed), кэш — на тред.
-  const [recipientsPrimed, setRecipientsPrimed] = useState(false)
-  const threadSubscribers = useThreadSubscribers(threadId, workspaceId, recipientsPrimed)
-  const composerRecipients = useMemo<NotifyRecipients>(() => {
-    // get_thread_subscribers отдаёт ВСЕХ с доступом к треду + флаг подписки.
-    // Доступ = все сотрудники тут; уведомление = из них подписанные.
-    const byId = new Map(projectParticipants.map((p) => [p.id, p]))
-    const clientRoles = CLIENT_ROLES as readonly string[]
-    const myParticipantId = state.currentParticipant?.participantId ?? null
-    const accessStaff: string[] = []
-    const notifyStaff: string[] = []
-    let accessExtra = 0
-    let notifyExtra = 0
-    let hasClient = false
-    for (const [id, subscribed] of Object.entries(threadSubscribers.subscribers)) {
-      // Себя не показываем — исключаем по participant_id (работает и в личных
-      // диалогах без проекта, где participant по имени не разрешается).
-      if (myParticipantId && id === myParticipantId) continue
-      const p = byId.get(id)
-      if (!p) {
-        accessExtra++ // доступ есть (assignee/member вне проекта), имя неизвестно
-        if (subscribed) notifyExtra++
-        continue
-      }
-      if (p.user_id && p.user_id === user?.id) continue // подстраховка по user_id
-      if ((p.project_roles ?? []).some((r) => clientRoles.includes(r))) {
-        hasClient = true // клиент — в командные списки не кладём
-        continue
-      }
-      const name = [p.name, p.last_name].filter(Boolean).join(' ') || 'Без имени'
-      accessStaff.push(name)
-      if (subscribed) notifyStaff.push(name)
-    }
-    return {
-      loading: recipientsPrimed && threadSubscribers.isLoading,
-      accessStaff,
-      notifyStaff,
-      accessExtra,
-      notifyExtra,
-      hasClient: hasClient || allowClientMode,
-    }
-  }, [
-    threadSubscribers.subscribers,
-    threadSubscribers.isLoading,
-    recipientsPrimed,
-    projectParticipants,
-    state.currentParticipant?.participantId,
-    user?.id,
+  // «Кто получит уведомление» (подсказка при наведении на режим) — в
+  // useComposerRecipients (распил оркестратора). Лениво: primeRecipients()
+  // дёргается при первом наведении.
+  const { recipients: composerRecipients, primeRecipients } = useComposerRecipients({
+    threadId,
+    workspaceId,
+    threadProjectId: currentThread?.project_id,
+    myParticipantId: state.currentParticipant?.participantId ?? null,
+    currentUserId: user?.id,
     allowClientMode,
-  ])
+  })
 
   const handlers = useMessengerHandlers({
     channel,
@@ -662,7 +596,7 @@ export function MessengerTabContent({
                   allowClient={allowClientMode}
                   accent={accent}
                   recipients={composerRecipients}
-                  onPrimeRecipients={() => setRecipientsPrimed(true)}
+                  onPrimeRecipients={primeRecipients}
                 />
               </div>
             )}
