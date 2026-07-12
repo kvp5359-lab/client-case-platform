@@ -31,6 +31,21 @@ type SendAttachmentsResult = {
   hadDocuments: boolean;
 };
 
+/**
+ * Прикрепляет reply_parameters к formData исходящего вложения (нативная цитата
+ * в Telegram). Единая точка для ВСЕХ веток отправки (фото/альбом/документ) —
+ * формат reply_parameters и truthy-гейт живут в одном месте, чтобы 4 ветки не
+ * расходились (см. ledger — класс бага «рассинхрон копий reply при отправке»).
+ */
+function appendReplyParam(
+  formData: FormData,
+  replyToTelegramMessageId: number | null | undefined,
+): void {
+  if (replyToTelegramMessageId) {
+    formData.append("reply_parameters", JSON.stringify({ message_id: replyToTelegramMessageId }));
+  }
+}
+
 export async function resolveAttachment(
   att: Record<string, unknown>,
   supabaseClient: ReturnType<typeof createClient>,
@@ -284,11 +299,7 @@ export async function sendAttachments(
 
         formData.append("media", JSON.stringify(media));
 
-        if (isFirstChunk && replyToTelegramMessageId) {
-          formData.append("reply_parameters", JSON.stringify({
-            message_id: replyToTelegramMessageId,
-          }));
-        }
+        if (isFirstChunk) appendReplyParam(formData, replyToTelegramMessageId);
 
         const fetchStart = Date.now();
         sendTrace("sendMediaGroup.start", { chunk_size: chunk.length, is_first: isFirstChunk });
@@ -366,9 +377,7 @@ export async function sendAttachments(
           formData.append("caption", caption.slice(0, 1024));
           formData.append("parse_mode", "HTML");
         }
-        if (replyToTelegramMessageId) {
-          formData.append("reply_parameters", JSON.stringify({ message_id: replyToTelegramMessageId }));
-        }
+        appendReplyParam(formData, replyToTelegramMessageId);
 
         const fetchStart = Date.now();
         sendTrace("sendPhoto.start");
@@ -463,9 +472,7 @@ export async function sendAttachments(
 
         formData.append("media", JSON.stringify(media));
 
-        if (isFirstChunk && documentsReplyTo) {
-          formData.append("reply_parameters", JSON.stringify({ message_id: documentsReplyTo }));
-        }
+        if (isFirstChunk) appendReplyParam(formData, documentsReplyTo);
 
         const fetchStart = Date.now();
         sendTrace("sendMediaGroup.docs.start", { chunk_size: chunk.length, is_first: isFirstChunk });
@@ -548,9 +555,7 @@ export async function sendAttachments(
           formData.append("caption", documentsCaptionAvailable.slice(0, 1024));
           formData.append("parse_mode", "HTML");
         }
-        if (documentsReplyTo) {
-          formData.append("reply_parameters", JSON.stringify({ message_id: documentsReplyTo }));
-        }
+        appendReplyParam(formData, documentsReplyTo);
 
         const fetchStart = Date.now();
         sendTrace("sendDocument.start", { file_name: r.fileName });

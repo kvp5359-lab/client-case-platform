@@ -13,7 +13,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { corsHeadersFor } from "../_shared/edge.ts";
+import { corsHeadersFor, jsonRes } from "../_shared/edge.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -38,31 +38,31 @@ Deno.serve(async (req: Request) => {
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
   if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, 405, corsHeaders);
+    return jsonRes({ error: "Method not allowed" }, 405, req);
   }
 
   // JWT юзера
   const authHeader = req.headers.get("authorization");
-  if (!authHeader) return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders);
+  if (!authHeader) return jsonRes({ error: "Unauthorized" }, 401, req);
   const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
   });
   const { data: { user }, error: authErr } = await userClient.auth.getUser();
   if (authErr || !user) {
-    return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders);
+    return jsonRes({ error: "Unauthorized" }, 401, req);
   }
 
   let body: RequestBody;
   try {
     body = (await req.json()) as RequestBody;
   } catch {
-    return jsonResponse({ error: "Invalid JSON" }, 400, corsHeaders);
+    return jsonRes({ error: "Invalid JSON" }, 400, req);
   }
 
   // Для send-code дополнительно проверяем что юзер — участник воркспейса.
   if (body.op === "send-code") {
     if (!body.workspace_id || !body.phone) {
-      return jsonResponse({ error: "workspace_id and phone required" }, 400, corsHeaders);
+      return jsonRes({ error: "workspace_id and phone required" }, 400, req);
     }
     const service = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { data: participant } = await service
@@ -73,39 +73,39 @@ Deno.serve(async (req: Request) => {
       .eq("is_deleted", false)
       .maybeSingle();
     if (!participant) {
-      return jsonResponse({ error: "Forbidden" }, 403, corsHeaders);
+      return jsonRes({ error: "Forbidden" }, 403, req);
     }
     return await proxy("/auth/send-code", "POST", {
       user_id: user.id,
       workspace_id: body.workspace_id,
       phone: body.phone,
-    }, corsHeaders);
+    }, req);
   }
 
   if (body.op === "verify-code") {
     if (!body.code) {
-      return jsonResponse({ error: "code required" }, 400, corsHeaders);
+      return jsonRes({ error: "code required" }, 400, req);
     }
     return await proxy("/auth/verify-code", "POST", {
       user_id: user.id,
       code: body.code,
-    }, corsHeaders);
+    }, req);
   }
 
   if (body.op === "verify-password") {
     if (!body.password) {
-      return jsonResponse({ error: "password required" }, 400, corsHeaders);
+      return jsonRes({ error: "password required" }, 400, req);
     }
     return await proxy("/auth/verify-password", "POST", {
       user_id: user.id,
       password: body.password,
-    }, corsHeaders);
+    }, req);
   }
 
   if (body.op === "disconnect") {
     return await proxy("/auth/disconnect", "POST", {
       user_id: user.id,
-    }, corsHeaders);
+    }, req);
   }
 
   if (body.op === "status") {
@@ -121,18 +121,18 @@ Deno.serve(async (req: Request) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     } catch (err) {
-      return jsonResponse({ error: `service unreachable: ${err}` }, 502, corsHeaders);
+      return jsonRes({ error: `service unreachable: ${err}` }, 502, req);
     }
   }
 
-  return jsonResponse({ error: `Unknown op: ${body.op}` }, 400, corsHeaders);
+  return jsonRes({ error: `Unknown op: ${body.op}` }, 400, req);
 });
 
 async function proxy(
   path: string,
   method: string,
   payload: unknown,
-  corsHeaders: Record<string, string>,
+  req: Request,
 ): Promise<Response> {
   try {
     const res = await fetch(`${MTPROTO_SERVICE_URL}${path}`, {
@@ -146,20 +146,9 @@ async function proxy(
     const text = await res.text();
     return new Response(text, {
       status: res.status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
     });
   } catch (err) {
-    return jsonResponse({ error: `service unreachable: ${err}` }, 502, corsHeaders);
+    return jsonRes({ error: `service unreachable: ${err}` }, 502, req);
   }
-}
-
-function jsonResponse(
-  body: unknown,
-  status: number,
-  corsHeaders: Record<string, string>,
-): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
 }

@@ -21,7 +21,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { isInternalVisibility, assertWorkspaceMembership } from "../_shared/outgoing.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { corsHeadersFor } from "../_shared/edge.ts";
+import { corsHeadersFor, jsonRes } from "../_shared/edge.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -41,27 +41,27 @@ Deno.serve(async (req: Request) => {
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
   if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, 405, corsHeaders);
+    return jsonRes({ error: "Method not allowed" }, 405, req);
   }
 
   const authHeader = req.headers.get("authorization");
-  if (!authHeader) return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders);
+  if (!authHeader) return jsonRes({ error: "Unauthorized" }, 401, req);
   const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
   });
   const { data: { user }, error: authErr } = await userClient.auth.getUser();
   if (authErr || !user) {
-    return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders);
+    return jsonRes({ error: "Unauthorized" }, 401, req);
   }
 
   let body: RequestBody;
   try {
     body = (await req.json()) as RequestBody;
   } catch {
-    return jsonResponse({ error: "Invalid JSON" }, 400, corsHeaders);
+    return jsonRes({ error: "Invalid JSON" }, 400, req);
   }
   if (!body.message_id || !body.content) {
-    return jsonResponse({ error: "message_id and content required" }, 400, corsHeaders);
+    return jsonRes({ error: "message_id and content required" }, 400, req);
   }
 
   const service = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -72,12 +72,12 @@ Deno.serve(async (req: Request) => {
     .eq("id", body.message_id)
     .maybeSingle();
   if (!msg || !msg.thread_id) {
-    return jsonResponse({ error: "Message not found" }, 400, corsHeaders);
+    return jsonRes({ error: "Message not found" }, 400, req);
   }
   // Backstop видимости — единый контракт со всеми исходящими: правку
   // внутреннего (team/self) в канал не шлём.
   if (isInternalVisibility(msg.visibility as string | null)) {
-    return jsonResponse({ ok: true, skipped: "internal_visibility" }, 200, corsHeaders);
+    return jsonRes({ ok: true, skipped: "internal_visibility" }, 200, req);
   }
 
   const { data: thread } = await service
@@ -86,12 +86,12 @@ Deno.serve(async (req: Request) => {
     .eq("id", msg.thread_id)
     .maybeSingle();
   if (!thread?.mtproto_session_user_id || !thread.mtproto_client_tg_user_id) {
-    return jsonResponse({ error: "Not a MTProto thread" }, 400, corsHeaders);
+    return jsonRes({ error: "Not a MTProto thread" }, 400, req);
   }
 
   // Членство — защита от чужих.
   if (!(await assertWorkspaceMembership(service, user.id, msg.workspace_id))) {
-    return jsonResponse({ error: "Forbidden" }, 403, corsHeaders);
+    return jsonRes({ error: "Forbidden" }, 403, req);
   }
 
   // Редактируем ПЕРВЫЙ внешний id сообщения (у MTProto-текста он один).
@@ -99,7 +99,7 @@ Deno.serve(async (req: Request) => {
     ? (msg.telegram_message_ids[0] as number)
     : (msg.telegram_message_id as number | null);
   if (tgId == null) {
-    return jsonResponse({ ok: false, reason: "нет внешнего id для правки" }, 200, corsHeaders);
+    return jsonRes({ ok: false, reason: "нет внешнего id для правки" }, 200, req);
   }
 
   const payload = {
@@ -125,21 +125,10 @@ Deno.serve(async (req: Request) => {
         const j = JSON.parse(text);
         reason = (j?.error as string) ?? reason;
       } catch { /* keep text */ }
-      return jsonResponse({ ok: false, reason }, 200, corsHeaders);
+      return jsonRes({ ok: false, reason }, 200, req);
     }
-    return jsonResponse({ ok: true }, 200, corsHeaders);
+    return jsonRes({ ok: true }, 200, req);
   } catch (err) {
-    return jsonResponse({ ok: false, reason: `service unreachable: ${err}` }, 200, corsHeaders);
+    return jsonRes({ ok: false, reason: `service unreachable: ${err}` }, 200, req);
   }
 });
-
-function jsonResponse(
-  body: unknown,
-  status: number,
-  corsHeaders: Record<string, string>,
-): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}

@@ -20,7 +20,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { corsHeadersFor } from "../_shared/edge.ts";
+import { corsHeadersFor, jsonRes } from "../_shared/edge.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -41,28 +41,28 @@ Deno.serve(async (req: Request) => {
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
   if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, 405, corsHeaders);
+    return jsonRes({ error: "Method not allowed" }, 405, req);
   }
 
   // JWT юзера
   const authHeader = req.headers.get("authorization");
-  if (!authHeader) return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders);
+  if (!authHeader) return jsonRes({ error: "Unauthorized" }, 401, req);
   const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
   });
   const { data: { user }, error: authErr } = await userClient.auth.getUser();
   if (authErr || !user) {
-    return jsonResponse({ error: "Unauthorized" }, 401, corsHeaders);
+    return jsonRes({ error: "Unauthorized" }, 401, req);
   }
 
   let body: RequestBody;
   try {
     body = (await req.json()) as RequestBody;
   } catch {
-    return jsonResponse({ error: "Invalid JSON" }, 400, corsHeaders);
+    return jsonRes({ error: "Invalid JSON" }, 400, req);
   }
   if (!body.message_id || !body.participant_id || !body.emoji) {
-    return jsonResponse({ error: "message_id, participant_id, emoji required" }, 400, corsHeaders);
+    return jsonRes({ error: "message_id, participant_id, emoji required" }, 400, req);
   }
 
   const service = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -74,7 +74,7 @@ Deno.serve(async (req: Request) => {
     .eq("id", body.message_id)
     .maybeSingle();
   if (!msg || !msg.thread_id || !msg.telegram_message_id) {
-    return jsonResponse({ error: "Message not eligible" }, 400, corsHeaders);
+    return jsonRes({ error: "Message not eligible" }, 400, req);
   }
 
   const { data: thread } = await service
@@ -83,7 +83,7 @@ Deno.serve(async (req: Request) => {
     .eq("id", msg.thread_id)
     .maybeSingle();
   if (!thread?.mtproto_session_user_id || !thread.mtproto_client_tg_user_id) {
-    return jsonResponse({ error: "Not a MTProto thread" }, 400, corsHeaders);
+    return jsonRes({ error: "Not a MTProto thread" }, 400, req);
   }
 
   // 2. Проверка членства юзера в воркспейсе (защита от чужих participant_id).
@@ -95,7 +95,7 @@ Deno.serve(async (req: Request) => {
     .eq("is_deleted", false)
     .maybeSingle();
   if (!participant || participant.id !== body.participant_id) {
-    return jsonResponse({ error: "Forbidden" }, 403, corsHeaders);
+    return jsonRes({ error: "Forbidden" }, 403, req);
   }
 
   // 3. Toggle-логика на стороне БД, как в RPC.
@@ -134,7 +134,7 @@ Deno.serve(async (req: Request) => {
     added = true;
   }
 
-  return jsonResponse({ added }, 200, corsHeaders);
+  return jsonRes({ added }, 200, req);
 });
 
 async function callMTProto(args: {
@@ -160,15 +160,4 @@ async function callMTProto(args: {
   } catch (err) {
     console.warn("[telegram-mtproto-react] service unreachable:", err);
   }
-}
-
-function jsonResponse(
-  body: unknown,
-  status: number,
-  corsHeaders: Record<string, string>,
-): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
 }
