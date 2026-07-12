@@ -1,109 +1,19 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
-import { ATTACHMENT_PLACEHOLDER } from '@/lib/messenger/attachmentPlaceholder'
+import { useState, useRef, useEffect } from 'react'
 import type { Editor } from '@tiptap/react'
-import type { ProjectMessage, MessageVisibility } from '@/services/api/messenger/messengerService'
-import type { MessengerAccent } from './MessageBubble'
 import { MinimalTiptapEditor } from './MinimalTiptapEditor'
 import { EditingBanner, ReplyBanner, TranslationBanner } from './MessageInputBanners'
 import { MessageAttachmentsRow } from './MessageAttachmentsRow'
 import { MessageInputToolbar } from './MessageInputToolbar'
-import {
-  MODE_VISIBILITY,
-  composerSendButtonClass,
-  type ComposerMode,
-} from './ComposerVisibilitySwitch'
-import { extractMentionIds } from './messengerMention'
-import type { TaskStatus } from '@/hooks/useStatuses'
-import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
+import { composerSendButtonClass } from './ComposerVisibilitySwitch'
 import { isHtmlContent, plainTextToHtml } from '@/utils/format/messengerHtml'
-import { isMobileViewport } from '@/lib/isMobile'
 import { useDraftMessage } from './hooks/useDraftMessage'
 import { useMessageFiles } from './hooks/useMessageFiles'
 import { useEditorResizer } from './hooks/useEditorResizer'
 import { useQuoteInsertion } from './hooks/useQuoteInsertion'
 import { useComposerTranslation } from './hooks/useComposerTranslation'
-
-type MessageInputProps = {
-  projectId: string
-  channel: string
-  workspaceId: string
-  threadId?: string
-  replyTo: ProjectMessage | null
-  onClearReply: () => void
-  onSend: (
-    content: string,
-    replyToId?: string | null,
-    files?: File[],
-    options?: {
-      originalContent?: string | null
-      originalLanguage?: string | null
-      visibility?: MessageVisibility
-      notifySubscribers?: boolean
-      mentions?: string[]
-    },
-  ) => void
-  isPending: boolean
-  onTyping?: () => void
-  accent?: MessengerAccent
-  editingMessage: ProjectMessage | null
-  onClearEdit: () => void
-  onEdit: (
-    messageId: string,
-    content: string,
-    draftFiles?: { keepAttachmentIds: string[]; newFiles: File[]; publish?: boolean },
-  ) => void
-  quoteText?: string | null
-  /** Счётчик, растущий на каждый setQuoteText. Передаётся в useQuoteInsertion,
-   *  чтобы повторное цитирование того же текста тоже триггерило вставку. */
-  quoteNonce?: number
-  onClearQuote?: () => void
-  onOpenDocPicker?: () => void
-  projectDocumentsCount?: number
-  addFilesRef?: React.MutableRefObject<((files: File[]) => void) | null>
-  /** Ref для вставки готового HTML в редактор (используется буфером пересылки). */
-  insertContentRef?: React.MutableRefObject<((html: string) => void) | null>
-  onDocumentDrop?: (documentId: string) => void
-  forwardedAttachments?: ForwardedAttachment[]
-  onRemoveForwardedAttachment?: (index: number) => void
-  onSaveDraft?: (
-    content: string,
-    files?: File[],
-    options?: { visibility?: MessageVisibility; notifySubscribers?: boolean },
-  ) => void
-  isSavingDraft?: boolean
-  onSchedule?: (
-    sendAt: Date,
-    content: string,
-    replyToId?: string | null,
-    files?: File[],
-    options?: { visibility?: MessageVisibility; notifySubscribers?: boolean },
-  ) => void
-  /** Если задан — отправка заблокирована (тултип на кнопке + Enter не шлёт).
-   *  Напр. email-черновик без темы/получателя. */
-  sendBlockedReason?: string | null
-  /** Режим видимости (Клиенту/Команде/Заметка/Только я) — поднят в MessengerTabContent. */
-  composerMode?: ComposerMode
-  /** Участники для @-упоминаний. */
-  mentionItems?: { id: string; label: string; avatarUrl?: string | null }[]
-  /**
-   * Pending-статус задачи (Planfix-style) — пикер поднят в MessengerTabContent,
-   * сюда передаётся для коммита статуса при отправке. undefined — не task-тред.
-   */
-  statusPending?: {
-    isTaskThread: boolean
-    taskStatuses: TaskStatus[]
-    currentStatusId: string | null
-    effectivePendingStatusId: string | null
-    handlePickStatus: (statusId: string | null) => void
-    updateStatusMutation: {
-      mutate: (
-        vars: { threadId: string; statusId: string },
-        opts?: { onSuccess?: () => void },
-      ) => void
-    }
-    clearPending: () => void
-  }
-}
+import { useComposerFocus } from './hooks/useComposerFocus'
+import { useComposerSubmit } from './hooks/useComposerSubmit'
+import type { MessageInputProps } from './MessageInput.types'
 
 export function MessageInput({
   projectId,
@@ -142,12 +52,6 @@ export function MessageInput({
   const [openQuickReplyPicker, setOpenQuickReplyPicker] = useState(false)
   const editorRef = useRef<Editor | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  // Отмечает, был ли редактор сфокусирован хотя бы раз в текущем треде.
-  // Нужно для useQuoteInsertion: если был — вставка в позицию курсора
-  // (Tiptap хранит последнюю selection), иначе — в конец документа.
-  // editor.isFocused в момент клика «Цитировать» всегда false, потому что
-  // выделение текста в баббле уводит DOM Selection из редактора.
-  const hasBeenFocusedRef = useRef(false)
   const { editorMaxHeight, handleResizerMouseDown } = useEditorResizer()
 
   const draftKey = threadId ? `msg_draft:${threadId}` : `msg_draft:${projectId}:${channel}`
@@ -186,71 +90,16 @@ export function MessageInput({
     setHasText,
   )
 
-  // Auto-focus editor when thread changes or component mounts (задержка — анимация панели).
-  // На мобиле НЕ фокусируем при открытии треда — иначе сразу всплывает экранная
-  // клавиатура и перекрывает ленту. Фокус по реальному действию (тап в поле,
-  // «Ответить», «Цитировать») работает как раньше.
-  useEffect(() => {
-    if (isMobileViewport()) return
-    if (editorRef.current) {
-      const timer = setTimeout(() => editorRef.current?.commands.focus('end'), 150)
-      return () => clearTimeout(timer)
-    }
-  }, [threadId, editor])
-
-  // Возвращаем фокус в поле после завершения отправки (на время isPending редактор disabled → фокус слетает).
-  const wasPendingRef = useRef(false)
-  useEffect(() => {
-    if (wasPendingRef.current && !isPending) {
-      editorRef.current?.commands.focus('end')
-    }
-    wasPendingRef.current = isPending
-  }, [isPending])
-
-  // Восстанавливаем неотправленный текст в редактор после сетевой ошибки.
-  useEffect(() => {
-    if (!threadId) return
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ threadId: string; content: string }>).detail
-      if (!detail || detail.threadId !== threadId) return
-      const ed = editorRef.current
-      if (!ed) return
-      ed.commands.setContent(detail.content)
-      setHasText(!!ed.getText().trim())
-      ed.commands.focus('end')
-    }
-    window.addEventListener('messenger:restore-draft', handler)
-    return () => window.removeEventListener('messenger:restore-draft', handler)
-  }, [threadId])
-
-  // Focus editor on reply.
-  // setTimeout(50) — клик по «Ответить» в Radix меню запускает возврат фокуса
-  // на trigger через свой setTimeout(0). RAF (16мс) на практике иногда
-  // проигрывает Radix-у. setTimeout(50) гарантирует, что наш focus идёт
-  // последним. editor в deps — на случай, когда replyTo выставился раньше,
-  // чем смонтировался редактор; эффект повторно сработает при появлении editor.
-  useEffect(() => {
-    if (!replyTo || !editor) return
-    const timer = setTimeout(() => editor.commands.focus('end'), 50)
-    return () => clearTimeout(timer)
-  }, [replyTo, editor])
-
-  // Отслеживаем onFocus редактора. Используется в useQuoteInsertion ниже.
-  useEffect(() => {
-    if (!editor) return
-    const handler = () => {
-      hasBeenFocusedRef.current = true
-    }
-    editor.on('focus', handler)
-    return () => {
-      editor.off('focus', handler)
-    }
-  }, [editor])
-
-  // Смена треда — сбрасываем флаг: в новом треде юзер ещё не работал.
-  useEffect(() => {
-    hasBeenFocusedRef.current = false
-  }, [threadId])
+  // Вся фокус-логика композера (автофокус, возврат после отправки/ответа,
+  // восстановление после сетевой ошибки, трекинг «был ли фокус в этом треде»).
+  const { hasBeenFocusedRef } = useComposerFocus({
+    editor,
+    editorRef,
+    threadId,
+    isPending,
+    replyTo,
+    setHasText,
+  })
 
   useQuoteInsertion(editor, quoteText, quoteNonce, hasBeenFocusedRef, onClearQuote)
 
@@ -279,7 +128,7 @@ export function MessageInput({
     return () => {
       if (insertContentRef) insertContentRef.current = null
     }
-  }, [editor, insertContentRef])
+  }, [editor, insertContentRef, hasBeenFocusedRef])
 
   // Load content for editing
   useEffect(() => {
@@ -296,200 +145,33 @@ export function MessageInput({
     }
   }, [editingMessage, loadExistingAttachments])
 
-  const handleSend = useCallback(() => {
-    const editor = editorRef.current
-    if (!editor) return
-
-    const textContent = editor.getText().trim()
-    const htmlContent = editor.getHTML()
-
-    if (editingMessage) {
-      if (!textContent || isPending) return
-      onEdit(
-        editingMessage.id,
-        htmlContent,
-        editingMessage.is_draft
-          ? {
-              keepAttachmentIds: existingAttachments.map((a) => a.id),
-              newFiles: files,
-              publish: true,
-            }
-          : undefined,
-      )
-      editor.commands.clearContent()
-      setHasText(false)
-      clearFiles()
-      skipDraftRestoreRef.current = true
-      onClearEdit()
-      return
-    }
-
-    if (isPending) return
-    // Email-черновик без темы/получателя — отправку не пускаем (кнопка тоже
-    // disabled, но Enter идёт мимо неё).
-    if (sendBlockedReason) return
-
-    const hasMessageContent = !!textContent || files.length > 0
-    const hasPendingStatus = !!(isTaskThread && threadId && effectivePendingStatusId)
-    if (!hasMessageContent && !hasPendingStatus) return
-
-    const sendMessage = () => {
-      // Перекладываем текст из draft в outbox: если отправка зависнет / упадёт /
-      // браузер закроется — текст не потеряется. useSendMessage очистит outbox
-      // при успехе или вернёт обратно в draft при ошибке.
-      if (textContent && threadId) {
-        try {
-          localStorage.setItem(`msg_outbox:${threadId}`, htmlContent)
-        } catch {
-          /* quota */
-        }
-      }
-      const vis = MODE_VISIBILITY[composerMode]
-      const ed = editorRef.current
-      const mentions = ed ? extractMentionIds(ed) : []
-      const options = {
-        ...(translation
-          ? {
-              originalContent: translation.originalContent,
-              originalLanguage: translation.sourceLanguage,
-            }
-          : {}),
-        visibility: vis.visibility,
-        notifySubscribers: vis.notifySubscribers,
-        mentions,
-      }
-      onSend(
-        textContent ? htmlContent : ATTACHMENT_PLACEHOLDER,
-        replyTo?.id,
-        files.length > 0 ? files : undefined,
-        options,
-      )
-      editor.commands.clearContent()
-      setHasText(false)
-      clearFiles()
-      clearDraft()
-      onClearReply()
-      setTranslation(null)
-      clearPersistedTranslation()
-    }
-
-    // Если в пикере выбран новый статус — сначала меняем его, потом (только если
-    // есть текст/файлы) отправляем сообщение. При пустом поле просто смена статуса.
-    if (hasPendingStatus && statusPending) {
-      statusPending.updateStatusMutation.mutate(
-        { threadId: threadId!, statusId: effectivePendingStatusId! },
-        {
-          onSuccess: () => {
-            statusPending.clearPending()
-            if (hasMessageContent) sendMessage()
-          },
-        },
-      )
-      return
-    }
-
-    sendMessage()
-  }, [
+  const { handleSend, handleSchedule, handleSaveDraft } = useComposerSubmit({
+    editorRef,
+    editingMessage,
+    isPending,
     files,
     existingAttachments,
-    isPending,
-    onSend,
-    replyTo,
-    onClearReply,
-    editingMessage,
-    onEdit,
-    onClearEdit,
-    clearDraft,
-    clearFiles,
-    skipDraftRestoreRef,
-    isTaskThread,
     threadId,
+    replyTo,
+    composerMode,
+    sendBlockedReason,
+    isTaskThread,
     effectivePendingStatusId,
     statusPending,
     translation,
+    onSend,
+    onEdit,
+    onClearReply,
+    onClearEdit,
+    onSaveDraft,
+    onSchedule,
+    setHasText,
     setTranslation,
     clearPersistedTranslation,
-    composerMode,
-    sendBlockedReason,
-  ])
-
-  const handleSchedule = useCallback(
-    (sendAt: Date) => {
-      const editor = editorRef.current
-      if (!editor || !onSchedule) return
-      // Отложенная отправка email тоже требует темы/получателя.
-      if (sendBlockedReason) return
-      const textContent = editor.getText().trim()
-      const htmlContent = editor.getHTML()
-      if (!textContent && files.length === 0) return
-
-      // Видимость обязана уехать в черновик, иначе внутреннее сообщение
-      // («Команде»/«Заметка»/«Только я») созреет с DEFAULT 'client' и cron
-      // отправит его клиенту. Зеркалит handleSend. (Фаза 2.1 аудита.)
-      const vis = MODE_VISIBILITY[composerMode]
-      onSchedule(
-        sendAt,
-        textContent ? htmlContent : ATTACHMENT_PLACEHOLDER,
-        replyTo?.id ?? null,
-        files.length > 0 ? files : undefined,
-        { visibility: vis.visibility, notifySubscribers: vis.notifySubscribers },
-      )
-
-      editor.commands.clearContent()
-      setHasText(false)
-      clearFiles()
-      clearDraft()
-      onClearReply()
-    },
-    [onSchedule, files, replyTo, clearFiles, clearDraft, onClearReply, sendBlockedReason, composerMode],
-  )
-
-  const handleSaveDraft = useCallback(() => {
-    const editor = editorRef.current
-    if (!editor) return
-
-    const textContent = editor.getText().trim()
-    const htmlContent = editor.getHTML()
-
-    if (!textContent && files.length === 0) return
-
-    if (editingMessage?.is_draft) {
-      onEdit(editingMessage.id, htmlContent, {
-        keepAttachmentIds: existingAttachments.map((a) => a.id),
-        newFiles: files,
-      })
-    } else if (onSaveDraft) {
-      // Видимость в черновик — иначе при публикации внутренний черновик утечёт
-      // клиенту (publishDraftMessage гейтит по message.visibility из БД).
-      const vis = MODE_VISIBILITY[composerMode]
-      onSaveDraft(textContent ? htmlContent : '', files.length > 0 ? files : undefined, {
-        visibility: vis.visibility,
-        notifySubscribers: vis.notifySubscribers,
-      })
-    } else {
-      return
-    }
-
-    editor.commands.clearContent()
-    setHasText(false)
-    clearFiles()
-    clearDraft()
-    if (editingMessage) {
-      skipDraftRestoreRef.current = true
-      onClearEdit()
-    }
-  }, [
-    files,
-    existingAttachments,
-    onSaveDraft,
-    clearDraft,
     clearFiles,
-    editingMessage,
-    onEdit,
-    onClearEdit,
+    clearDraft,
     skipDraftRestoreRef,
-    composerMode,
-  ])
+  })
 
   const totalFiles = files.length + existingAttachments.length + forwardedAttachments.length
   const hasAnyFiles = totalFiles > 0

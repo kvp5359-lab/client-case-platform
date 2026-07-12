@@ -1,113 +1,22 @@
 import { memo } from 'react'
 import Image from 'next/image'
-import { MessageSquare, Send, Mail, EyeOff, Check, CheckCheck, Clock } from 'lucide-react'
+import { EyeOff, CheckCheck, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { stripHtml, stripHtmlIgnoreQuotes } from '@/utils/format/messengerHtml'
-import type { InboxThreadEntry, InboxChannelType } from '@/services/api/inboxService'
+import { stripHtml } from '@/utils/format/messengerHtml'
+import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { DeliveryStatus } from './DeliveryIndicator'
 import { getBadgeDisplay, formatBadgeCount } from '@/utils/inboxUnread'
-import { formatShortDate } from '@/utils/format/dateFormat'
-import { safeCssColor } from '@/utils/isValidCssColor'
 import { usePrefetchThreadMessages } from '@/hooks/messenger/usePrefetchThreadMessages'
-import { THREAD_ICONS } from './threadConstants'
-import { acc, ACCENT_SLUGS } from '@/lib/accentPalette'
-
-const STATUS_PREFIX = 'Статус: '
-
-function formatTime(isoString: string | null): string {
-  if (!isoString) return ''
-  const date = new Date(isoString)
-  const now = new Date()
-  const isToday = date.toDateString() === now.toDateString()
-  if (isToday) {
-    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-  }
-  const yesterday = new Date(now)
-  yesterday.setDate(yesterday.getDate() - 1)
-  if (date.toDateString() === yesterday.toDateString()) {
-    return 'вчера'
-  }
-  return formatShortDate(isoString)
-}
-
-function truncateText(text: string | null, maxLen = 50): string {
-  if (!text) return ''
-  return text.length > maxLen ? text.slice(0, maxLen) + '…' : text
-}
-
-/**
- * Telegram-бот сохраняет в `content` эмодзи-плейсхолдеры («📎», «🖼», «🎤»…)
- * для сообщений без текста но с вложением. В превью такое имя файла полезнее
- * самой эмодзи: `📎` превращается в `Brief_Bogdanov.docx`.
- */
-function isAttachmentPlaceholderText(text: string): boolean {
-  const trimmed = text.trim()
-  if (trimmed.length === 0) return true
-  // 1–2 юникод-code-unit'а, не содержащие ни букв, ни цифр, ни типичной пунктуации
-  // = эмодзи-плейсхолдер. Нормальные подписи длиннее или содержат буквы.
-  if (trimmed.length > 4) return false
-  return !/[\p{L}\p{N}]/u.test(trimmed)
-}
-
-/**
- * Превью медиа-вложения для inbox-строки. Используется когда у последнего
- * сообщения нет осмысленного текста (пустой / плейсхолдер).
- *
- * `audio/ogg` (Telegram/WA voice) → отдельно «Голосовое сообщение», иначе
- * группируем по верхнему уровню mime. Если mime неизвестен — fallback на
- * имя файла, иначе нейтральное «Вложение».
- */
-function getMediaPreview(
-  mime: string | null,
-  fileName: string | null,
-): { emoji: string; label: string } {
-  if (mime === 'audio/ogg') return { emoji: '🎤', label: 'Голосовое сообщение' }
-  if (mime?.startsWith('audio/')) return { emoji: '🎵', label: 'Аудио' }
-  if (mime?.startsWith('image/')) return { emoji: '🖼', label: 'Изображение' }
-  if (mime?.startsWith('video/')) return { emoji: '🎬', label: 'Видео' }
-  if (fileName) return { emoji: '📎', label: fileName }
-  return { emoji: '📎', label: 'Вложение' }
-}
-
-/** Цвета фона и текста иконки по accent_color чата (из настраиваемой палитры) */
-const accentStyles: Record<string, { bg: string; text: string; badge: string; ring: string }> =
-  Object.fromEntries(
-    ACCENT_SLUGS.map((s) => [
-      s,
-      { bg: acc.bgLight(s), text: acc.textMain(s), badge: acc.bgMain(s), ring: acc.ringMain(s) },
-    ]),
-  )
-
-const defaultAccent = accentStyles.blue
-
-/**
- * Галочка статуса доставки последнего ИСХОДЯЩЕГО сообщения в превью списка.
- * Как в самих сообщениях: «отправлено» — одна серая, «прочитано» — две синие.
- * `failed` в превью не рисуем (ошибка видна в треде + тосте). Цвета — под белый фон.
- */
-function DeliveryTick({ status }: { status: DeliveryStatus }) {
-  if (status === 'pending') return <Clock className="h-3 w-3 shrink-0 text-gray-400" aria-label="Отправляется" />
-  if (status === 'read') return <CheckCheck className="h-3 w-3 shrink-0 text-blue-500" aria-label="Прочитано" />
-  if (status === 'sent') return <Check className="h-3 w-3 shrink-0 text-gray-400" aria-label="Отправлено" />
-  return null
-}
-
-/** Иконка типа канала (маленькая, в углу аватара) */
-const channelIcons: Record<InboxChannelType, typeof Send> = {
-  telegram: Send,
-  email: Mail,
-  web: MessageSquare,
-}
-
-/** Полная мапа thread_icon → компонент (строится один раз при загрузке модуля,
- *  не в рендере). Для канальных тредов даёт самолётик/конверт/whatsapp, для
- *  задач/чатов — их собственную иконку. */
-const iconByThreadIcon: Record<string, typeof Send> = {
-  ...Object.fromEntries(THREAD_ICONS.map((i) => [i.value, i.icon as typeof Send])),
-  // MTProto-треды иногда создаются с icon='send' — его нет в реестре
-  // THREAD_ICONS, без алиаса значок падал в fallback (квадрат вместо самолётика).
-  send: Send,
-}
+import {
+  accentStyles,
+  defaultAccent,
+  formatTime,
+  DeliveryTick,
+  iconByThreadIcon,
+  channelIcons,
+} from './inboxChatItem.helpers'
+import { resolveInboxPreview } from './resolveInboxPreview'
+import { InboxItemPreview } from './InboxItemPreview'
 
 type InboxChatItemProps = {
   chat: InboxThreadEntry
@@ -127,11 +36,6 @@ type InboxChatItemProps = {
   mutedBadge?: boolean
 }
 
-/** Стиль имени отправителя в превью (нежирный, синий). */
-// Только вес — цвет имени отправителя берём из акцента треда (accent.text),
-// чтобы совпадал с цветом самого треда (иконка/бейдж).
-const SENDER_NAME_CLASS = 'font-normal'
-
 export const InboxChatItem = memo(function InboxChatItem({
   chat,
   isSelected,
@@ -145,17 +49,6 @@ export const InboxChatItem = memo(function InboxChatItem({
 }: InboxChatItemProps) {
   const prefetchMessages = usePrefetchThreadMessages()
 
-  /** Имя автора для превью: «Я», если это текущий пользователь; для email-адреса
-   *  (содержит «@») — локальная часть до «@»; иначе первое слово имени
-   *  (Telegram-style — без фамилии). */
-  const displaySenderName = (name: string | null): string | null => {
-    if (!name) return null
-    if (selfSenderName && name === selfSenderName) return 'Я'
-    const trimmed = name.trim()
-    if (trimmed.includes('@')) return trimmed.split('@')[0] || trimmed
-    return trimmed.split(/\s+/)[0] || trimmed
-  }
-
   // Черновик из localStorage
   const draftHtml = localStorage.getItem(`msg_draft:${chat.project_id}:${chat.thread_id}`)
   const draftText = draftHtml ? stripHtml(draftHtml).trim() || null : null
@@ -163,87 +56,20 @@ export const InboxChatItem = memo(function InboxChatItem({
   const badge = getBadgeDisplay(chat)
   const hasUnreadIndicator = badge.type !== 'none'
 
-  // Determine latest activity: reaction (unread only) > audit event > message.
-  // A read reaction stays a "badge on the message", it must not hijack the preview.
-  const reactionIsNewer =
-    chat.has_unread_reaction &&
-    !!chat.last_reaction_at &&
-    (!chat.last_message_at || chat.last_reaction_at > chat.last_message_at) &&
-    (!chat.last_event_at || chat.last_reaction_at > chat.last_event_at)
-
-  const eventIsNewer =
-    !reactionIsNewer &&
-    !!chat.last_event_at &&
-    (!chat.last_message_at || chat.last_event_at > chat.last_message_at)
+  // Какое действие новее (реакция > событие > сообщение), время, аватар/имя слота.
+  const { reactionIsNewer, eventIsNewer, displayTime, avatarUrl, avatarFallbackName } =
+    resolveInboxPreview(chat)
 
   // Галочка доставки — только когда превью показывает само сообщение (не черновик,
   // не реакцию, не событие) и оно исходящее (deliveryStatus задан сервером).
   const showDelivery = !!deliveryStatus && !draftText && !reactionIsNewer && !eventIsNewer
 
-  const displayTime = reactionIsNewer
-    ? chat.last_reaction_at
-    : eventIsNewer
-      ? chat.last_event_at
-      : chat.last_message_at
-
-  // Avatar + name shown in the left slot: normally the message author, but for
-  // a newer unread reaction we show the person who reacted instead — otherwise
-  // the row reads as "Alice reacted to her own message", which is confusing.
-  // Для email-тредов без counterpart (например, исходящее без ответа) НЕ
-  // показываем аватар отправителя — иначе в инбоксе у получателя стоит
-  // аватарка самого юзера. Берём инициал по email_contact.
-  const hasCounterpart = !!chat.counterpart_name
-  const isEmailWithoutCounterpart =
-    !hasCounterpart && chat.channel_type === 'email' && !!chat.email_contact
-  // Многоучастниковый тред (задача внутри проекта или TG-группа): единого
-  // «собеседника» нет, поэтому аватар = автор показанного действия. В диалогах
-  // 1:1 оставляем собеседника (иначе в исходящем висела бы своя же аватарка).
-  const isMultiParticipant = chat.thread_type === 'task' || chat.channel_type === 'telegram'
-  // Имя автора события зашито в начало last_event_text («Имя · …»).
-  const eventActorName =
-    eventIsNewer && chat.last_event_text?.includes(' · ')
-      ? chat.last_event_text.split(' · ')[0]
-      : null
-
-  let avatarUrl: string | null
-  let avatarFallbackName: string | null
-  if (reactionIsNewer) {
-    avatarUrl = chat.last_reaction_sender_avatar_url
-    avatarFallbackName = chat.last_reaction_sender_name
-  } else if (isMultiParticipant) {
-    // событие → автор события; иначе → автор последнего сообщения
-    avatarUrl = eventIsNewer ? chat.last_event_sender_avatar_url : chat.last_sender_avatar_url
-    avatarFallbackName = eventIsNewer
-      ? eventActorName ?? chat.last_sender_name
-      : chat.last_sender_name
-  } else if (hasCounterpart) {
-    avatarUrl = chat.counterpart_avatar_url
-    avatarFallbackName = chat.counterpart_name
-  } else if (isEmailWithoutCounterpart) {
-    avatarUrl = null
-    avatarFallbackName = chat.email_contact
-  } else {
-    avatarUrl = chat.last_sender_avatar_url
-    avatarFallbackName = chat.last_sender_name
-  }
-
   const accent = accentStyles[chat.thread_accent_color] ?? defaultAccent
-  // Заглушённый тред — бейдж непрочитанного светло-серый (архив Telegram),
-  // а не в акцент треда.
+  // Заглушённый тред — бейдж непрочитанного светло-серый (архив Telegram).
   const badgeBg = mutedBadge ? 'bg-gray-400' : accent.badge
-  // Заглушённые — серый кружок с БЕЛЫМ текстом (как mute-бейдж в Telegram).
   const badgeText = 'text-white'
-  // Значок канала на аватаре: backend схлопывает WhatsApp/Business/MTProto/group
-  // в channel_type='telegram', но thread_icon различает прямой канал
-  // (whatsapp/telegram/mail/send). Берём иконку по thread_icon, чтобы WhatsApp,
-  // Telegram и Email были визуально разными; иначе fallback по channel_type.
-  // Иконка значка: по thread_icon (канал ИЛИ иконка задачи/чата), иначе по
-  // каналу, иначе дефолт. Цвет — фирменный для каналов, серый для прочих.
-  const ChannelIcon =
-    iconByThreadIcon[chat.thread_icon] ?? channelIcons[chat.channel_type] ?? MessageSquare
-  // Цвет значка канала = акцент треда (как кольцо аватара/бейдж), единообразно
-  // для всех типов. Раньше был фирменный цвет приложения (email-красный и т.п.),
-  // что рассинхронивалось с акцентом треда (фиолетовый тред + красный конверт).
+  // Значок канала на аватаре (по thread_icon, иначе по каналу); цвет = акцент треда.
+  const ChannelIcon = iconByThreadIcon[chat.thread_icon] ?? channelIcons[chat.channel_type] ?? MessageSquare
   const channelColor = accent.text
 
   return (
@@ -281,7 +107,7 @@ export const InboxChatItem = memo(function InboxChatItem({
             {(avatarFallbackName ?? chat.thread_name).charAt(0).toUpperCase()}
           </div>
         )}
-        {/* Значок в углу аватара: канал (в фирменном цвете) или иконка треда */}
+        {/* Значок в углу аватара: канал (в цвет акцента) или иконка треда */}
         <div className="absolute -top-0.5 -right-1.5 w-5 h-5 rounded-full bg-white border border-gray-200 flex items-center justify-center">
           <ChannelIcon className={cn('h-3 w-3', channelColor)} />
         </div>
@@ -289,23 +115,10 @@ export const InboxChatItem = memo(function InboxChatItem({
 
       {/* Контент */}
       <div className="flex-1 min-w-0">
-        {/* Строка 1: тред · проект + время.
-            Тред первым (он есть всегда), проект — после через «·» (может не быть).
-            Обрезка: тред получает приоритет и остаток ширины, проект — максимум
-            50%. Так при длинном треде проект не исчезает, а при двух длинных
-            делят строку ~50/50. */}
+        {/* Строка 1: тред · проект + время. Тред первым (он есть всегда), проект —
+            после через «·» (может не быть). Тред ужимается (min-w-0), проект —
+            плашка shrink-0 max-w-[50%] truncate. */}
         <div className="flex items-center justify-between mb-0.5 gap-2">
-          {/* Тред + проект-плашка. Flex. Приоритет отдан проекту: плашка
-              `shrink-0` — не ужимается ниже своего контента, но ограничена
-              `max-w-[50%]` + `truncate` (если проект длиннее половины — режется
-              многоточием, не длиннее). Ужимается/обрезается ТРЕД (`min-w-0`,
-              flex-shrink). Итог: короткий проект виден целиком, длинный тред
-              усыхает; оба длинных — проект до 50%, тред остаток. (grid +
-              fit-content(50%) не годился: у плашки `truncate`=nowrap → min-content
-              = вся строка, колонка не ужималась ниже неё → проект вылезал за край.)
-              `flex-1` обязателен: без него span content-sized, и `max-w-[50%]`
-              плашки считался бы от «тред+проект», а не от доступной ширины ряда —
-              короткий проект резался бы даже при свободном месте справа. */}
           <span className="flex flex-1 items-center gap-1 min-w-0 text-sm">
             <span
               className={cn(
@@ -321,112 +134,19 @@ export const InboxChatItem = memo(function InboxChatItem({
               </span>
             )}
           </span>
-          <span className="text-[11px] text-gray-400 shrink-0">
-            {formatTime(displayTime)}
-          </span>
+          <span className="text-[11px] text-gray-400 shrink-0">{formatTime(displayTime)}</span>
         </div>
-        {/* Строка 2: проект · последнее сообщение + бейдж */}
+        {/* Строка 2: превью последнего действия + бейдж */}
         <div className="flex items-center justify-between">
           <p className="text-xs text-gray-400 truncate">
-            {draftText ? (
-              <>
-                <span className="text-red-500 font-medium">Черновик: </span>
-                <span className="text-gray-500">{truncateText(draftText, 40)}</span>
-              </>
-            ) : reactionIsNewer && chat.last_reaction_emoji ? (
-              <span className="italic text-gray-500">
-                {chat.last_reaction_sender_name && (
-                  <span className={cn('not-italic', SENDER_NAME_CLASS, accent.text)}>
-                    {displaySenderName(chat.last_reaction_sender_name)}
-                  </span>
-                )}
-                {chat.last_reaction_sender_name ? ' отреагировал(а) ' : 'Реакция '}
-                <span className="not-italic">{chat.last_reaction_emoji}</span>
-                {chat.last_reaction_message_preview && (
-                  <>
-                    {' на: '}
-                    {truncateText(stripHtmlIgnoreQuotes(chat.last_reaction_message_preview), 30)}
-                  </>
-                )}
-              </span>
-            ) : eventIsNewer && chat.last_event_text ? (
-              (() => {
-                // Текст события может начинаться с автора: «Имя · Статус: …».
-                // Подсвечиваем имя статуса (после «Статус: »), всё до него — серым.
-                const evt = chat.last_event_text
-                const idx = evt.indexOf(STATUS_PREFIX)
-                if (chat.last_event_status_color && idx >= 0) {
-                  return (
-                    <span className="italic">
-                      <span className="text-gray-500">
-                        {evt.slice(0, idx + STATUS_PREFIX.length)}
-                      </span>
-                      <span style={{ color: safeCssColor(chat.last_event_status_color) }}>
-                        {evt.slice(idx + STATUS_PREFIX.length)}
-                      </span>
-                    </span>
-                  )
-                }
-                return <span className="text-amber-600 italic">{evt}</span>
-              })()
-            ) : (() => {
-              // Текстовое превью: есть осмысленный текст (не плейсхолдер, не пустота).
-              const strippedText = chat.last_message_text
-                ? stripHtmlIgnoreQuotes(chat.last_message_text)
-                : ''
-              const hasRealText = strippedText.length > 0 && !isAttachmentPlaceholderText(strippedText)
-              const hasMediaSignal =
-                chat.last_message_attachment_name ||
-                chat.last_message_attachment_mime ||
-                chat.last_message_attachment_count > 0
-
-              if (hasRealText) {
-                return (
-                  <>
-                    {chat.last_sender_name && (
-                      <span className={cn(SENDER_NAME_CLASS, accent.text)}>
-                        {displaySenderName(chat.last_sender_name)}:{' '}
-                      </span>
-                    )}
-                    {truncateText(strippedText)}
-                  </>
-                )
-              }
-
-              if (hasMediaSignal) {
-                // Если для media известен mime — даём осмысленное «Голосовое /
-                // Изображение / Видео». Иначе — имя файла под скрепкой.
-                const media = getMediaPreview(
-                  chat.last_message_attachment_mime ?? null,
-                  chat.last_message_attachment_name,
-                )
-                // ВАЖНО: рендерим эмодзи+подпись ОБЫЧНЫМ инлайн-текстом, без
-                // inline-flex. Контейнер строки — `truncate` (text-overflow:
-                // ellipsis), а inline-flex = атомарный строчный блок: его нельзя
-                // обрезать многоточием, при переполнении он отсекается целиком и
-                // ellipsis встаёт сразу после имени отправителя → «Имя: …», файл
-                // не виден. Инлайн-текст обрезается корректно.
-                return (
-                  <>
-                    {chat.last_sender_name && (
-                      <span className={cn(SENDER_NAME_CLASS, accent.text)}>
-                        {displaySenderName(chat.last_sender_name)}:{' '}
-                      </span>
-                    )}
-                    <span aria-hidden>{media.emoji}</span>{' '}
-                    {truncateText(media.label, 36)}
-                    {chat.last_message_attachment_count > 1 && (
-                      <span className="text-gray-400">
-                        {' +'}
-                        {chat.last_message_attachment_count - 1}
-                      </span>
-                    )}
-                  </>
-                )
-              }
-
-              return <span className="text-gray-400">Нет сообщений</span>
-            })()}
+            <InboxItemPreview
+              chat={chat}
+              draftText={draftText}
+              accentText={accent.text}
+              selfSenderName={selfSenderName}
+              reactionIsNewer={reactionIsNewer}
+              eventIsNewer={eventIsNewer}
+            />
           </p>
           {/* Индикатор непрочитанности — единая логика из getBadgeDisplay */}
           {badge.type !== 'none' ? (

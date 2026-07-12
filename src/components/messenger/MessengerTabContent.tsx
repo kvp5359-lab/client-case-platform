@@ -5,7 +5,7 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import type { MessageChannel, MessageVisibility, ProjectMessage } from '@/services/api/messenger/messengerService'
+import type { MessageChannel, ProjectMessage } from '@/services/api/messenger/messengerService'
 import { messengerKeys } from '@/hooks/queryKeys'
 import { MessageList } from './MessageList'
 import type { MessengerAccent } from './MessageBubble'
@@ -43,14 +43,14 @@ import {
   useBackfillTelegramHistory,
   useIsMtprotoThread,
 } from '@/hooks/messenger/useBackfillTelegramHistory'
-import { useScheduleMessage } from '@/hooks/messenger/useScheduleMessage'
+import { useComposerMode } from './hooks/useComposerMode'
+import { useThreadScheduling } from './hooks/useThreadScheduling'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import { useContactCardStore } from '@/store/contactCardStore'
 import type { ForwardBufferItem } from '@/store/sidePanelStore'
 import { buildForwardContent, toForwardedAttachments, type ForwardMode } from '@/utils/messenger/forwardContent'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'sonner'
-import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 
 type MessengerTabContentProps = {
   projectId?: string
@@ -65,18 +65,6 @@ type MessengerTabContentProps = {
   toolbarPortalContainer?: HTMLDivElement | null
   /** Контейнер для индикатора канала на мобиле (выдвижная панель шапки). */
   channelPortalContainer?: HTMLDivElement | null
-}
-
-const COMPOSER_MODES: ComposerMode[] = ['client', 'team', 'note', 'self']
-
-function readStoredComposerMode(key: string | null): ComposerMode | null {
-  if (!key || typeof window === 'undefined') return null
-  try {
-    const v = window.localStorage.getItem(key)
-    return v && (COMPOSER_MODES as string[]).includes(v) ? (v as ComposerMode) : null
-  } catch {
-    return null
-  }
 }
 
 export function MessengerTabContent({
@@ -94,25 +82,8 @@ export function MessengerTabContent({
   const [searchOverlayOpen, setSearchOverlayOpen] = useState(false)
   const [jumpToMessageId, setJumpToMessageId] = useState<string | null>(null)
   const { user } = useAuth()
-  // Режим видимости композера (Клиенту/Команде/Заметка/Только я) — сохраняется
-  // per-user-per-thread в localStorage; в памяти держим выбор текущей сессии.
-  const modeStorageKey = user?.id ? `cc:composer-mode:${user.id}:${threadId}` : null
-  const [modeByThread, setModeByThread] = useState<Record<string, ComposerMode>>({})
-  const composerMode: ComposerMode =
-    modeByThread[threadId] ?? readStoredComposerMode(modeStorageKey) ?? 'client'
-  const setComposerMode = useCallback(
-    (m: ComposerMode) => {
-      setModeByThread((prev) => ({ ...prev, [threadId]: m }))
-      if (modeStorageKey) {
-        try {
-          localStorage.setItem(modeStorageKey, m)
-        } catch {
-          /* quota */
-        }
-      }
-    },
-    [threadId, modeStorageKey],
-  )
+  // Режим видимости композера (Клиенту/Команде/Заметка/Только я) с persistence.
+  const { composerMode, setComposerMode } = useComposerMode(threadId, user?.id)
   const { data: allThreads = [] } = useProjectThreads(projectId)
   const openContactCard = useContactCardStore((s) => s.open)
   const forwardBuffer = useSidePanelStore((s) => s.forwardBuffer)
@@ -251,84 +222,16 @@ export function MessengerTabContent({
     editingMessage: state.editingMessage,
   })
 
-  const scheduling = useScheduleMessage({
-    projectId,
-    workspaceId,
-    channel,
-    threadId,
-  })
-
-  const handleSchedule = useCallback(
-    async (
-      sendAt: Date,
-      content: string,
-      replyToId?: string | null,
-      files?: File[],
-      options?: { visibility?: MessageVisibility; notifySubscribers?: boolean },
-    ) => {
-      if (!state.currentParticipant) return
-      try {
-        await scheduling.schedule({
-          content,
-          sendAt,
-          attachments: files,
-          replyToId: replyToId ?? null,
-          senderParticipantId: state.currentParticipant.participantId,
-          senderName: state.currentParticipant.name,
-          senderRole: state.currentParticipant.role,
-          visibility: options?.visibility,
-          notifySubscribers: options?.notifySubscribers,
-        })
-        state.setReplyTo(null)
-        state.setSendTrigger((prev) => prev + 1)
-        toast.success(
-          `Запланировано на ${sendAt.toLocaleString('ru-RU', {
-            day: '2-digit',
-            month: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-          })}`,
-        )
-      } catch (err) {
-        toast.error(getUserFacingErrorMessage(err, 'Не удалось запланировать'))
-      }
-    },
-    [scheduling, state],
-  )
-
-  const handleCancelScheduled = useCallback(
-    async (messageId: string) => {
-      try {
-        await scheduling.cancel(messageId)
-      } catch {
-        toast.error('Не удалось отменить')
-      }
-    },
-    [scheduling],
-  )
-
-  const handleSendScheduledNow = useCallback(
-    async (messageId: string) => {
-      try {
-        await scheduling.sendNow(messageId)
-        toast.success('Отправлено')
-      } catch (err) {
-        toast.error(getUserFacingErrorMessage(err, 'Не удалось отправить'))
-      }
-    },
-    [scheduling],
-  )
-
-  const handleReschedule = useCallback(
-    async (messageId: string, sendAt: Date) => {
-      try {
-        await scheduling.reschedule({ messageId, sendAt })
-      } catch (err) {
-        toast.error(getUserFacingErrorMessage(err, 'Не удалось перепланировать'))
-      }
-    },
-    [scheduling],
-  )
+  const { handleSchedule, handleCancelScheduled, handleSendScheduledNow, handleReschedule } =
+    useThreadScheduling({
+      projectId,
+      workspaceId,
+      channel,
+      threadId,
+      currentParticipant: state.currentParticipant ?? null,
+      setReplyTo: state.setReplyTo,
+      setSendTrigger: state.setSendTrigger,
+    })
 
   const handleReact = useCallback(
     (msgId: string, emoji: string) => state.toggleReaction.mutate({ messageId: msgId, emoji }),
