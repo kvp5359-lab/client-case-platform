@@ -241,9 +241,20 @@ async function handleEdit(
   // реально поменялся. Пустой msg.message у медиа-сообщений = caption нет,
   // оригинал в БД ("📎" или текст пользователя) трогать нельзя.
   if (!msg.message) return
+  // Скоуп по сессии сотрудника (как handleDelete/processReactions): без него
+  // при одном клиенте у двух сотрудников с совпавшим telegram_message_id
+  // правка ушла бы не в тот тред / потерялась (maybeSingle на 2 строки).
+  const { data: scopeThreads } = await supabase
+    .from("project_threads")
+    .select("id")
+    .eq("mtproto_session_user_id", ctx.user_id)
+    .eq("is_deleted", false)
+  const scopeThreadIds = (scopeThreads ?? []).map((t) => t.id as string)
+  if (scopeThreadIds.length === 0) return
   const { data: existing } = await supabase
     .from("project_messages")
     .select("id, content")
+    .in("thread_id", scopeThreadIds)
     .eq("telegram_chat_id", clientTgUserId)
     .contains("telegram_message_ids", [telegramMessageId])
     .maybeSingle()

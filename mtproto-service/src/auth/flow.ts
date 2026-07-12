@@ -49,18 +49,24 @@ export async function sendCode(args: {
   const client = await buildClient(stringSession)
   await client.connect()
 
-  const { phoneCodeHash } = await client.sendCode(
-    {
-      apiId: config.TELEGRAM_API_ID,
-      apiHash: config.TELEGRAM_API_HASH,
-    },
-    args.phone,
-  )
-
-  // Сохраняем промежуточное состояние и закрываем коннект — на следующем
-  // шаге создадим новый клиент с этой же session string.
-  const pendingSessionStr = client.session.save() as unknown as string
-  await client.disconnect()
+  // try/finally: если sendCode бросит (неверный номер, FLOOD, сеть) — коннект
+  // gramjs всё равно закрывается, иначе он «повисал» бы навсегда (утечка).
+  let phoneCodeHash: string
+  let pendingSessionStr: string
+  try {
+    ;({ phoneCodeHash } = await client.sendCode(
+      {
+        apiId: config.TELEGRAM_API_ID,
+        apiHash: config.TELEGRAM_API_HASH,
+      },
+      args.phone,
+    ))
+    pendingSessionStr = client.session.save() as unknown as string
+  } finally {
+    // Коннект закрываем в любом случае — на следующем шаге создаётся новый
+    // клиент с сохранённой session string.
+    await client.disconnect()
+  }
 
   // Подменяем (или создаём) auth state — один пользователь = одна попытка
   // логина в каждый момент.
@@ -173,7 +179,14 @@ async function finalizeAuth(
   client: TelegramClient,
   workspaceId: string,
 ): Promise<SignInResult> {
-  const me = await client.getMe()
+  let me: unknown
+  try {
+    me = await client.getMe()
+  } catch (e) {
+    // getMe упал (сеть/сессия) — закрываем коннект, иначе повиснет (утечка).
+    await client.disconnect()
+    throw e
+  }
   // gramjs возвращает Api.User; собираем нужные поля.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const m = me as any
