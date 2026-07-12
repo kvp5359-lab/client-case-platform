@@ -12,6 +12,7 @@ import { MessageSquare, Users, BellOff, Lock } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MessengerAccent } from './MessageBubble'
+import type { MessageVisibility } from '@/services/api/messenger/messengerService'
 import { acc, ACCENT_SLUGS } from '@/lib/accentPalette'
 import { sendButtonStyles } from './MessageInputToolbar'
 import {
@@ -69,7 +70,7 @@ export type NotifyRecipients = {
 /** Режим → что писать в сообщение (visibility + тихо/громко). */
 export const MODE_VISIBILITY: Record<
   ComposerMode,
-  { visibility: 'client' | 'team' | 'self'; notifySubscribers: boolean }
+  { visibility: MessageVisibility; notifySubscribers: boolean }
 > = {
   client: { visibility: 'client', notifySubscribers: true },
   team: { visibility: 'team', notifySubscribers: true },

@@ -19,6 +19,7 @@ import {
   saveDraftMessage,
   type ProjectMessage,
   type MessageChannel,
+  type MessageVisibility,
 } from '@/services/api/messenger/messengerService'
 import { messengerKeys, inboxKeys } from '@/hooks/queryKeys/messenger'
 
@@ -32,7 +33,7 @@ type ScheduleMessageParams = {
   senderParticipantId: string
   senderName: string
   senderRole: string | null
-  visibility?: 'client' | 'team' | 'self'
+  visibility?: MessageVisibility
   notifySubscribers?: boolean
 }
 

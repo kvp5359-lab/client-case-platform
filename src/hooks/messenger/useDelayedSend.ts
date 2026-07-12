@@ -16,6 +16,7 @@ import {
   markAsRead,
   type ProjectMessage,
   type MessageChannel,
+  type MessageVisibility,
 } from '@/services/api/messenger/messengerService'
 import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
 import { supabase } from '@/lib/supabase'
@@ -68,7 +69,7 @@ export function useDelayedSend(
       senderName: string
       senderRole: string | null
       attachments?: File[]
-      visibility?: 'client' | 'team' | 'self'
+      visibility?: MessageVisibility
       notifySubscribers?: boolean
     }): Promise<boolean> => {
       if (sendDelay <= 0) return false

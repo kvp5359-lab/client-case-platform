@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { Editor } from '@tiptap/react'
-import type { ProjectMessage } from '@/services/api/messenger/messengerService'
+import type { ProjectMessage, MessageVisibility } from '@/services/api/messenger/messengerService'
 import type { MessengerAccent } from './MessageBubble'
 import { MinimalTiptapEditor } from './MinimalTiptapEditor'
 import { EditingBanner, ReplyBanner, TranslationBanner } from './MessageInputBanners'
@@ -35,7 +35,7 @@ type MessageInputProps = {
     options?: {
       originalContent?: string | null
       originalLanguage?: string | null
-      visibility?: 'client' | 'team' | 'self'
+      visibility?: MessageVisibility
       notifySubscribers?: boolean
       mentions?: string[]
     },
@@ -66,7 +66,7 @@ type MessageInputProps = {
   onSaveDraft?: (
     content: string,
     files?: File[],
-    options?: { visibility?: 'client' | 'team' | 'self'; notifySubscribers?: boolean },
+    options?: { visibility?: MessageVisibility; notifySubscribers?: boolean },
   ) => void
   isSavingDraft?: boolean
   onSchedule?: (
@@ -74,7 +74,7 @@ type MessageInputProps = {
     content: string,
     replyToId?: string | null,
     files?: File[],
-    options?: { visibility?: 'client' | 'team' | 'self'; notifySubscribers?: boolean },
+    options?: { visibility?: MessageVisibility; notifySubscribers?: boolean },
   ) => void
   /** Если задан — отправка заблокирована (тултип на кнопке + Enter не шлёт).
    *  Напр. email-черновик без темы/получателя. */

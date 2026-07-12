@@ -15,7 +15,7 @@ import {
   castToProjectMessage,
   hydrateReplyMessages,
 } from './messengerService.helpers'
-import type { ForwardedAttachment, MessageChannel, ProjectMessage } from './messengerService.types'
+import type { ForwardedAttachment, MessageChannel, MessageVisibility, ProjectMessage } from './messengerService.types'
 
 export type SendMessageParams = {
   /**
@@ -39,7 +39,7 @@ export type SendMessageParams = {
    */
   channel?: MessageChannel
   /** Видимость (Фаза 2): client (по умолч.) / team / self. */
-  visibility?: 'client' | 'team' | 'self'
+  visibility?: MessageVisibility
   /** Для team: false = «Заметка» (тихо). По умолчанию true. */
   notifySubscribers?: boolean
   /** participant_id упомянутых через @ — пишутся в message_mentions (автоподписка). */

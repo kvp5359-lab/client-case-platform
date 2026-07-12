@@ -7,6 +7,15 @@
 export type MessageChannel = 'client' | 'internal'
 
 /**
+ * Видимость сообщения (охват доставки). Единый тип вместо инлайна во многих
+ * файлах — «где обрабатывается видимость» = один тип.
+ *  - client — клиенту (уходит во внешний канал),
+ *  - team   — только команде (наружу НЕ уходит),
+ *  - self   — только автору.
+ */
+export type MessageVisibility = 'client' | 'team' | 'self'
+
+/**
  * Источники сообщений, относящиеся к email-каналу:
  *  - `email` — старая интеграция через Gmail OAuth (gmail-webhook)
  *  - `email_internal` — новая через Resend (resend-webhook → /api/resend-webhook)
@@ -119,7 +128,7 @@ export type ProjectMessage = {
    *  self   — только автор.
    * Цвет бабла: client=акцент чата, team=нейтральный чёрно-серый, self=жёлтый.
    */
-  visibility?: 'client' | 'team' | 'self' | null
+  visibility?: MessageVisibility | null
   /** Для team: false = «Заметка» (тихо, не копит непрочитанное у подписчиков). */
   notify_subscribers?: boolean | null
   thread_id: string | null

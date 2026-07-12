@@ -14,6 +14,7 @@ import {
   markAsRead,
   type ProjectMessage,
   type MessageChannel,
+  type MessageVisibility,
 } from '@/services/api/messenger/messengerService'
 import { messengerKeys, inboxKeys } from '@/hooks/queryKeys'
 
@@ -33,7 +34,7 @@ export function useSaveDraft(
       senderName: string
       senderRole: string | null
       attachments?: File[]
-      visibility?: 'client' | 'team' | 'self'
+      visibility?: MessageVisibility
       notifySubscribers?: boolean
     }) =>
       saveDraftMessage({

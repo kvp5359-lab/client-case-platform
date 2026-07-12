@@ -20,6 +20,7 @@
 // Types
 export type {
   MessageChannel,
+  MessageVisibility,
   MessageReaction,
   ReplyMessage,
   ProjectMessage,

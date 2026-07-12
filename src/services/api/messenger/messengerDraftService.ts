@@ -13,7 +13,7 @@ import {
   castToProjectMessage,
   hydrateReplyMessages,
 } from './messengerService.helpers'
-import type { ProjectMessage, MessageChannel } from './messengerService.types'
+import type { ProjectMessage, MessageChannel, MessageVisibility } from './messengerService.types'
 
 export type SaveDraftParams = {
   projectId?: string
@@ -32,7 +32,7 @@ export type SaveDraftParams = {
    * клиенту в канал — гейт видимости в dispatch_message_to_channels и
    * publishDraftMessage смотрит именно на это поле. См. Фаза 2.1 аудита.
    */
-  visibility?: 'client' | 'team' | 'self'
+  visibility?: MessageVisibility
   notifySubscribers?: boolean
 }
 

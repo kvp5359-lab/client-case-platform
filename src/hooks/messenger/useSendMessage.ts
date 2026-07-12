@@ -18,6 +18,7 @@ import {
   type ProjectMessage,
   type ReplyMessage,
   type MessageChannel,
+  type MessageVisibility,
   type ForwardedAttachment,
 } from '@/services/api/messenger/messengerService'
 import { messengerKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
@@ -52,7 +53,7 @@ export function useSendMessage(
     originalContent?: string | null
     originalLanguage?: string | null
     /** Видимость (Фаза 2): client (по умолч.) / team / self. */
-    visibility?: 'client' | 'team' | 'self'
+    visibility?: MessageVisibility
     /** Для team: false = «Заметка» (тихо). */
     notifySubscribers?: boolean
     /** participant_id упомянутых через @ (Фаза 3) — подписываются на тред. */

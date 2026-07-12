@@ -28,7 +28,7 @@ export function checkEmailAttachmentsLimit(files: File[]): {
     totalMb: (totalBytes / 1024 / 1024).toFixed(1),
   }
 }
-import type { MessageChannel } from '@/services/api/messenger/messengerService'
+import type { MessageChannel, MessageVisibility } from '@/services/api/messenger/messengerService'
 import { type ProjectMessage } from '@/services/api/messenger/messengerService'
 import { useSidePanelStore } from '@/store/sidePanelStore'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
@@ -52,7 +52,7 @@ type UseMessengerHandlersParams = {
       forwardedAttachments?: ForwardedAttachment[]
       originalContent?: string | null
       originalLanguage?: string | null
-      visibility?: 'client' | 'team' | 'self'
+      visibility?: MessageVisibility
       notifySubscribers?: boolean
       mentions?: string[]
     }) => void
@@ -73,7 +73,7 @@ type UseMessengerHandlersParams = {
       senderName: string
       senderRole: string | null
       attachments?: File[]
-      visibility?: 'client' | 'team' | 'self'
+      visibility?: MessageVisibility
       notifySubscribers?: boolean
     }) => void
     isPending: boolean
@@ -157,7 +157,7 @@ export function useMessengerHandlers({
       options?: {
         originalContent?: string | null
         originalLanguage?: string | null
-        visibility?: 'client' | 'team' | 'self'
+        visibility?: MessageVisibility
         notifySubscribers?: boolean
         mentions?: string[]
       },
@@ -343,7 +343,7 @@ export function useMessengerHandlers({
     (
       content: string,
       files?: File[],
-      options?: { visibility?: 'client' | 'team' | 'self'; notifySubscribers?: boolean },
+      options?: { visibility?: MessageVisibility; notifySubscribers?: boolean },
     ) => {
       if (!currentParticipant) return
       saveDraftMutation.mutate({

@@ -5,7 +5,7 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import type { MessageChannel, ProjectMessage } from '@/services/api/messenger/messengerService'
+import type { MessageChannel, MessageVisibility, ProjectMessage } from '@/services/api/messenger/messengerService'
 import { messengerKeys } from '@/hooks/queryKeys'
 import { MessageList } from './MessageList'
 import type { MessengerAccent } from './MessageBubble'
@@ -337,7 +337,7 @@ export function MessengerTabContent({
       content: string,
       replyToId?: string | null,
       files?: File[],
-      options?: { visibility?: 'client' | 'team' | 'self'; notifySubscribers?: boolean },
+      options?: { visibility?: MessageVisibility; notifySubscribers?: boolean },
     ) => {
       if (!state.currentParticipant) return
       try {
