@@ -8,7 +8,7 @@ import { getInitials, getAvatarColor } from '@/utils/avatarHelpers'
 import { useContactCardStore } from '@/store/contactCardStore'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { isEmailSource } from '@/services/api/messenger/messengerService.types'
-import { bubbleStyles, TEAM_GRAY } from './utils/messageStyles'
+import { resolveBubbleAppearance } from './utils/messageStyles'
 import { useCollapsibleText } from './hooks/useCollapsibleText'
 import { useMessageTranslation } from './hooks/useMessageTranslation'
 import { useQuotePopup } from './hooks/useQuotePopup'
@@ -25,13 +25,11 @@ import { ScheduledControls, formatScheduledTime } from './ScheduledControls'
 import { DeleteMessageDialog } from './DeleteMessageDialog'
 import { EmailFullViewDialog } from './EmailFullViewDialog'
 import { useMessengerContext } from './MessengerContext'
-import { isStaffRole } from '@/types/permissions'
 
 export type { MessengerAccent } from './utils/messageStyles'
 
 // «Командные» отправители маркируются кольцом аватара. Источник правды —
 // STAFF_ROLES из permissions.ts (Владелец/Администратор/Сотрудник/Исполнитель).
-const isTeamSender = isStaffRole
 
 type MessageBubbleProps = {
   message: ProjectMessage
@@ -96,53 +94,6 @@ function MessageBubbleImpl({
   //  - real в БД, но Edge Function (Gmail/Telegram/Wazzup) ещё не подтвердила доставку
   // Визуальный эффект непрерывный: бабл засветлён до финальной галочки.
   const isOptimisticId = message.id.startsWith('optimistic-')
-  const colors = bubbleStyles[accent]
-  // Цвет бабла по видимости (Фаза 2) — зависит от направления, видимости И от
-  // того, КЛИЕНТСКИЙ ли тред:
-  //  СВОЁ — клиентский: Всем=акцент, Команде=чёрный, Заметка=тёмно-серый;
-  //         внутренний: Всем/Команде=акцент, Заметка=акцент засветлённый;
-  //         Только я=жёлтый (везде).
-  //  ВХОДЯЩЕЕ — обычно акцент чата; НО в клиентском треде team/note → светло-серый
-  //         (маркер «внутреннее, клиент не получил»); во внутреннем — акцент.
-  const vis = message.visibility ?? 'client'
-  const isSelfVis = vis === 'self'
-  const isTeamVis = vis === 'team'
-  // «Заметка» = team + тихо (notify_subscribers=false).
-  const isNoteVis = isTeamVis && message.notify_subscribers === false
-  const clientThread = !!isClientThread
-  const ownBubbleClass = isSelfVis
-    ? 'bg-amber-200 text-amber-950'
-    : clientThread
-      ? isNoteVis
-        ? 'bg-neutral-600 text-neutral-50' // заметка в клиентском треде — тёмно-серый
-        : isTeamVis
-          ? 'bg-neutral-900 text-neutral-50' // команде в клиентском треде — чёрный
-          : colors.own // всем — акцент
-      : isNoteVis
-        ? colors.ownNote // заметка во внутреннем — акцент засветлённый
-        : colors.own // всем/команде во внутреннем — акцент
-  // Входящее team/note в клиентском треде — светло-серый (внутреннее, клиент не
-  // видит); в прочих случаях — обычный акцент чата.
-  const incomingBubbleClass =
-    clientThread && isTeamVis ? TEAM_GRAY : colors.incoming
-  // Метка видимости (иконка/жёлтый текст) — только у своих сообщений.
-  const showVisMarkSelf = isOwn && isSelfVis
-  const showVisMarkNote = isOwn && isNoteVis
-  // Подсветка «сотрудник» — внутренний маркер команды; клиенту его не показываем.
-  const showStaffMark =
-    !!isClientThread && !viewerIsClient && isTeamSender(message.sender_role)
-  // Цвет контура/кольца сотрудника — по видимости сообщения (как тело своих
-  // таких же): «Команде» = чёрный, «Заметка» = тёмно-серый, иначе акцент чата.
-  const staffRingColor = isNoteVis
-    ? 'ring-neutral-600'
-    : isTeamVis
-      ? 'ring-neutral-900'
-      : colors.staffRing
-  const staffBorderColor = isNoteVis
-    ? 'border-neutral-600'
-    : isTeamVis
-      ? 'border-neutral-900'
-      : colors.staffBorder
   // Имя отправителя берём из join'нутого participant'а (актуальное на момент рендера).
   // sender_name на сообщении — это исторический snapshot, может быть устаревший
   // (например, после переименования контакта).
@@ -210,15 +161,29 @@ function MessageBubbleImpl({
   // Есть файлы (без картинок/аудио) → время кладём ОВЕРЛЕЕМ в правый нижний угол
   // последнего файла (как у картинок), а не в текст/подвал бабла.
   const fileOverlayTimestamp = hasFiles && !hasImages && !hasAudio
-  // Pill-фон таймстампа, лежащего поверх картинки — повторяет фон бабла,
-  // чтобы выглядело как «вырез» в углу изображения.
-  const timestampPillBg = message.is_draft
-    ? 'bg-white'
-    : isOwn
-      ? deliveryFailed
-        ? 'bg-white'
-        : colors.own.split(' ').find((c) => c.startsWith('bg-')) ?? ''
-      : colors.incoming.split(' ').find((c) => c.startsWith('bg-')) ?? ''
+  // Раскраска бабла (цвет/маркеры/staff/pill) — единая чистая функция
+  // resolveBubbleAppearance (utils/messageStyles), а не инлайн. «Где считается
+  // вид бабла» = там. Логика зависит от visibility×направление×клиентский-тред.
+  const {
+    ownBubbleClass,
+    incomingBubbleClass,
+    showVisMarkSelf,
+    showVisMarkNote,
+    showStaffMark,
+    staffRingColor,
+    staffBorderColor,
+    timestampPillBg,
+  } = resolveBubbleAppearance({
+    accent,
+    visibility: message.visibility,
+    notifySubscribers: message.notify_subscribers,
+    senderRole: message.sender_role,
+    isDraft: !!message.is_draft,
+    isOwn,
+    isClientThread: !!isClientThread,
+    viewerIsClient: !!viewerIsClient,
+    deliveryFailed,
+  })
 
   return (
     <div

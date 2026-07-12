@@ -1,4 +1,6 @@
 import { acc, ACCENT_SLUGS, type AccentSlug } from '@/lib/accentPalette'
+import { isStaffRole } from '@/types/permissions'
+import type { MessageVisibility } from '@/services/api/messenger/messengerService.types'
 
 // Единый источник — accentPalette.AccentSlug (+ legacy-алиас 'dark' для командного серого).
 export type MessengerAccent = AccentSlug | 'dark'
@@ -69,4 +71,95 @@ export const bubbleStyles: Record<string, BubbleStyle> = {
   // slate/dark — «командный» серый (team-маркер), incoming = TEAM_GRAY.
   slate: GRAY_BUBBLE,
   dark: GRAY_BUBBLE,
+}
+
+// ── Раскраска бабла по видимости×направлению×типу треда — ЕДИНОЕ место ──
+// Раньше эти вычисления были инлайном в теле MessageBubble (~120 строк) — самый
+// частый класс UI-багов «не тот цвет/маркер». Теперь одна чистая функция:
+// «где считается вид бабла» = здесь. Логика перенесена дословно.
+
+export type BubbleAppearanceInput = {
+  accent: string
+  visibility: MessageVisibility | null | undefined
+  notifySubscribers: boolean | null | undefined
+  senderRole: string | null | undefined
+  isDraft: boolean
+  isOwn: boolean
+  isClientThread: boolean
+  viewerIsClient: boolean
+  /** Доставка провалена (для pill-фона таймстампа). */
+  deliveryFailed: boolean
+}
+
+export type BubbleAppearance = {
+  ownBubbleClass: string
+  incomingBubbleClass: string
+  /** Показать маркер «Только я» (жёлтый) — только у своих. */
+  showVisMarkSelf: boolean
+  /** Показать маркер «Заметка» (🔕) — только у своих. */
+  showVisMarkNote: boolean
+  /** Показать staff-подсветку (кольцо/полоса) у входящего сообщения сотрудника. */
+  showStaffMark: boolean
+  staffRingColor: string
+  staffBorderColor: string
+  /** Фон pill'а таймстампа поверх картинки (повторяет фон бабла). */
+  timestampPillBg: string
+}
+
+function bgClassOf(classes: string): string {
+  return classes.split(' ').find((c) => c.startsWith('bg-')) ?? ''
+}
+
+export function resolveBubbleAppearance(i: BubbleAppearanceInput): BubbleAppearance {
+  const colors = bubbleStyles[i.accent]
+  const vis = i.visibility ?? 'client'
+  const isSelfVis = vis === 'self'
+  const isTeamVis = vis === 'team'
+  // «Заметка» = team + тихо (notify_subscribers=false).
+  const isNoteVis = isTeamVis && i.notifySubscribers === false
+  const clientThread = i.isClientThread
+
+  const ownBubbleClass = isSelfVis
+    ? 'bg-amber-200 text-amber-950'
+    : clientThread
+      ? isNoteVis
+        ? 'bg-neutral-600 text-neutral-50' // заметка в клиентском треде — тёмно-серый
+        : isTeamVis
+          ? 'bg-neutral-900 text-neutral-50' // команде в клиентском треде — чёрный
+          : colors.own // всем — акцент
+      : isNoteVis
+        ? colors.ownNote // заметка во внутреннем — акцент засветлённый
+        : colors.own // всем/команде во внутреннем — акцент
+
+  const incomingBubbleClass = clientThread && isTeamVis ? TEAM_GRAY : colors.incoming
+
+  const staffRingColor = isNoteVis
+    ? 'ring-neutral-600'
+    : isTeamVis
+      ? 'ring-neutral-900'
+      : colors.staffRing
+  const staffBorderColor = isNoteVis
+    ? 'border-neutral-600'
+    : isTeamVis
+      ? 'border-neutral-900'
+      : colors.staffBorder
+
+  const timestampPillBg = i.isDraft
+    ? 'bg-white'
+    : i.isOwn
+      ? i.deliveryFailed
+        ? 'bg-white'
+        : bgClassOf(colors.own)
+      : bgClassOf(colors.incoming)
+
+  return {
+    ownBubbleClass,
+    incomingBubbleClass,
+    showVisMarkSelf: i.isOwn && isSelfVis,
+    showVisMarkNote: i.isOwn && isNoteVis,
+    showStaffMark: i.isClientThread && !i.viewerIsClient && isStaffRole(i.senderRole ?? ''),
+    staffRingColor,
+    staffBorderColor,
+    timestampPillBg,
+  }
 }
