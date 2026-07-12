@@ -42,17 +42,6 @@ export async function createFormKit(formKit: FormKitInsert): Promise<FormKit> {
 }
 
 /**
- * Обновление набора форм
- */
-export async function updateFormKit(formKitId: string, updates: FormKitUpdate): Promise<FormKit> {
-  return safeFetchOrThrow(
-    supabase.from('form_kits').update(updates).eq('id', formKitId).select().single(),
-    'Не удалось обновить набор форм',
-    FormKitError,
-  )
-}
-
-/**
  * Удаление набора форм
  */
 export async function deleteFormKit(formKitId: string): Promise<void> {

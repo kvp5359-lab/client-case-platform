@@ -5,7 +5,7 @@
  * с фильтром `status_id IN [X]`, то X становится новым статусом карточки.
  */
 
-import type { FilterCondition, FilterGroup, FilterRule } from '@/lib/filters/types'
+import type { FilterCondition, FilterGroup } from '@/lib/filters/types'
 
 /**
  * Извлекает целевой status_id из фильтра списка. Работает только для простых
@@ -42,6 +42,3 @@ export function extractStatusIdFromFilter(filter: FilterGroup | null | undefined
 export function statusEquals(a: string | null | undefined, b: string | null | undefined): boolean {
   return (a ?? null) === (b ?? null)
 }
-
-// Pure helper, экспорт для тестов.
-export const _internal = { rule: undefined as unknown as FilterRule }

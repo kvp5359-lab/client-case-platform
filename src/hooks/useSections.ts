@@ -124,48 +124,6 @@ export function useCreateSection() {
   })
 }
 
-export function useUpdateSection() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (params: {
-      id: string
-      workspace_id: string
-      name?: string
-      icon?: string | null
-      color?: string | null
-      order_index?: number
-    }) => {
-      const { id, workspace_id, ...rest } = params
-      void workspace_id
-      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
-      if (rest.name !== undefined) patch.name = rest.name.trim()
-      if (rest.icon !== undefined) patch.icon = rest.icon
-      if (rest.color !== undefined) patch.color = rest.color
-      if (rest.order_index !== undefined) patch.order_index = rest.order_index
-      const { error } = await supabase.from('workspace_sections').update(patch).eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: sectionKeys.byWorkspace(v.workspace_id) }),
-  })
-}
-
-export function useSoftDeleteSection() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (params: { id: string; workspace_id: string }) => {
-      const { error } = await supabase
-        .from('workspace_sections')
-        .update({ is_deleted: true })
-        .eq('id', params.id)
-      if (error) throw error
-    },
-    onSuccess: (_d, v) => {
-      qc.invalidateQueries({ queryKey: sectionKeys.byWorkspace(v.workspace_id) })
-      qc.invalidateQueries({ queryKey: sectionKeys.items(v.workspace_id) })
-    },
-  })
-}
-
 /** Добавить/убрать доску или список в разделе (toggle membership). */
 export function useToggleSectionItem() {
   const qc = useQueryClient()

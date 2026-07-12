@@ -10,7 +10,6 @@ import type {
   CardFieldId,
   CardFieldStyle,
   CardFontSize,
-  CardAlign,
   CardTruncate,
   CardLayout,
   CardFieldPlacement,
@@ -23,11 +22,6 @@ export const CARD_FONT_SIZES: { value: CardFontSize; label: string }[] = [
   { value: 'sm', label: 'S' },
   { value: 'md', label: 'M' },
   { value: 'lg', label: 'L' },
-]
-
-export const CARD_ALIGNS: { value: CardAlign; label: string }[] = [
-  { value: 'left', label: 'Лево' },
-  { value: 'right', label: 'Право' },
 ]
 
 export const CARD_TRUNCATES: { value: CardTruncate; label: string }[] = [
@@ -67,19 +61,6 @@ export const TASK_GROUP_BY_OPTIONS: { value: GroupByField; label: string }[] = [
 export const PROJECT_GROUP_BY_OPTIONS: { value: GroupByField; label: string }[] = [
   { value: 'none', label: 'Без группировки' },
   { value: 'status', label: 'Статус' },
-]
-
-export const TASK_VISIBLE_FIELDS: { value: VisibleField; label: string }[] = [
-  { value: 'status', label: 'Статус' },
-  { value: 'deadline', label: 'Дедлайн' },
-  { value: 'assignees', label: 'Исполнители' },
-  { value: 'project', label: 'Проект' },
-]
-
-export const PROJECT_VISIBLE_FIELDS: { value: VisibleField; label: string }[] = [
-  { value: 'status', label: 'Статус' },
-  { value: 'deadline', label: 'Дедлайн' },
-  { value: 'template', label: 'Шаблон' },
 ]
 
 /** По умолчанию показываемые поля для типа списка. */
@@ -126,10 +107,6 @@ export const PROJECT_ROLE_FIELDS: Partial<Record<CardFieldId, string>> = {
   admins: 'Администратор',
   clients: 'Клиент',
   watchers: 'Участник',
-}
-
-export function getFieldDefsForEntity(entityType: 'thread' | 'project'): CardFieldDef[] {
-  return CARD_FIELD_DEFS.filter((f) => f.entityTypes.includes(entityType))
 }
 
 export function getFieldLabel(fieldId: CardFieldId): string {

@@ -146,25 +146,6 @@ export function useDeleteDocumentKitMutation() {
 }
 
 /**
- * Переименование набора документов
- */
-export function useRenameDocumentKitMutation() {
-  return useOptimisticMutation<
-    DocumentKitWithDocuments[],
-    { kitId: string; name: string; projectId: string }
-  >({
-    queryKey: (v) => documentKitKeys.byProject(v.projectId),
-    mutationFn: async ({ kitId, name }) => {
-      const { error } = await supabase.from('document_kits').update({ name }).eq('id', kitId)
-      if (error) throw error
-    },
-    optimisticUpdate: (old, { kitId, name }) =>
-      old?.map((kit) => (kit.id === kitId ? { ...kit, name } : kit)),
-    errorMessage: 'Не удалось переименовать набор',
-  })
-}
-
-/**
  * Перемещение набора документов (вверх/вниз).
  *
  * После свопа перенумеровывает sort_order у всех наборов проекта подряд (0..N-1).

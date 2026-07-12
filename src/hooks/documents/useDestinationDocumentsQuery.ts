@@ -7,8 +7,7 @@
  * Загрузка происходит только по запросу (refetch), не автоматически.
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { listFiles } from '@/services/api/googleDriveService'
 import { googleDriveKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { DestinationDocument } from '@/types/documents'
@@ -61,18 +60,4 @@ export function useDestinationDocumentsQuery(
     enabled: false,
     staleTime: STALE_TIME.MEDIUM,
   })
-}
-
-/**
- * Хелпер: инвалидация кэша destination documents.
- */
-export function useInvalidateDestinationDocuments() {
-  const queryClient = useQueryClient()
-  return useCallback(
-    (exportFolderId: string, workspaceId: string) =>
-      queryClient.invalidateQueries({
-        queryKey: googleDriveKeys.destinationDocuments(exportFolderId, workspaceId),
-      }),
-    [queryClient],
-  )
 }

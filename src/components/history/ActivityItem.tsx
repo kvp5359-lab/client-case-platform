@@ -211,29 +211,3 @@ export function ActivityItem({ entry, isUnread, statusNames }: ActivityItemProps
   )
 }
 
-// Экспорт для фильтров
-export const RESOURCE_TYPE_OPTIONS = [
-  { value: 'document', label: 'Документы' },
-  { value: 'document_kit', label: 'Наборы документов' },
-  { value: 'folder', label: 'Папки' },
-  { value: 'project_participant', label: 'Участники' },
-  { value: 'task', label: 'Задачи' },
-  { value: 'form_kit', label: 'Анкеты' },
-]
-
-export const ACTION_OPTIONS = [
-  { value: 'create', label: 'Создание' },
-  { value: 'delete', label: 'Удаление' },
-  { value: 'soft_delete', label: 'В корзину' },
-  { value: 'restore', label: 'Восстановление' },
-  { value: 'change_status', label: 'Смена статуса' },
-  { value: 'rename', label: 'Переименование' },
-  { value: 'change_deadline', label: 'Дедлайн' },
-  { value: 'download', label: 'Скачивание' },
-  { value: 'export_to_drive', label: 'Экспорт на Google Drive' },
-  { value: 'add_participant', label: 'Добавление участника' },
-  { value: 'remove_participant', label: 'Удаление участника' },
-  { value: 'fill_field', label: 'Заполнение анкеты' },
-  { value: 'update_field', label: 'Изменение анкеты' },
-  { value: 'ai_check', label: 'AI-проверка' },
-]

@@ -3,10 +3,6 @@
  * Re-export из декомпозированных модулей
  */
 
-import { supabase } from '@/lib/supabase'
-import { KnowledgeBaseError } from '../../errors'
-import type { SearchSourcesResult } from './knowledgeSearchService.types'
-
 // =====================================================
 // Типы (перенесены в knowledgeSearchService.types.ts —
 // чтобы под-сервисы не образовывали цикл через этот файл)
@@ -24,23 +20,6 @@ export type {
 } from './knowledgeSearchService.types'
 
 export { migrateLegacySources } from './knowledgeSearchService.types'
-
-// =====================================================
-// Поиск
-// =====================================================
-
-export async function searchKnowledgeSources(params: {
-  question: string
-  workspace_id: string
-  template_id?: string
-}): Promise<SearchSourcesResult> {
-  const { data, error } = await supabase.functions.invoke('knowledge-search', {
-    body: { ...params, search_only: true },
-  })
-  if (error) throw new KnowledgeBaseError('Не удалось выполнить поиск', error)
-  if (!data?.success) throw new KnowledgeBaseError(data?.error || 'Ошибка поиска')
-  return data as SearchSourcesResult
-}
 
 // =====================================================
 // Re-exports

@@ -222,9 +222,6 @@ export const HEADER_COLORS = [
 
 export type HeaderColorValue = (typeof HEADER_COLORS)[number]['value']
 
-export function getHeaderColor(value: string | null) {
-  return HEADER_COLORS.find((c) => c.value === value) ?? HEADER_COLORS[0]
-}
 
 /** Преобразует hex-цвет в светлый фон + тёмный текст для шапки */
 export function hexToHeaderStyle(color: string | null): { bg: string; text: string } {

@@ -17,14 +17,6 @@ export const threadTemplateKeys = {
     ['thread-templates', 'by-project-template', projectTemplateId] as const,
 }
 
-/**
- * Template access counts for knowledge/quick-reply entities.
- */
-export const templateAccessKeys = {
-  counts: (entityType: string, entityIds: string[]) =>
-    ['template-access-counts', entityType, ...entityIds] as const,
-}
-
 /** Шаблоны воронок/lead-routing/funnel — все висели инлайном. */
 export const templatesForRoutingKeys = {
   forFunnel: (workspaceId: string) => ['project-templates-for-funnel', workspaceId] as const,

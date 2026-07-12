@@ -103,41 +103,6 @@ export function removeRow(layout: CardLayout, rowId: string): CardLayout {
 }
 
 /** Переключает видимость поля. Если поля нет ни в одной строке — добавляет в последнюю. */
-export function toggleFieldVisibility(
-  layout: CardLayout,
-  fieldId: CardFieldId,
-): CardLayout {
-  let found = false
-  const newRows = layout.rows.map((row) => ({
-    ...row,
-    fields: row.fields.map((f) => {
-      if (f.fieldId === fieldId) {
-        found = true
-        return { ...f, visible: !f.visible }
-      }
-      return f
-    }),
-  }))
-
-  if (!found) {
-    // Поле не существует в layout — добавляем в последнюю строку как видимое
-    const lastIdx = newRows.length - 1
-    const newField: CardFieldPlacement = {
-      fieldId,
-      visible: true,
-      style: fieldId === 'name'
-        ? { ...DEFAULT_FIELD_STYLE, fontSize: 'md' }
-        : DEFAULT_FIELD_STYLE,
-    }
-    newRows[lastIdx] = {
-      ...newRows[lastIdx],
-      fields: [...newRows[lastIdx].fields, newField],
-    }
-  }
-
-  return { ...layout, rows: newRows }
-}
-
 /** Обновляет стиль конкретного поля */
 export function updateFieldStyle(
   layout: CardLayout,
@@ -192,12 +157,6 @@ export function moveField(
 }
 
 /** Проверяет, видимо ли поле в layout */
-export function isFieldVisible(layout: CardLayout, fieldId: CardFieldId): boolean {
-  return layout.rows.some((row) =>
-    row.fields.some((f) => f.fieldId === fieldId && f.visible),
-  )
-}
-
 /** Находит стиль поля в layout */
 export function getFieldStyle(
   layout: CardLayout,

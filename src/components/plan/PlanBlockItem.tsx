@@ -12,10 +12,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { FolderOpen, AlertTriangle } from 'lucide-react'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { formatShortDate, formatDateToString, parseDateString } from '@/utils/format/dateFormat'
 
 /**
  * HTML → простой текст. Нужно для legacy-блоков, созданных прежним rich-text
@@ -158,62 +155,3 @@ export function TextBlockBody({
   )
 }
 
-// ── Блок-слот (документ) ──────────────────────────────────
-
-export function SlotBlockBody({
-  display,
-  editing,
-  onChangeSlotDeadline,
-}: {
-  display: PlanBlockDisplay
-  editing: boolean
-  onChangeSlotDeadline: (deadline: string | null) => void
-}) {
-  if (display.missing || !display.slot) {
-    return <MissingRef icon={<FolderOpen className="size-4" />} label="Документ удалён или недоступен" />
-  }
-  const { name, deadline, filled } = display.slot
-
-  return (
-    <div className="flex items-center gap-2 py-1">
-      <Checkbox checked={filled} disabled aria-label={filled ? 'Собран' : 'Нужен'} />
-      <FolderOpen className="size-4 shrink-0 text-muted-foreground" />
-      <span className="truncate text-sm">{name}</span>
-      <span
-        className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] ${
-          filled ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-        }`}
-      >
-        {filled ? 'собран' : 'нужен'}
-      </span>
-
-      {editing ? (
-        <Input
-          type="date"
-          value={deadline ? formatDateToString(parseDateString(deadline) ?? null) : ''}
-          onChange={(e) => {
-            const v = e.target.value
-            onChangeSlotDeadline(v ? new Date(v).toISOString() : null)
-          }}
-          className="ml-auto h-7 w-36 text-xs"
-        />
-      ) : (
-        deadline && (
-          <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-            {formatShortDate(deadline)}
-          </span>
-        )
-      )}
-    </div>
-  )
-}
-
-function MissingRef({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <div className="flex items-center gap-2 py-1 text-sm text-muted-foreground">
-      <AlertTriangle className="size-4 text-amber-500" />
-      <span className="opacity-60">{icon}</span>
-      <span className="italic">{label}</span>
-    </div>
-  )
-}

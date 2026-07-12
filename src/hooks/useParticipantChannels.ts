@@ -25,13 +25,6 @@ type UpsertChannelInput = {
   is_primary?: boolean
 }
 
-type UpdateChannelInput = {
-  id: string
-  label?: string | null
-  is_primary?: boolean
-  external_id?: string
-}
-
 /** Список каналов одного участника. */
 export function useParticipantChannels(participantId: string | undefined) {
   return useQuery({
@@ -78,32 +71,6 @@ export function useCreateParticipantChannel() {
       })
       queryClient.invalidateQueries({
         queryKey: participantChannelKeys.byWorkspace(row.workspace_id),
-      })
-    },
-  })
-}
-
-/** Обновить канал (label / is_primary / external_id). */
-export function useUpdateParticipantChannel() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (input: UpdateChannelInput): Promise<ParticipantChannel> => {
-      const patch: Partial<ParticipantChannel> = {}
-      if (input.label !== undefined) patch.label = input.label
-      if (input.is_primary !== undefined) patch.is_primary = input.is_primary
-      if (input.external_id !== undefined) patch.external_id = input.external_id
-      const { data, error } = await supabase
-        .from('participant_channels')
-        .update(patch)
-        .eq('id', input.id)
-        .select('*')
-        .single()
-      if (error) throw error
-      return data
-    },
-    onSuccess: (row) => {
-      queryClient.invalidateQueries({
-        queryKey: participantChannelKeys.byParticipant(row.participant_id),
       })
     },
   })
@@ -161,42 +128,6 @@ export function useSetPrimaryChannel() {
         queryKey: participantChannelKeys.byParticipant(vars.participant_id),
       })
     },
-  })
-}
-
-/**
- * Найти participant по каналу (workspace + type + external_id).
- * Возвращает participant_id или null.
- *
- * Используется в селекторе «Контакт» (поиск по любому каналу) и будет
- * вызываться маршрутизацией входящих в этапе 9 (там — серверно через RPC,
- * но логика та же).
- */
-export function useFindParticipantByChannel(
-  workspaceId: string | undefined,
-  channelType: string | undefined,
-  externalId: string | undefined,
-) {
-  return useQuery({
-    queryKey:
-      workspaceId && channelType && externalId
-        ? participantChannelKeys.lookup(workspaceId, channelType, externalId)
-        : ['participant-channels', 'lookup', 'noop'],
-    queryFn: async (): Promise<string | null> => {
-      if (!workspaceId || !channelType || !externalId) return null
-      const normalized = normalizeExternalId(channelType, externalId)
-      const { data, error } = await supabase
-        .from('participant_channels')
-        .select('participant_id')
-        .eq('workspace_id', workspaceId)
-        .eq('channel_type', channelType)
-        .eq('external_id', normalized)
-        .maybeSingle()
-      if (error) throw error
-      return data?.participant_id ?? null
-    },
-    enabled: !!(workspaceId && channelType && externalId),
-    staleTime: STALE_TIME.STANDARD,
   })
 }
 
