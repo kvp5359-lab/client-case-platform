@@ -1,6 +1,6 @@
 import { memo, useState } from 'react'
 import { ATTACHMENT_PLACEHOLDER } from '@/lib/messenger/attachmentPlaceholder'
-import { CornerDownRight, Loader2, Trash2, BellOff, Lock } from 'lucide-react'
+import { Loader2, Trash2, BellOff, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MessageAttachments } from './MessageAttachment'
@@ -84,8 +84,6 @@ function MessageBubbleImpl({
     onCancelScheduled,
     onSendScheduledNow,
     onReschedule,
-    isSearchActive,
-    onJumpToMessage,
     threadContactParticipantId,
   } = useMessengerContext()
   const isScheduled = !!message.is_draft && !!message.scheduled_send_at
@@ -210,23 +208,6 @@ function MessageBubbleImpl({
         }
       }}
     >
-      {/* Кнопка «Перейти к сообщению» — только в режиме поиска и только
-          на hover над конкретным сообщением */}
-      {isSearchActive && onJumpToMessage && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            onJumpToMessage(message.id)
-          }}
-          className="self-center mr-2 opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1.5 px-2.5 py-1 text-xs border border-muted-foreground/30 rounded-full text-muted-foreground hover:text-foreground hover:border-muted-foreground/60 hover:bg-muted whitespace-nowrap"
-          aria-label="Перейти к сообщению в чате"
-        >
-          <CornerDownRight className="h-3 w-3" />
-          Перейти к сообщению
-        </button>
-      )}
-
       {/* Avatar (other messages only).
           У сообщений от команды (любая роль кроме «Клиент» / «Telegram-контакт»)
           добавляем кольцо цвета акцента чата — визуальный маркер принадлежности

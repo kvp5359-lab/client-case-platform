@@ -347,11 +347,10 @@ export function MessengerTabContent({
 
   const handleJumpToMessage = useCallback(
     (messageId: string) => {
-      state.setSearchQuery('')
       setSearchOverlayOpen(false)
       setJumpToMessageId(messageId)
     },
-    [state],
+    [],
   )
 
   // «Вставить» из буфера: текстовые блоки → в редактор (цитата/оригинал),
@@ -379,8 +378,9 @@ export function MessengerTabContent({
 
   // Email-сообщения теперь идут обычным sendMessage → INSERT → Realtime, без
   // отдельного оптимистичного пути (useOptimisticEmail удалён 2026-07-12 —
-  // был инертен). Лента = результаты поиска либо обычные сообщения.
-  const displayMessages = state.isSearchActive ? state.searchResults : state.messages
+  // был инертен). Поиск по треду вынесен в оверлей ThreadSearchOverlay, лента
+  // всегда показывает обычные сообщения.
+  const displayMessages = state.messages
 
   // Заглушённый (mute) МНОЙ тред: непрочитанное не теряется — показываем его
   // внутри треда «тихой» серой подсветкой (в отличие от красной у подписанных)
@@ -518,8 +518,6 @@ export function MessengerTabContent({
         onCancelScheduled={handleCancelScheduled}
         onSendScheduledNow={handleSendScheduledNow}
         onReschedule={handleReschedule}
-        isSearchActive={state.isSearchActive}
-        onJumpToMessage={handleJumpToMessage}
       >
       <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
         <ThreadHealthBanner threadId={threadId} workspaceId={workspaceId} />
@@ -541,7 +539,7 @@ export function MessengerTabContent({
         <MessageList
           messages={displayMessages}
           isLoading={state.isLoading}
-          hasMoreOlder={state.isSearchActive ? false : state.hasMoreOlder}
+          hasMoreOlder={state.hasMoreOlder}
           isFetchingOlder={state.isFetchingOlder}
           lastReadAt={state.lastReadAt ?? undefined}
           isLastReadAtLoaded={!state.isLastReadAtPending}

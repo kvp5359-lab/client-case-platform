@@ -574,6 +574,8 @@ export function plainTextToHtml(text: string): string {
     .join('')
 }
 
-function escapeHtml(text: string): string {
+/** Экранирование текст-контента (& < >) для вставки в HTML. Для значений
+ *  атрибутов недостаточно — там нужно экранировать и кавычки. */
+export function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }

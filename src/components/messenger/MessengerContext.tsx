@@ -61,10 +61,6 @@ export type MessengerContextValue = {
   onCancelScheduled?: (messageId: string) => void
   onSendScheduledNow?: (messageId: string) => void
   onReschedule?: (messageId: string, sendAt: Date) => void
-
-  // Search: jump to message from a search result
-  isSearchActive?: boolean
-  onJumpToMessage?: (messageId: string) => void
 }
 
 const MessengerContext = createContext<MessengerContextValue | null>(null)
@@ -114,8 +110,6 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       onCancelScheduled: value.onCancelScheduled,
       onSendScheduledNow: value.onSendScheduledNow,
       onReschedule: value.onReschedule,
-      isSearchActive: value.isSearchActive,
-      onJumpToMessage: value.onJumpToMessage,
     }),
 
     [
@@ -149,8 +143,6 @@ export function MessengerProvider({ children, ...value }: MessengerProviderProps
       value.onCancelScheduled,
       value.onSendScheduledNow,
       value.onReschedule,
-      value.isSearchActive,
-      value.onJumpToMessage,
     ],
   )
 

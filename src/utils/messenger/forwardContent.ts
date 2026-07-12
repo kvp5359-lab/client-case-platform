@@ -1,16 +1,9 @@
 import type { ForwardBufferItem, ForwardBufferAttachment } from '@/store/sidePanelStore'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
+import { escapeHtml } from '@/utils/format/messengerHtml'
 
 /** Формат вставки пересылаемого сообщения. */
 export type ForwardMode = 'quote' | 'original'
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-}
 
 /**
  * Строит HTML для вставки текстового блока пересылки в поле ввода.

@@ -21,7 +21,6 @@ import {
   useToggleReaction,
   useTelegramLink,
   useTypingIndicator,
-  useMessageSearch,
   useSaveDraft,
   useUpdateDraft,
   usePublishDraft,
@@ -208,9 +207,6 @@ export function useMessengerState({
     threadId,
   )
 
-  const { searchQuery, setSearchQuery, searchResults, isSearching, isSearchActive, resultCount } =
-    useMessageSearch(projectId, channel, threadId)
-
   const documentPickerLogic = useDocumentPickerLogic(projectId ?? '', workspaceId)
 
   // Handle pending initial message from chat creation
@@ -316,13 +312,6 @@ export function useMessengerState({
     typingUsers,
     startTyping,
     stopTyping,
-    // Search
-    searchQuery,
-    setSearchQuery,
-    searchResults,
-    isSearching,
-    isSearchActive,
-    resultCount,
     // Document picker
     documentPickerLogic,
     // Telegram

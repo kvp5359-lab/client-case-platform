@@ -15,9 +15,7 @@ import type { Editor } from '@tiptap/react'
 import { cn } from '@/lib/utils'
 import { knowledgeBaseKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { getShareableQA, type ShareableQA } from '@/services/api/knowledge/knowledgeQAService'
-
-const escapeHtml = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+import { escapeHtml } from '@/utils/format/messengerHtml'
 
 /** answer хранится как обычный текст → сохраняем переносы строк. */
 const answerToHtml = (answer: string) => escapeHtml(answer).replace(/\n/g, '<br>')
