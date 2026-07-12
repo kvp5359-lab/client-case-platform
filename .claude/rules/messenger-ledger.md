@@ -46,6 +46,16 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-07-12 — Раунд чистоты мессенджера: полная карта (5 картографов) + фронт-рефакторы ⏳ ФРОНТ КОММИЧЕН (НЕ ПУШЕН), EDGE-ДЕДУП ЖДЁТ ДЕПЛОЯ
+- **Задача владельца:** сделать мессенджер максимально чистым/поддерживаемым (легко найти и починить баг), несмотря на карантин; тесты владелец сделает потом.
+- **Полная структурная карта** (5 суб-агентов: отправка edge+фронт, приём/webhooks, фронт-UI, mtproto) → приоритезированный backlog чистоты в `docs/feature-backlog/2026-07-12-messenger-dispatch-consolidation.md` (раздел 7bis).
+- **Сделано (безопасно, tsc/lint/892 теста зелёные):** (1) единый тип `MessageVisibility` вместо инлайна `'client'|'team'|'self'` в 11 файлах; (2) раскраска бабла вынесена из тела `MessageBubble` (~120 стр инлайна) в чистую `resolveBubbleAppearance` (`utils/messageStyles`) — «где считается вид бабла» = одно место, ушли мёртвые colors/isTeamSender; (3) `DeliveryStatus` в `bubbleUtils` — теперь `Exclude` от канона `@/types/delivery`, не дубль-определение; (4) `resolveChannelDefault` → `_shared/channelDefaults.ts` (дедуп business/wazzup webhook).
+- **🔴 Карта вскрыла РЕАЛЬНЫЕ БАГИ (не чистота, ждут фикса+смока):** (а) mtproto `handleEdit` без session-scope (`raw.ts`) — кросс-баг при одном клиенте у двух сотрудников с совпавшим msg_id; (б) правка MTProto-сообщения не доходит в Telegram (фронт→`telegram-edit-message` без MTProto-ветки, mtproto `/messages/edit` не вызывается); (в) `flow.ts` утечка gramjs-коннекта. Детали — раздел 7bis плана.
+- **Грабли (новое):** раскраска бабла и признак клиентского треда — единые функции (`resolveBubbleAppearance`, `isClientFacingThread`); visibility — единый тип `MessageVisibility`. Новый потребитель — оттуда, не инлайн.
+- **⏳ Деплой:** фронт (2.1/2.2/D2.1/D3.1/чистота) НЕ запушен по решению владельца; edge-дедуп (`business/wazzup-webhook` на `_shared/channelDefaults`) ждёт деплоя. Смоки — за владельцем.
+- **Файлы:** `messengerService.types.ts`(+MessageVisibility), 11 файлов инлайна, `MessageBubble.tsx`, `utils/messageStyles.ts`(+resolveBubbleAppearance), `bubbleUtils.ts`, `_shared/channelDefaults.ts`(нов), `telegram-business-webhook`, `wazzup-webhook`.
+
+
 ### 2026-07-12 — Консолидация отправки, Уровень 1+2.2: visibility-backstop во ВСЕ send + сторож ⏳ ЗАДЕПЛОЕНО, ЖДЁТ СМОК
 - **Контекст:** план `docs/feature-backlog/2026-07-12-messenger-dispatch-consolidation.md` (сокращение карантина). Карта показала: `telegram-business-send` и `telegram-edit-message` НЕ имели visibility-backstop (дыра — остальные 4 send имеют). 
 - **Сделано:** добавлен backstop `visibility !== 'client' → skip` в `telegram-business-send` (markMessageSent пустой) и `telegram-edit-message` (правку внутреннего в TG не шлём). Единый контракт со всеми send. Новый сторож `scripts/check-edge-invariants.mjs` валит CI, если любая из 6 send/edit-функций потеряет backstop.

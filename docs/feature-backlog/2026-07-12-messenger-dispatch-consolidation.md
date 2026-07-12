@@ -215,6 +215,42 @@ D4.1 зависит от D2.1+D3.1. D4.2 — по факту после D2.3.
 Даже Уровень 1+2 уже существенно сокращает хрупкость (защита + единая маршрутизация
 + закрытая дыра business-backstop + убранные дубли).
 
+## 7bis. Чистота мессенджера — backlog из полной карты (5 картографов)
+
+Сделан ЯДРО-набор чистоты (коммичено):
+- ✅ `MessageVisibility` — единый тип вместо инлайна в 11 файлах.
+- ✅ `MessageBubble` раскраска → `resolveBubbleAppearance` (единое место; тело стало оркестратором).
+- ✅ `DeliveryStatus` — сужение канона (`Exclude`) вместо дубля-определения.
+- ✅ `resolveChannelDefault` → `_shared/channelDefaults.ts` (дедуп business/wazzup).
+
+### 🔴 РЕАЛЬНЫЕ БАГИ (не чистота — найдены картой, требуют фикса+смока)
+- **mtproto `handleEdit` без session-scope** (`raw.ts:~244`): `.eq(telegram_chat_id).contains(telegram_message_ids)` без фильтра по сессии/треду → два сотрудника ведут одного клиента + совпал `telegram_message_id` → правка уходит не туда / теряется. Соседи (реакции, read) скоупят по сессии — `handleEdit` выбивается. Добавить фильтр.
+- **Правка MTProto-сообщения не доходит в Telegram**: фронт шлёт в `telegram-edit-message` (только бот-канал, нет MTProto-ветки), а mtproto `/messages/edit` не вызывается ниоткуда. Достроить проводку либо честно убрать (тогда UI не должен предлагать правку MTProto).
+- **`flow.ts` утечка gramjs-коннекта** в `sendCode`/`finalizeAuth` (нет try/finally с disconnect на неуспешных путях).
+
+### Приоритет чистоты (осталось; всё требует деплой+смок карантина)
+**ВЫСОКИЙ**
+- Edge **D2.3** — общие send-хелперы `_shared/outgoing.ts` (`loadOutgoingMessage`/`assertMembership`/`idempotencyGuard`/`resolveReplyExternalId` + единая auth-преамбула); выровнять расхождения (idempotency в telegram-send/mtproto; auth-модель). 5 функций.
+- **v1 ретайр** (после смока треда «Клиенты» по плану F1) → снять весь v1↔v2 дубль (монолит `telegram-webhook/index.ts` 798 стр дублирует v2 без его фиксов). Не бэкпортить фиксы в v1 — ускорять вывод.
+
+**СРЕДНИЙ**
+- mtproto `commands.ts` God-file (818) → `routes/commands/{send,react,delete,backfill}.ts`; вынести send-attachments и inline-аватар-IIFE.
+- mtproto `ingestMtprotoMessage` (`incoming.ts` ~232 стр) → `resolveClientIdentity`/`mergeAlbumMessage`/`insertMessageRow`.
+- Дубль fire-and-forget avatar-fetch (business-webhook `triggerAvatarFetch` + v2 `sync.ts` inline) → helper.
+- Двойной владелец `send_status` MTProto (edge `markMessageSent` И mtproto-service) — задокументировать источник истины.
+- `gmail-webhook` `processGmailMessage` (162-319) → parse/resolveThread/persist.
+
+**НИЗКИЙ / мёртвый код**
+- Мёртвое: `telegram-setup-webhook` (нет вызывающих, регистрирует v1), mtproto `/threads/read`+`/users/fetch-avatar`+`hasClient`+`r2Remove`/`storageRemove`, фронт `gmail-send`/`useSendEmail` (гасится в handleSend).
+- `DeliveryIcon` vs `DeliveryTick` дубль маппинга; `formatTime` дубль (переименовать список-версию в `formatRelativeTime`).
+- mtproto `humanError` ×2 → `utils/telegramErrors.ts`; `htmlFormatting` копия edge↔mtproto (тест-паритет/ссылка).
+
+### Неявные контракты → сделать явными (из карт)
+- «downloadAttachments только при `outcome==='inserted'`» — вынести гейт внутрь общего слоя (не соглашение у каждого вызывающего).
+- dedup-ключи (колонки content-UNIQUE) — константа рядом с insert-payload, а не только в SQL-индексе.
+- placeholder `📎` — общий модуль (сейчас литерал в 3 местах mtproto+фронт).
+- `ctx.botToken` vs `getBotToken()` в v2 — сделать выбор явным (токен параметром в горячих путях).
+
 ## 8. Явно вне scope
 Объединение двух транспортов в один; переписывание приёма (webhook'ов); смена
 модели хранения per-bot id; рефактор реакций-toggle (3 копии) — отдельные задачи.
