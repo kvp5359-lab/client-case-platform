@@ -14,6 +14,7 @@ import { DeadlinePopover } from '@/components/tasks/DeadlinePopover'
 import { AssigneesPopover } from '@/components/tasks/AssigneesPopover'
 import { useUpdateTaskStatus, useUpdateTaskDeadline } from '@/components/tasks/useTaskMutations'
 import { workspaceThreadKeys } from '@/hooks/queryKeys'
+import { useTaskActionPerms } from '@/hooks/permissions'
 import { usePrefetchThreadMessages } from '@/hooks/messenger/usePrefetchThreadMessages'
 import { cn } from '@/lib/utils'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
@@ -47,6 +48,9 @@ export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onTog
   const updateDeadline = useUpdateTaskDeadline([
     workspaceThreadKeys.workspace(task.workspace_id),
   ])
+  // Гейт смены статуса правом роли Workspace (как в TaskRow) — инлайн-дропдаун
+  // в списках раньше право не проверял. (Фаза 5 аудита.)
+  const { canChangeStatus } = useTaskActionPerms(task.workspace_id)
 
   const currentStatus = taskStatuses.find((s) => s.id === task.status_id) ?? null
   const assignees = assigneesMap[task.id] ?? []
@@ -137,7 +141,7 @@ export const ThreadRow = memo(function ThreadRow({ task, columns, checked, onTog
                 <div className="flex items-center gap-2 min-w-0">
                   <StatusDropdown
                     currentStatus={currentStatus}
-                    statuses={taskStatuses}
+                    statuses={canChangeStatus ? taskStatuses : []}
                     onStatusChange={handleStatusChange}
                     size="sm"
                   />

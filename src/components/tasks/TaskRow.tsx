@@ -113,11 +113,12 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
         </button>
       )}
 
-      {/* Статус */}
+      {/* Статус. Гейт canChangeStatus — как в меню «три точки» ниже (без него
+          инлайн-дропдаун обходил право, снятое у роли). */}
       {statuses.length > 0 ? (
         <StatusDropdown
           currentStatus={currentStatus}
-          statuses={statuses}
+          statuses={canChangeStatus ? statuses : []}
           onStatusChange={onStatusChange}
           size="sm"
         />

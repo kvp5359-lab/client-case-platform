@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { participantKeys, STALE_TIME } from '@/hooks/queryKeys'
 import { useToggleAssignee } from './useTaskAssignees'
+import { useTaskActionPerms } from '@/hooks/permissions'
 import {
   useWorkspaceParticipants,
   type WorkspaceParticipant,
@@ -172,11 +173,21 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
   // пустой id в controlled-режиме. Мутация там никогда не вызывается.
   const toggleAssignee = useToggleAssignee(isControlled ? '' : props.threadId)
 
+  // Право на назначение исполнителей (уровень роли Workspace). Гейтит только
+  // thread-режим (реальная запись в БД); в controlled-режиме (форма шаблона)
+  // не применяется — там своё право на редактирование шаблона. Хук зовём
+  // всегда (нельзя условно); workspaceId в controlled = undefined, значение
+  // не используется. Раньше право было «мёртвым» — снятое у роли, оно всё
+  // равно позволяло менять исполнителей. (Фаза 5 аудита.)
+  const { canManageAssignees } = useTaskActionPerms(threadWorkspaceId ?? undefined)
+  const canToggleAssignees = isControlled || canManageAssignees
+
   const handleToggle = (participantId: string) => {
     if (isControlled) {
       props.onToggle(participantId)
       return
     }
+    if (!canManageAssignees) return
     const assigned = assigneeSet.has(participantId)
     toggleAssignee.mutate({ participantId, assigned })
   }
@@ -216,7 +227,7 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
         key={p.id}
         type="button"
         onClick={() => handleToggle(p.id)}
-        disabled={!isControlled && toggleAssignee.isPending}
+        disabled={!canToggleAssignees || (!isControlled && toggleAssignee.isPending)}
         className={cn(
           'w-full flex items-center gap-2.5 px-3 py-1 text-left transition-colors',
           isAssigned ? 'bg-primary/10 hover:bg-primary/15' : 'hover:bg-muted/50',
