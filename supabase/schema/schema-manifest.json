@@ -4200,11 +4200,6 @@
       "body_md5": "99993af24b852f3ee638bbcd9337b1ee"
     },
     {
-      "args": "p_workspace_id uuid, p_project_id uuid, p_title text, p_description text, p_deadline timestamp with time zone, p_document_id uuid, p_document_kit_id uuid, p_form_kit_id uuid, p_created_by uuid, p_assignee_ids uuid[]",
-      "name": "create_task_with_assignees",
-      "body_md5": "c7d158a16f86451e2ec355f8549fcb09"
-    },
-    {
       "args": "",
       "name": "create_user_settings",
       "body_md5": "c1b064e1e54fd72d184dea07fe21da4c"
