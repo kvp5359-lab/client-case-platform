@@ -22,8 +22,10 @@ Deno.serve(async (req: Request) => {
   try { body = await req.json(); } catch { return jsonRes({ error: "invalid json" }, 400, req); }
   if (!body.thread_id) return jsonRes({ error: "thread_id required" }, 400, req);
 
-  // Под service-role читаем то, что нужно для запроса в Wazzup. Доступ к
-  // треду фронт уже подтвердил RLS'ом — иначе пользователь его не видел бы.
+  // Читаем под service-role, но доступ вызывающего проверяем ЯВНО членством
+  // в воркспейсе: verify_jwt подтверждает только «залогинен», а чтение идёт
+  // service-role'ом (RLS не применяется), поэтому «фронт уже проверил RLS»
+  // здесь не действует — без явной проверки был oracle + markread в чужом чате.
   const service = getServiceClient();
 
   const { data: thread } = await service
@@ -41,6 +43,16 @@ Deno.serve(async (req: Request) => {
     .eq("id", thread.wazzup_channel_id)
     .maybeSingle();
   if (!channel) return jsonRes({ skip: "channel not found" }, 200, req);
+
+  // Членство вызывающего в воркспейсе канала (зеркало wazzup-delete).
+  const { data: participant } = await service
+    .from("participants")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("workspace_id", channel.workspace_id)
+    .eq("is_deleted", false)
+    .maybeSingle();
+  if (!participant) return jsonRes({ error: "forbidden" }, 403, req);
 
   const { data: settings } = await service
     .from("wazzup_settings")

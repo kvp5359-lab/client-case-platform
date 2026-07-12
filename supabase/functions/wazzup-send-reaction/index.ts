@@ -15,13 +15,20 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
-  preflight, jsonRes, getServiceClient, markOutgoingExternal,
+  preflight, jsonRes, getUser, getServiceClient, markOutgoingExternal,
 } from "../_shared/edge.ts";
 import { stripHtmlBasic } from "../_shared/channelText.ts";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return preflight(req);
   if (req.method !== "POST") return jsonRes({ error: "method not allowed" }, 405, req);
+
+  // Реальная аутентификация: verify_jwt=true проверяет только подпись токена,
+  // членство в воркспейсе он не гарантирует. Без этой проверки любой
+  // залогиненный по чужому message_id слал бы реакцию в чужой WhatsApp,
+  // расходуя чужой Wazzup-ключ (реакция = обычное исходящее сообщение).
+  const user = await getUser(req);
+  if (!user) return jsonRes({ error: "unauthorized" }, 401, req);
 
   let body: { message_id?: string; emoji?: string };
   try { body = await req.json(); } catch { return jsonRes({ error: "invalid json" }, 400, req); }
@@ -32,11 +39,21 @@ Deno.serve(async (req: Request) => {
   // 1. Сообщение и его wazzup_message_id
   const { data: msg } = await service
     .from("project_messages")
-    .select("id, thread_id, wazzup_message_id, content")
+    .select("id, workspace_id, thread_id, wazzup_message_id, content")
     .eq("id", body.message_id)
     .maybeSingle();
   if (!msg || !msg.thread_id) return jsonRes({ skip: "no message" }, 200, req);
   if (!msg.wazzup_message_id) return jsonRes({ skip: "not a wazzup message" }, 200, req);
+
+  // Членство вызывающего в воркспейсе сообщения (зеркало wazzup-delete).
+  const { data: participant } = await service
+    .from("participants")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("workspace_id", msg.workspace_id)
+    .eq("is_deleted", false)
+    .maybeSingle();
+  if (!participant) return jsonRes({ error: "forbidden" }, 403, req);
 
   // Fallback-цитата в текст: Wazzup quotedMessageId не работает для исходящих,
   // поэтому добавляем «> текст оригинала\nэмодзи». Без этого клиент видит просто
