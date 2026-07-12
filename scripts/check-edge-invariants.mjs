@@ -23,6 +23,7 @@ const MUST_GATE = [
   'wazzup-send',
   'email-internal-send',
   'telegram-edit-message',
+  'telegram-mtproto-edit',
 ]
 
 // Признак backstop'а: сравнение visibility с 'client'. Достаточно грубого

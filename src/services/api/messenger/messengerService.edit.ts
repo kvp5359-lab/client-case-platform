@@ -154,23 +154,42 @@ export async function editMessage(
   const message = castToProjectMessage(data)
   await hydrateReplyMessages([message])
 
-  if (message.telegram_message_id && message.telegram_chat_id) {
-    await supabase.auth.getSession()
+  // Маршрут правки в канал по типу треда. Раньше ЛЮБОЙ тред с telegram_*
+  // полями шёл в telegram-edit-message (бот-канал) — для MTProto-треда это НЕ
+  // работало (бот не может править сообщение личного аккаунта), правка не
+  // долетала до Telegram. Теперь MTProto-тред идёт в telegram-mtproto-edit.
+  if (message.thread_id) {
+    const { data: t } = await supabase
+      .from('project_threads')
+      .select('mtproto_session_user_id, mtproto_client_tg_user_id')
+      .eq('id', message.thread_id)
+      .maybeSingle()
+    const isMtproto = !!t?.mtproto_session_user_id && !!t?.mtproto_client_tg_user_id
 
-    supabase.functions
-      .invoke('telegram-edit-message', {
-        body: {
-          message_id: messageId,
-          content: newContent,
-          sender_name: senderName,
-          sender_role: senderRole,
-          telegram_chat_id: message.telegram_chat_id,
-          telegram_message_id: message.telegram_message_id,
-        },
-      })
-      .catch((err) => {
-        logger.error('Failed to edit message in Telegram:', err)
-      })
+    if (isMtproto) {
+      await supabase.auth.getSession()
+      supabase.functions
+        .invoke('telegram-mtproto-edit', { body: { message_id: messageId, content: newContent } })
+        .catch((err) => {
+          logger.error('Failed to edit message via MTProto:', err)
+        })
+    } else if (message.telegram_message_id && message.telegram_chat_id) {
+      await supabase.auth.getSession()
+      supabase.functions
+        .invoke('telegram-edit-message', {
+          body: {
+            message_id: messageId,
+            content: newContent,
+            sender_name: senderName,
+            sender_role: senderRole,
+            telegram_chat_id: message.telegram_chat_id,
+            telegram_message_id: message.telegram_message_id,
+          },
+        })
+        .catch((err) => {
+          logger.error('Failed to edit message in Telegram:', err)
+        })
+    }
   }
 
   return message
