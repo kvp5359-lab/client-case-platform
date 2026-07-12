@@ -5437,7 +5437,7 @@
     {
       "args": "p_thread_id uuid, p_reply_to uuid, p_label text, p_visibility text",
       "name": "smoke_send_test",
-      "body_md5": "854cb0bbd51ba3843e997d6f1db92ea9"
+      "body_md5": "1b4503a6495e60d190d543a803df0ad9"
     },
     {
       "args": "p_owner_user_id uuid, p_workspace_id uuid, p_target_user_id uuid, p_jti text, p_expires_at timestamp with time zone, p_user_agent text, p_ip text",
