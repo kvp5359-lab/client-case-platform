@@ -90,6 +90,54 @@ describe('buildMessageTimeline', () => {
     expect(items.every((i) => i.kind === 'event-group')).toBe(true)
   })
 
+  it('viewerGetsEvents=false → событие не непрочитано (зеркало assignee-гейта recompute)', () => {
+    const opts: TimelineUnreadOpts = {
+      ...READ_OPTS,
+      viewerGetsEvents: false,
+      lastReadAtMs: Date.parse('2000-01-01T00:00:00Z'),
+    }
+    const items = buildMessageTimeline([], [ev('e1', '2026-07-01T09:00:00Z', 'change_status', 'other')], opts)
+    // зритель не исполнитель (и у треда есть исполнители) → событие не считается непрочитанным
+    expect(items[0].kind).toBe('event-group')
+  })
+
+  it('suppressUnread=true → событие не непрочитано (зеркало mute/чужого личного треда)', () => {
+    const opts: TimelineUnreadOpts = {
+      ...READ_OPTS,
+      suppressUnread: true,
+      lastReadAtMs: Date.parse('2000-01-01T00:00:00Z'),
+    }
+    const items = buildMessageTimeline([], [ev('e1', '2026-07-01T09:00:00Z', 'change_status', 'other')], opts)
+    expect(items[0].kind).toBe('event-group')
+  })
+
+  it('isLastReadAtLoaded=false → событие ещё не непрочитано (нет ложного красного до загрузки)', () => {
+    const opts: TimelineUnreadOpts = {
+      ...READ_OPTS,
+      isLastReadAtLoaded: false,
+      lastReadAtMs: Date.parse('2000-01-01T00:00:00Z'),
+    }
+    const items = buildMessageTimeline([], [ev('e1', '2026-07-01T09:00:00Z', 'change_status', 'other')], opts)
+    expect(items[0].kind).toBe('event-group')
+  })
+
+  it('lastReadAtMs=null → любое чужое событие непрочитано', () => {
+    const opts: TimelineUnreadOpts = { ...READ_OPTS, lastReadAtMs: null }
+    const items = buildMessageTimeline([], [ev('e1', '2026-07-01T09:00:00Z', 'change_status', 'other')], opts)
+    expect(items[0].kind).toBe('event')
+  })
+
+  it('непрочитанное событие разрывает группу прочитанных', () => {
+    const opts: TimelineUnreadOpts = { ...READ_OPTS, lastReadAtMs: Date.parse('2026-07-01T09:00:30Z') }
+    const events = [
+      ev('e1', '2026-07-01T09:00:00Z', 'change_status', 'other'), // до lastRead → прочитано → группа
+      ev('e2', '2026-07-01T09:01:00Z', 'change_status', 'other'), // после lastRead → непрочитано → отдельно
+      ev('e3', '2026-07-01T09:02:00Z', 'change_status', 'other'), // после lastRead → непрочитано → отдельно
+    ]
+    const items = buildMessageTimeline([], events, opts)
+    expect(items.map((i) => i.kind)).toEqual(['event-group', 'event', 'event'])
+  })
+
   it('timelineItemDate возвращает дату для каждого вида элемента', () => {
     expect(timelineItemDate({ kind: 'message', msg: msg('m', '2026-07-01T10:00:00Z'), idx: 0 })).toBe(
       '2026-07-01T10:00:00Z',
