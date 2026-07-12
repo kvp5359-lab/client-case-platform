@@ -96,6 +96,40 @@ export async function getUser(req: Request): Promise<{ id: string } | null> {
   return user ? { id: user.id } : null;
 }
 
+/**
+ * Дуал-авторизация для `*-send`/`*-edit`/`*-delete` функций: либо внутренний
+ * секрет `x-internal-secret` (вызов БД-триггером через net.http_post →
+ * `userId=null`), либо пользовательский Bearer-JWT (вызов фронта → `userId=uid`).
+ * Возвращает `{ userId }` при успехе ЛИБО готовый `Response(401)`.
+ *
+ * Использование:
+ *   const auth = await resolveInternalOrUserAuth(req);
+ *   if (auth instanceof Response) return auth;
+ *   const authenticatedUserId = auth.userId; // null для триггерного вызова
+ *
+ * ⚠️ Это НЕ полноценная авторизация действия — `userId` здесь только различает
+ * «триггер vs фронт». Проверку членства/прав делать отдельно
+ * (`checkWorkspaceMembership`) там, где `userId != null`.
+ */
+export async function resolveInternalOrUserAuth(
+  req: Request,
+): Promise<{ userId: string | null } | Response> {
+  const internalSecret = req.headers.get("x-internal-secret");
+  const authHeader = req.headers.get("authorization");
+  if (internalSecret) {
+    if (!INTERNAL_FUNCTION_SECRET || internalSecret !== INTERNAL_FUNCTION_SECRET) {
+      return jsonRes({ error: "Unauthorized" }, 401, req);
+    }
+    return { userId: null };
+  }
+  if (authHeader) {
+    const user = await getUser(req);
+    if (!user) return jsonRes({ error: "Unauthorized" }, 401, req);
+    return { userId: user.id };
+  }
+  return jsonRes({ error: "Unauthorized" }, 401, req);
+}
+
 // ===========================================================================
 // Дедуп исходящих echo (Зона 5 рефакторинга)
 // ===========================================================================

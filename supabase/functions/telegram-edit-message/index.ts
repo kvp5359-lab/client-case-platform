@@ -5,7 +5,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { corsHeadersFor } from "../_shared/edge.ts";
+import { corsHeadersFor, resolveInternalOrUserAuth } from "../_shared/edge.ts";
 import { safeJsonParse, findMissingField, isValidUUID } from "../_shared/validation.ts";
 import { htmlToTelegramHtml, escapeHtmlEntities, isHtmlContent } from "../_shared/htmlFormatting.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
@@ -31,42 +31,13 @@ Deno.serve(async (req: Request) => {
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
   const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   // Авторизация: JWT (клиент) или внутренний секрет (pg_net trigger)
-  const authHeader = req.headers.get("authorization");
-  const internalSecret = req.headers.get("x-internal-secret");
-  const expectedSecret = Deno.env.get("INTERNAL_FUNCTION_SECRET");
-
-  let authenticatedUserId: string | null = null;
-
-  if (internalSecret) {
-    if (!expectedSecret || internalSecret !== expectedSecret) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-  } else if (authHeader) {
-    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-    authenticatedUserId = user.id;
-  } else {
-    return new Response(
-      JSON.stringify({ error: "Unauthorized" }),
-      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  }
+  const auth = await resolveInternalOrUserAuth(req);
+  if (auth instanceof Response) return auth;
+  const authenticatedUserId = auth.userId;
 
   try {
     const body = safeJsonParse<RequestBody>(await req.text());
