@@ -46,6 +46,14 @@
 
 ## 🔬 Журнал расследований (хронология)
 
+### 2026-07-12 — Консолидация отправки, Уровень 1+2.2: visibility-backstop во ВСЕ send + сторож ⏳ ЗАДЕПЛОЕНО, ЖДЁТ СМОК
+- **Контекст:** план `docs/feature-backlog/2026-07-12-messenger-dispatch-consolidation.md` (сокращение карантина). Карта показала: `telegram-business-send` и `telegram-edit-message` НЕ имели visibility-backstop (дыра — остальные 4 send имеют). 
+- **Сделано:** добавлен backstop `visibility !== 'client' → skip` в `telegram-business-send` (markMessageSent пустой) и `telegram-edit-message` (правку внутреннего в TG не шлём). Единый контракт со всеми send. Новый сторож `scripts/check-edge-invariants.mjs` валит CI, если любая из 6 send/edit-функций потеряет backstop.
+- **Грабли:** любая НОВАЯ функция внешней доставки — вписать в `MUST_GATE` скрипта + добавить backstop. business-тред всегда клиентский (backstop почти не срабатывает), но контракт однороден.
+- **Проверки:** `deno check` edit чист; business — 4 ошибки в `_shared/sendFailureLog.ts` (pre-existing strict-null, не связано). Инвариант зелёный (6/6). ✅ Задеплоено `telegram-business-send`+`telegram-edit-message`. ⏳ Смок: внутреннее в Business-тред → не уходит; правка внутреннего → не уходит; клиентское → как раньше.
+- **Файлы:** `telegram-business-send/index.ts`, `telegram-edit-message/index.ts`, `scripts/check-edge-invariants.mjs`.
+
+
 ### 2026-07-12 — Аудит Фаза 6: гонка глобального _botToken закрыта через AsyncLocalStorage ⏳ КОД ГОТОВ, ЖДЁТ ДЕПЛОЯ + СМОК
 - **Проблема (G10):** `telegram-webhook-v2/shared.ts` хранил токен бота в модульной переменной `_botToken`, `index.ts` звал `setBotToken()` на входе запроса. `Deno.serve` обслуживает параллельные запросы в одном изоляте → webhook второго бота одной группы перетирал `_botToken`, пока первый после await'ов работал → команды/ответы (`tgCall`/`sendMessage`/`editMessage`/`answerCallback`, 104 вызова) уходили не тем ботом. Скачивание вложений уже было починено (ctx.botToken), но команды — нет.
 - **Решение (минимальное, БЕЗ правки 104 вызовов):** токен стал REQUEST-SCOPED через `AsyncLocalStorage` (`node:async_hooks`). `getBotToken()` (его читают все обёртки tg-api) теперь берёт токен из ALS-контекста запроса; `index.ts` оборачивает всю обработку в `runWithBotToken(tokenFromDb, …)`. ALS изолирует токен по async-цепочке → параллельные запросы не пересекаются. `_botToken`/`setBotToken` оставлены фолбэком для путей вне run. Правки — только `shared.ts` + `index.ts`, 104 вызова не тронуты.

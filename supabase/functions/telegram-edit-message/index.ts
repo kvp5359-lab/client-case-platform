@@ -104,9 +104,17 @@ Deno.serve(async (req: Request) => {
       if (body.message_id && isValidUUID(body.message_id)) {
         const { data: msgRow } = await serviceClient
           .from("project_messages")
-          .select("telegram_bot_integration_id")
+          .select("telegram_bot_integration_id, visibility")
           .eq("id", body.message_id)
           .maybeSingle();
+        // Backstop видимости: правку внутреннего (team/self) в Telegram не шлём —
+        // единый контракт со всеми send-функциями (аудит 2026-07-12).
+        if (((msgRow?.visibility as string | null) ?? "client") !== "client") {
+          return new Response(
+            JSON.stringify({ ok: true, skipped: "internal_visibility" }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
         savedIntegrationId =
           (msgRow?.telegram_bot_integration_id as string | null) ?? null;
       }

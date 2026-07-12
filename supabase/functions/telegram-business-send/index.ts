@@ -67,7 +67,7 @@ Deno.serve(async (req: Request) => {
   // 1. Сообщение
   const { data: msg } = await service
     .from("project_messages")
-    .select("id, thread_id, content, telegram_message_id, send_status, reply_to_message_id")
+    .select("id, thread_id, content, telegram_message_id, send_status, reply_to_message_id, visibility")
     .eq("id", body.message_id)
     .maybeSingle();
   if (!msg || !msg.thread_id) {
@@ -75,6 +75,13 @@ Deno.serve(async (req: Request) => {
   }
   if (msg.send_status === "sent" || msg.telegram_message_id) {
     return jsonOk({ skip: "already sent" });
+  }
+  // Backstop видимости: внутреннее (team/self) не уходит клиенту, даже если
+  // какой-то путь забудет фронт-гейт. Business-тред всегда клиентский, но
+  // контракт единый со всеми send-функциями (закрытие дыры аудита 2026-07-12).
+  if (((msg.visibility as string | null) ?? "client") !== "client") {
+    await markMessageSent(service, msg.id, {});
+    return jsonOk({ ok: true, skipped: "internal_visibility" });
   }
 
   // Если это reply на сообщение в нашем сервисе — берём telegram_message_id
