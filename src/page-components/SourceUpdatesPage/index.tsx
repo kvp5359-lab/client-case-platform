@@ -9,7 +9,7 @@
  * синхронизирует все источники воркспейса.
  */
 
-import { Fragment, useMemo } from 'react'
+import { Fragment, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   FolderSync,
@@ -113,6 +113,13 @@ export default function SourceUpdatesPage() {
   const markRead = useMarkSourceUpdatesReadMutation()
   const markAllRead = useMarkAllSourceUpdatesReadMutation()
 
+  // Push-режим правой панели: при открытой панели <main> отжимается влево,
+  // и лента файлов помещается в свободное место, а не уезжает под панель.
+  useEffect(() => {
+    document.body.setAttribute('data-panel-mode', 'push')
+    return () => document.body.removeAttribute('data-panel-mode')
+  }, [])
+
   const executorIds = useMemo(() => new Set(executorProjectIds), [executorProjectIds])
 
   // Проекты с непрочитанными (RPC уже скоуплен по исполнителю; пересечение —
@@ -208,32 +215,32 @@ export default function SourceUpdatesPage() {
   return (
     <WorkspaceLayout>
       <div className="p-6 max-w-4xl mx-auto space-y-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+        <div className="space-y-1">
+          <div className="flex items-start justify-between gap-4">
             <h1 className="text-xl font-semibold">Обновления источников</h1>
-            <p className="text-sm text-muted-foreground">
-              Файлы из привязанных папок Google Drive по вашим проектам — свежие сверху.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {unreadProjectIds.size > 0 && (
-              <Button
-                variant="ghost"
-                onClick={() => workspaceId && markAllRead.mutate(workspaceId)}
-                disabled={markAllRead.isPending}
-                title="Отметить все обновления прочитанными"
-              >
-                <CheckCheck className="h-4 w-4 mr-1.5" />
-                Прочитать всё
+            <div className="flex items-center gap-2 shrink-0">
+              {unreadProjectIds.size > 0 && (
+                <Button
+                  variant="ghost"
+                  onClick={() => workspaceId && markAllRead.mutate(workspaceId)}
+                  disabled={markAllRead.isPending}
+                  title="Отметить все обновления прочитанными"
+                >
+                  <CheckCheck className="h-4 w-4 mr-1.5" />
+                  Прочитать всё
+                </Button>
+              )}
+              <Button variant="outline" onClick={handleSync} disabled={syncing}>
+                <RefreshCw className={`h-4 w-4 mr-1.5 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing && syncProgress
+                  ? `Проверка ${syncProgress.done}/${syncProgress.total}`
+                  : 'Проверить источники'}
               </Button>
-            )}
-            <Button variant="outline" onClick={handleSync} disabled={syncing}>
-              <RefreshCw className={`h-4 w-4 mr-1.5 ${syncing ? 'animate-spin' : ''}`} />
-              {syncing && syncProgress
-                ? `Проверка ${syncProgress.done}/${syncProgress.total}`
-                : 'Проверить источники'}
-            </Button>
+            </div>
           </div>
+          <p className="text-sm text-muted-foreground">
+            Файлы из привязанных папок Google Drive по вашим проектам — свежие сверху.
+          </p>
         </div>
 
         {syncing && syncProgress && (
