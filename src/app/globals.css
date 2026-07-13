@@ -12,6 +12,14 @@
        поэтому .side-panel и resize-handle читают одно и то же значение и
        не «разъезжаются» в момент между mount и первым useEffect. */
     --panel-width: 600px;
+    /* Правое авто-поле центрирующей обёртки приложения (max-w-[1800px] mx-auto
+       в (app)/layout.tsx). На окне шире 1800px приложение центрируется и справа
+       остаётся поле (100vw − 1800)/2. Боковая панель и resize-handle позициони-
+       руются `fixed` относительно ОКНА, а контент (main) — внутри обёртки 1800px,
+       поэтому без этого инсета панель уезжает к краю окна и между ней и контентом
+       зияет белая полоса шириной этого поля (баг виден только >1800px, в Chrome).
+       Держать 1800px в синхроне с max-w-[1800px] обёртки. */
+    --app-right-inset: max(0px, calc((100vw - 1800px) / 2));
     --background: 0 0% 100%;
     --foreground: 20 14.3% 4.1%;
     --card: 0 0% 100%;
@@ -549,6 +557,10 @@
 .side-panel {
   @apply fixed top-0 right-0 min-w-[360px] border-l border-gray-200 bg-white shadow-[-2px_0_8px_rgba(0,0,0,0.08)];
   width: var(--panel-width, 600px);
+  /* Прижимаем панель к правому краю ОБЁРТКИ приложения (max-w-[1800px]), а не
+     окна — иначе на широких экранах между панелью и контентом белая полоса.
+     Перебивает right-0 из @apply выше (объявление ниже по источнику). */
+  right: var(--app-right-inset, 0px);
   /* Высота — динамический viewport (dvh): на мобильных браузерах 100vh
      включает зону адресной строки/нижней панели, из-за чего низ панели
      (композер) уезжает под хром браузера и поле ввода не видно. 100dvh
@@ -755,7 +767,7 @@ body[data-panel-open][data-panel-mode="push"] main {
    так что тосты следуют за реальной шириной панели. */
 body[data-panel-open] [data-sonner-toaster][data-x-position='right'],
 body[data-task-panel-open] [data-sonner-toaster][data-x-position='right'] {
-  right: calc(var(--panel-width, 600px) + 16px) !important;
+  right: calc(var(--panel-width, 600px) + 16px + var(--app-right-inset, 0px)) !important;
 }
 
 /* На мобиле панель — fullscreen overlay, поэтому сдвиг тостов под её ширину
