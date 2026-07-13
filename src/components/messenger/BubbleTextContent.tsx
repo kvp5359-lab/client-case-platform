@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { ChevronDown, RefreshCw, Send } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { humanizeSendError } from '@/lib/messenger/sendErrorMessages'
 import {
   isHtmlContent,
   sanitizeMessengerHtml,
@@ -250,17 +251,29 @@ type RetrySendButtonProps = {
 }
 
 export function RetrySendButton({ message, onRetrySend }: RetrySendButtonProps) {
+  // Понятная причина ошибки (если распознали ответ Telegram) — показываем над
+  // кнопкой, чтобы пользователь понимал, что делать (напр. окно 24ч Business).
+  const reason = humanizeSendError(
+    (message as { telegram_error_detail?: string | null }).telegram_error_detail,
+  )
   return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation()
-        onRetrySend(message)
-      }}
-      className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full transition-colors text-red-500 hover:text-red-700 hover:bg-red-50"
-    >
-      <RefreshCw className="h-3 w-3" />
-      Повторить отправку
-    </button>
+    <div className="flex flex-col items-end gap-0.5">
+      {reason && (
+        <span className="max-w-[280px] text-right text-[11px] leading-tight text-red-500/90">
+          {reason}
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          onRetrySend(message)
+        }}
+        className="flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full transition-colors text-red-500 hover:text-red-700 hover:bg-red-50"
+      >
+        <RefreshCw className="h-3 w-3" />
+        Повторить отправку
+      </button>
+    </div>
   )
 }

@@ -27,6 +27,7 @@ import {
   type SendFailureRow,
 } from '@/hooks/messenger/useSendFailures'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
+import { humanizeSendError } from '@/lib/messenger/sendErrorMessages'
 import { logger } from '@/utils/logger'
 
 type SendFailureToastsProps = {
@@ -149,10 +150,18 @@ function showFailureToast(
   onRetry: () => void,
 ) {
   const preview = (f.content ?? '').replace(/<[^>]+>/g, '').trim().slice(0, 80)
+  const previewText = preview ? `«${preview}${preview.length === 80 ? '…' : ''}»` : ''
+  // Понятная причина (если ошибку узнали) — показываем её; иначе превью/сырой текст.
+  const reason = humanizeSendError(f.error_text)
   const title = 'Не удалось отправить сообщение'
-  const description = preview
-    ? `«${preview}${preview.length === 80 ? '…' : ''}»`
-    : f.error_text
+  const description = reason ? (
+    <div className="flex flex-col gap-1">
+      {previewText && <span className="text-xs opacity-70">{previewText}</span>}
+      <span>{reason}</span>
+    </div>
+  ) : (
+    previewText || f.error_text
+  )
   const meta = (f.metadata as Record<string, unknown> | null) ?? {}
   const hasMessageId = !!(meta.project_message_id || meta.message_id)
   return toast.error(title, {
