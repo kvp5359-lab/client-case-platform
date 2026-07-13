@@ -99,6 +99,21 @@ async function resolveLeadTemplate(
   };
 }
 
+/** Резолвит user_id[] сотрудников в participant_id[] воркспейса. */
+async function resolveUserIdsToParticipants(
+  workspaceId: string,
+  userIds: string[],
+): Promise<string[]> {
+  if (!userIds.length) return [];
+  const { data } = await service
+    .from("participants")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .in("user_id", userIds)
+    .eq("is_deleted", false);
+  return ((data ?? []) as { id: string }[]).map((p) => p.id);
+}
+
 /** Добавить пул ответственных в участники треда (доступ + «все видят всё»). */
 async function addResponsibleMembers(
   threadId: string,
@@ -241,19 +256,26 @@ export async function handleLeadMessage(
       }
     } else {
       threadId = created.threadId;
-      // Исполнители: из шаблона (task_assignees) при заданном template_id, иначе
-      // пул ответственных → участники треда (project_thread_members). Оба дают
-      // доступ к диалогу («все видят всё»).
-      if (tpl.assigneeIds.length) {
-        await service
-          .from("task_assignees")
-          .upsert(
-            tpl.assigneeIds.map((pid) => ({
+      // Исполнители (все дают доступ к диалогу, «все видят всё»):
+      //  • шаблон задан → исполнители шаблона (task_assignees), но пул
+      //    responsible_user_ids ПЕРЕОПРЕДЕЛЯЕТ их (доп. параметр поверх шаблона);
+      //  • шаблона нет → пул ответственных → участники треда (project_thread_members).
+      if (config.template_id) {
+        const overridePids = config.responsible_user_ids?.length
+          ? await resolveUserIdsToParticipants(
+              ctx.workspaceId,
+              config.responsible_user_ids,
+            )
+          : tpl.assigneeIds;
+        if (overridePids.length) {
+          await service.from("task_assignees").upsert(
+            overridePids.map((pid) => ({
               thread_id: created.threadId,
               participant_id: pid,
             })),
             { onConflict: "thread_id,participant_id", ignoreDuplicates: true },
           );
+        }
       } else {
         await addResponsibleMembers(
           threadId,

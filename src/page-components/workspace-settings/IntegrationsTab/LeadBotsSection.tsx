@@ -20,6 +20,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useGlobalThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
+import { getChatIconComponent } from '@/components/messenger/chatVisuals'
+import { COLOR_TEXT } from '@/components/messenger/threadConstants'
+import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads.types'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 import type { WorkspaceParticipant } from '@/hooks/shared/useWorkspaceParticipants'
 import type { BotIntegration, DialogState } from './types'
@@ -145,6 +148,8 @@ function LeadBotRow({
     bot.config.show_sender_name ?? false,
   )
 
+  const selectedTemplate = templates.find((t) => t.id === templateId)
+
   const botAvatarUrl = bot.config.bot_avatar_url
   const label = bot.config.bot_username
     ? `@${bot.config.bot_username}`
@@ -238,24 +243,51 @@ function LeadBotRow({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">— без шаблона —</SelectItem>
-                {templates.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name}
-                  </SelectItem>
-                ))}
+                {templates.map((t) => {
+                  const Icon = getChatIconComponent(t.icon)
+                  return (
+                    <SelectItem key={t.id} value={t.id}>
+                      <span className="flex items-center gap-2">
+                        <Icon
+                          className={`h-3.5 w-3.5 ${COLOR_TEXT[t.accent_color as ThreadAccentColor] ?? ''}`}
+                        />
+                        {t.name}
+                      </span>
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
-            <p className="text-[11px] text-muted-foreground">
-              Задаёт иконку, цвет, статус, срок и исполнителей нового диалога. Без
-              шаблона — иконка/цвет как у «Личного Telegram», а исполнители берутся
-              из списка ответственных ниже.
-            </p>
+            {selectedTemplate ? (
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                {(() => {
+                  const Icon = getChatIconComponent(selectedTemplate.icon)
+                  return (
+                    <Icon
+                      className={`h-4 w-4 ${COLOR_TEXT[selectedTemplate.accent_color as ThreadAccentColor] ?? ''}`}
+                    />
+                  )
+                })()}
+                <span>
+                  Новый диалог создаётся с этой иконкой/цветом, а также статусом,
+                  сроком и исполнителями шаблона. Ниже можно переопределить исполнителей.
+                </span>
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">
+                Без шаблона — иконка/цвет как у «Личного Telegram», исполнители — из
+                списка ответственных ниже.
+              </p>
+            )}
           </div>
 
-          {!templateId && (
-            <div className="space-y-1.5">
-              <Label className="text-xs">Ответственные (все видят входящие диалоги)</Label>
-              {employees.length === 0 ? (
+          <div className="space-y-1.5">
+            <Label className="text-xs">
+              {templateId
+                ? 'Исполнители — переопределить шаблон (пусто = из шаблона)'
+                : 'Ответственные (все видят входящие диалоги)'}
+            </Label>
+            {employees.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Нет сотрудников в воркспейсе.</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
@@ -281,10 +313,11 @@ function LeadBotRow({
                 </div>
               )}
               <p className="text-[11px] text-muted-foreground">
-                Первый в списке — владелец диалога; остальные добавляются в участники.
+                {templateId
+                  ? 'Выбранные здесь заменят исполнителей шаблона для этого бота.'
+                  : 'Первый в списке — владелец диалога; остальные добавляются в участники.'}
               </p>
             </div>
-          )}
 
           <div className="space-y-1.5">
             <Label className="text-xs" htmlFor={`welcome-${bot.id}`}>
