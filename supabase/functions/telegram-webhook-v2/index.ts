@@ -75,7 +75,8 @@ Deno.serve(async (req) => {
     !integration ||
     integration.is_active === false ||
     (integration.type !== "telegram_workspace_bot" &&
-      integration.type !== "telegram_employee_bot")
+      integration.type !== "telegram_employee_bot" &&
+      integration.type !== "telegram_lead_bot")
   ) {
     return new Response("Unauthorized", { status: 401 });
   }
@@ -92,7 +93,12 @@ Deno.serve(async (req) => {
       ((integration.config as { bot_id?: number } | null)?.bot_id as
         | number
         | undefined) ?? null,
-    mode: integration.type === "telegram_workspace_bot" ? "workspace" : "employee",
+    mode:
+      integration.type === "telegram_workspace_bot"
+        ? "workspace"
+        : integration.type === "telegram_lead_bot"
+          ? "lead"
+          : "employee",
     // Токен этого запроса — для скачивания вложений в обход гонки глобали
     // (см. IntegrationContext.botToken / media.ts).
     botToken: tokenFromDb,

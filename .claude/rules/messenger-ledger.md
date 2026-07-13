@@ -31,6 +31,7 @@
 
 | Дата | Тема | Статус |
 |------|------|--------|
+| 2026-07-13 | **Лид-боты** (рекламный бот-приёмник холодных лидов в личке). Новый тип `telegram_lead_bot`, `handlePrivateMessage`→`lead.ts`, диалог через `project_telegram_chats`, метка кампании, пул ответственных | ⏳ **Код в рабочем дереве (backend+frontend), ждёт миграции+деплоя+смока.** Не закоммичено/не задеплоено |
 | 2026-07-13 | **Склейка альбома в TG-группе** (несколько файлов клиента = 1 бабл, как MTProto). Приём пишет `telegram_grouped_id`, фронт `mergeAlbumMessages` склеивает по (sender,date)+grouped | ⏳ **Приём задеплоен, фронт ждёт push+смок:** клиент шлёт альбом в группу → один бабл со всеми файлами |
 | 2026-06-05 | **Reply-цитата в multi-bot группах** (cross-bot). Фикс «дозапись связки бот-владельцем» в проде (v2 v67, v1, business) | ⏳ **Ждёт смок-теста** на боевой группе с двумя активными ботами (оригинал от одного бота, реплай ловит другой) |
 | 2026-06-05 | **Bot-to-Bot Communication Mode** (Bot API 10.0) как альтернатива reply-фиксу | 🛑 **Воспроизвёлся риск G6:** при активации у секретаря наши `web`-исходящие прилетели как `telegram`-входящие → эхо-дубли (текст + 2 файла). Откатили (выключили режим у секретаря), 3 дубля удалили. **Защита `is_bot` НЕ задеплоена** (откат по просьбе). Повторно включать только ПОСЛЕ деплоя защиты |
@@ -46,6 +47,33 @@
 ---
 
 ## 🔬 Журнал расследований (хронология)
+
+### 2026-07-13 (5) — Лид-боты: рекламный бот-приёмник холодных лидов в личке (ФИЧА, не баг) ⏳ КОД В РАБОЧЕМ ДЕРЕВЕ, ЖДЁТ МИГРАЦИИ+ДЕПЛОЯ+СМОКА
+- **Запрос:** обычный бот (@BotFather), которого рекламируют. Клиент пишет ему в личку → в CRM появляется личный диалог (`project_id=NULL`) с меткой кампании → команда ведёт переписку из ЛК. Сейчас `handlePrivateMessage` (sync.ts) был ПУСТ — обычный бот в личке молчал на незнакомцев (только `/start <uuid>` привязки). План — `docs/feature-backlog/2026-07-13-telegram-lead-bots.md`.
+- **Продуктовые решения (с владельцем):** несколько лид-ботов; пул ответственных на бота, «все видят всё» (через `project_thread_members`); метка гибкая (базовая на бота `config.base_campaign` + деталь из deep-link `?start=`); приветствие одно на бота; название по имени клиента; **сделка-проект — отдельный второй шаг, НЕ здесь** (только приём холодного лида в личный диалог); отдельный раздел в интеграциях.
+- **Архитектура (максимум переиспользования, минимум нового):**
+  - **Тип** `telegram_lead_bot` — просто значение (`workspace_integrations.type` = `text`, ALTER не нужен). `resolveTokenByIntegrationId` мягкий → лид-бот проходит как `workspace_bot`. `findSecretaryInGroup` фильтрует по `telegram_workspace_bot` → лид-бот в групповой self-heal НЕ попадает (важно).
+  - **Связь диалог↔клиент↔бот — существующая `project_telegram_chats`** (`telegram_chat_id`=id клиента в личке, `integration_id`=лид-бот, `project_id=NULL` уже разрешён). ОДНА строка обслуживает И приём (поиск существующего треда), И отправку: dispatch telegram-ветка резолвит чат по `thread_id`, `resolveBotToken` — бота по `integration_id`. **Ни новой ветки в `dispatch_message_to_channels`, ни новой send-функции.**
+  - **source входящих = `'telegram'`** — намеренно (уже в skip-list триггера отправки + покрыт content-dedup индексом `WHERE source='telegram'`). «Канал лид» = факт привязки к лид-боту, не отдельный source. Триггер/индексы НЕ тронуты.
+  - **Личный диалог, route_incoming НЕ дёргаем** (сделка = второй шаг) → меньше связки, прод-функции нетронуты.
+- **Реализация (backend, карантин):**
+  - Миграция `20260713150000_telegram_lead_bots.sql` — ОДНА колонка `project_threads.lead_source jsonb` (`{bot_integration_id, campaign, start_payload}`), аддитивно.
+  - `_shared/ensureDirectThread.ts` (нов) — общее создание личного треда (контакт+defaults+INSERT); поиск существующего — колбэком (у каждого канала свой). Лид использует. `ensureBusinessThread`/`ensureMTProtoThread` — кандидаты на перевод отдельным заходом (НЕ трогал чужой карантин).
+  - `telegram-webhook-v2/lead.ts` (нов) — `handleLeadMessage`: найти/создать тред+контакт+binding, пул→`project_thread_members`, приветствие на первый контакт, метка из payload/config, запись через `syncTelegramIncomingMessage`, вложения (`downloadAttachments`, path использует `thread_id` при `project_id=null`).
+  - `sync.ts` — `mode==='lead' && private` перехватывает ВСЮ личку (вкл. `/start`) ДО команд.
+  - `types.ts` — `mode:'...'|'lead'` + `TgUser.is_bot?` (заодно убрало pre-existing ошибку sync.ts:200).
+  - `index.ts` — принять `telegram_lead_bot`→`mode='lead'`.
+  - `telegram-send-message/index.ts` — **гейт лид-DM**: чат привязан к `telegram_lead_bot` → skip `findEmployeeBot` (у сотрудника нет диалога с клиентом → доставка упала бы) + `showSenderName=false` (без префикса «Имя:»).
+  - `_shared/syncTelegramIncomingMessage.ts` — **fix reply-lookup при `project_id=NULL`**: `.eq("project_id", null)` не матчит → ветвление `.is`. Чинит и Business-fallback. `ChatBinding.project_id` → `string|null`.
+- **Реализация (фронт):** `IntegrationsTab/types.ts` (тип+config: `responsible_user_ids/welcome_message/base_campaign`), `LeadBotsSection.tsx` (нов — список+добавить+настройки: пул чекбоксами, приветствие, метка), `BotTokenDialog.tsx` (регистрация webhook и для lead), `IntegrationsTab.tsx` (вкладка «Лид-боты», запрос типа, мемо, рендер). `owner_user_id` треда = первый из пула ответственных.
+- **Грабли (новое):**
+  - Ответ клиенту лид-бота идёт ТОЛЬКО самим лид-ботом — `findEmployeeBot` для лид-DM пропускается (гейт по типу интеграции чата). Любой новый путь отправки в лид-DM держать этот гейт.
+  - `source` лид-входящих = `'telegram'` (не новый) — сознательно, ради skip-list и content-dedup. Не менять на отдельный source без правки триггера/индекса.
+  - Связь лид-диалога — `project_telegram_chats` (не колонки на треде, как business/mtproto). Поиск существующего диалога — по `(telegram_chat_id, integration_id, is_active)`.
+  - Гонка первого сообщения — тред через select→insert (как business), partial-unique не добавлен; двойное сообщение в 1с теоретически даст 2 треда (крайне редко).
+  - `ensureDirectThread` — общий строительный блок; business/mtproto пока свои (долг на консолидацию).
+- **Проверки:** edge `deno check` — 0 новых (webhook-v2 2 pre-existing upload-slot; telegram-send 32=32 baseline), lockfile не тронут; фронт tsc 0, eslint 0, **969 тестов**. **⏳ Ждёт (за владельцем):** миграция `20260713150000`; деплой edge `--no-verify-jwt` `telegram-webhook-v2`+`telegram-send-message` (общий `_shared` тянут обе); фронт CI. Смок: `t.me/<bot>?start=promo1`→Start → приветствие + диалог с меткой `promo1` → ответ из ЛК доходит клиенту → клиент пишет ещё → тот же диалог; групповые/Business/MTProto не задеты.
+- **Файлы:** миграция `20260713150000_telegram_lead_bots.sql`; edge `_shared/{ensureDirectThread(нов),syncTelegramIncomingMessage}.ts`, `telegram-webhook-v2/{lead(нов),sync,index,types}.ts`, `telegram-send-message/index.ts`; фронт `IntegrationsTab/{LeadBotsSection(нов),types,BotTokenDialog}.tsx`, `IntegrationsTab.tsx`.
 
 ### 2026-07-13 (4) — Telegram Business: окно 24ч (BUSINESS_PEER_USAGE_MISSING) + человеческий текст ошибки отправки (фронт) ⏳ ЖДЁТ ДЕПЛОЯ ФРОНТА
 - **Симптом (прод):** коллега не может отправить в Telegram Business-тред («Elena Kapralova»); тост «Не удалось отправить» без причины.

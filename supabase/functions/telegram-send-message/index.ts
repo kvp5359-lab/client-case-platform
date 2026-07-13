@@ -176,13 +176,40 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const employeeBot = await findEmployeeBot(
-      serviceClient,
-      body.telegram_chat_id,
-      senderParticipantId,
-    );
+    // Лид-DM: чат привязан к telegram_lead_bot (личка рекламного бота). Тогда НЕ
+    // форсим личного бота сотрудника — у него нет диалога с этим клиентом, и
+    // sendMessage упадёт. Отвечаем самим лид-ботом (через resolveBotToken по
+    // project_telegram_chats.integration_id). Префикс «Имя:» тоже не нужен.
+    let isLeadChat = false;
+    {
+      const { data: chatRow } = await serviceClient
+        .from("project_telegram_chats")
+        .select("integration_id")
+        .eq("telegram_chat_id", body.telegram_chat_id)
+        .eq("is_active", true)
+        .maybeSingle();
+      const leadIntegrationId = (chatRow as { integration_id: string | null } | null)
+        ?.integration_id;
+      if (leadIntegrationId) {
+        const { data: integ } = await serviceClient
+          .from("workspace_integrations")
+          .select("type")
+          .eq("id", leadIntegrationId)
+          .maybeSingle();
+        isLeadChat = (integ as { type: string } | null)?.type === "telegram_lead_bot";
+      }
+    }
+
+    const employeeBot = isLeadChat
+      ? null
+      : await findEmployeeBot(
+          serviceClient,
+          body.telegram_chat_id,
+          senderParticipantId,
+        );
     trace("bot.findEmployeeBot.result", {
       found: !!employeeBot,
+      is_lead_chat: isLeadChat,
       sender_participant_id: senderParticipantId,
     });
     const resolved =
@@ -271,7 +298,8 @@ Deno.serve(async (req: Request) => {
     }
 
     // Через личный бот сотрудника — Telegram сам покажет имя/аватарку, префикс не нужен.
-    let showSenderName = !isEmployeeBot;
+    // В лид-DM (личка рекламного бота) префикс «Имя:» клиенту тоже ни к чему.
+    let showSenderName = !isEmployeeBot && !isLeadChat;
     if (showSenderName && body.project_id) {
       // thread_id текущего сообщения — без него «последнее сообщение» приходило
       // из любого другого треда того же проекта с тем же channel ("client"). Если

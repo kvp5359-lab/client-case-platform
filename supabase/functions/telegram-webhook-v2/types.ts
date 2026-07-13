@@ -8,6 +8,7 @@ export interface TgUser {
   first_name?: string;
   last_name?: string;
   username?: string;
+  is_bot?: boolean;
 }
 
 export interface TgEntity {
@@ -150,7 +151,7 @@ export interface IntegrationContext {
   id: string;
   workspaceId: string;
   botId: number | null;
-  mode: "workspace" | "employee";
+  mode: "workspace" | "employee" | "lead";
   /**
    * Токен бота этого запроса. КРИТИЧНО для скачивания вложений: глобальный
    * `getBotToken()` — мутабельная переменная модуля, и при параллельных

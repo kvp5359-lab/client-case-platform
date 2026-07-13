@@ -11,9 +11,14 @@ export const TEAM_ROLES = new Set([
   'Внешний сотрудник',
 ])
 
+export type IntegrationBotType =
+  | 'telegram_workspace_bot'
+  | 'telegram_employee_bot'
+  | 'telegram_lead_bot'
+
 export type BotIntegration = {
   id: string
-  type: 'telegram_workspace_bot' | 'telegram_employee_bot'
+  type: IntegrationBotType
   is_active: boolean
   config: {
     bot_version?: string
@@ -23,6 +28,13 @@ export type BotIntegration = {
     bot_id?: number
     owner_user_id?: string
     bot_avatar_url?: string
+    // Лид-боты (telegram_lead_bot):
+    /** Пул ответственных — попадают в участники диалога («все видят всё»). */
+    responsible_user_ids?: string[]
+    /** Приветствие при первом контакте клиента. */
+    welcome_message?: string
+    /** Базовая метка кампании (детализация — из deep-link ?start=). */
+    base_campaign?: string
   }
   has_token: boolean
 }
@@ -32,7 +44,7 @@ export type DialogState = {
   bot: BotIntegration | null
   createParams: {
     workspace_id: string
-    type: 'telegram_workspace_bot' | 'telegram_employee_bot'
+    type: IntegrationBotType
     config: BotIntegration['config']
   } | null
 }
@@ -45,4 +57,11 @@ export type EmailAccount = {
   watch_expires_at: string | null
 }
 
-export type SectionKey = 'telegram' | 'gmail' | 'business' | 'wazzup' | 'email' | 'google_calendar'
+export type SectionKey =
+  | 'telegram'
+  | 'lead_bots'
+  | 'gmail'
+  | 'business'
+  | 'wazzup'
+  | 'email'
+  | 'google_calendar'

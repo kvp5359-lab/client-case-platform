@@ -111,6 +111,18 @@
 
 При добавлении: команды → `commands.ts`, callback кнопок → `callbacks.ts`, экраны загрузок → `upload-slot.ts`. Cross-module helpers → `pure.ts` или тематический модуль.
 
+## Telegram лид-боты (рекламный бот-приёмник холодных лидов)
+
+Реализовано 2026-07-13 (⏳ ждёт деплоя). Обычный бот (@BotFather), которого рекламируют. Клиент пишет ему в личку → создаётся личный диалог (`project_id=NULL`) с меткой кампании → команда ведёт переписку из ЛК. Несколько ботов на воркспейс.
+
+- **Тип интеграции**: `telegram_lead_bot` в `workspace_integrations` (это `text`, ALTER не нужен). Config: `responsible_user_ids[]` (пул ответственных, «все видят всё»), `owner_user_id` (главный = первый из пула), `welcome_message`, `base_campaign`.
+- **Webhook**: тот же `telegram-webhook-v2` (`--no-verify-jwt`), `mode='lead'`. `sync.ts` перехватывает всю личку (вкл. `/start`) → `lead.ts` `handleLeadMessage` ДО обычных команд. `/start <payload>` из `t.me/<bot>?start=<payload>` = метка кампании (в `project_threads.lead_source jsonb`).
+- **Связь диалог↔клиент↔бот**: существующая `project_telegram_chats` (`telegram_chat_id`=id клиента, `integration_id`=лид-бот, `project_id=NULL`). Одна строка обслуживает приём (поиск треда по паре) и отправку (dispatch telegram-ветка → `telegram-send-message`, бот через `integration_id`). Приём — общий `syncTelegramIncomingMessage`, `source='telegram'` (в skip-list + content-dedup). Создание треда — общий `_shared/ensureDirectThread.ts`.
+- **Отправка**: `telegram-send-message` с гейтом лид-DM — для чата, привязанного к `telegram_lead_bot`, НЕ форсит личного бота сотрудника (у него нет диалога с клиентом) и не добавляет префикс «Имя:». Отвечает самим лид-ботом.
+- **Доступ**: пул ответственных → `project_thread_members` (личный тред виден owner + members + менеджерам, RLS orphan-тредов).
+- **Не входит**: авто-создание сделки-проекта (route_incoming НЕ дёргается) — «второй шаг» стыковки с маркетинг-платформой, отдельно.
+- **UI**: раздел «Лид-боты» в интеграциях (`LeadBotsSection`).
+
 ## Telegram Business (личные диалоги сотрудников)
 
 Реализовано 2026-05-03, перевод на модель «без проектов» — 2026-05-10. Архитектура «как у Planfix» — общий бот сервиса `@clientcase_bot` (id `8669511732`), которого сотрудники подключают как делегата своего личного TG через **Telegram → Settings → Business → Chatbots**. Требует Telegram Premium у сотрудника.

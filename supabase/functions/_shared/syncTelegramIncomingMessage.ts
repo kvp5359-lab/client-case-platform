@@ -81,7 +81,8 @@ function extractFileUniqueId(message: TgMessageMinimal): string | null {
 }
 
 export interface ChatBinding {
-  project_id: string;
+  /** null для личных диалогов без проекта (Business-fallback, лид-боты, MTProto). */
+  project_id: string | null;
   workspace_id: string;
   channel: string | null;
   thread_id: string | null;
@@ -182,8 +183,12 @@ export async function syncTelegramIncomingMessage(
     let q = service
       .from("project_messages")
       .select("id")
-      .eq("project_id", binding.project_id)
       .eq("telegram_message_id", replyToTgMsgId);
+    // project_id может быть NULL (личные диалоги без проекта) — .eq(col, null)
+    // в PostgREST не матчит NULL, нужен .is(...). Иначе reply-цитата теряется.
+    q = binding.project_id === null
+      ? q.is("project_id", null)
+      : q.eq("project_id", binding.project_id);
     q = asPersonalBot
       ? q.eq("telegram_bot_integration_id", asPersonalBot.integrationId)
       : q.is("telegram_bot_integration_id", null);
@@ -200,12 +205,15 @@ export async function syncTelegramIncomingMessage(
     const replyDateISO = new Date(
       message.reply_to_message.date * 1000,
     ).toISOString();
-    const { data: replyByDate } = await service
+    let qd = service
       .from("project_messages")
       .select("id")
-      .eq("project_id", binding.project_id)
       .eq("telegram_chat_id", chatId)
-      .eq("telegram_message_date", replyDateISO)
+      .eq("telegram_message_date", replyDateISO);
+    qd = binding.project_id === null
+      ? qd.is("project_id", null)
+      : qd.eq("project_id", binding.project_id);
+    const { data: replyByDate } = await qd
       .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();

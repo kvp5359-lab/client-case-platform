@@ -102,7 +102,11 @@ export function BotTokenDialog({ state, onClose, onSaved }: BotTokenDialogProps)
       // edge-функцию. Edge-функция читает токен из БД и зовёт Telegram API.
       // Это надёжнее, чем вызов напрямую из браузера: даже если у юзера
       // отвалится интернет в момент сохранения, edge-функция отработает.
-      if (integrationType === 'telegram_employee_bot' && integrationId) {
+      if (
+        (integrationType === 'telegram_employee_bot' ||
+          integrationType === 'telegram_lead_bot') &&
+        integrationId
+      ) {
         const { data: regData, error: regErr } = await supabase.functions.invoke(
           'telegram-register-webhook',
           { body: { integration_id: integrationId, action: 'register' } },

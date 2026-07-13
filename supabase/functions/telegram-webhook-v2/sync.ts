@@ -13,6 +13,7 @@ import { findOrCreateParticipant } from "./participants.ts";
 import { downloadAttachments } from "./media.ts";
 import { getSession } from "./session.ts";
 import { handleCommand, showMainMenu } from "./commands.ts";
+import { handleLeadMessage } from "./lead.ts";
 import {
   handleSlotFileUpload,
   handleFreeFileUpload,
@@ -49,6 +50,15 @@ export async function handleMessage(msg: TgMessage, isEdited: boolean, ctx: Inte
   const chatId = msg.chat.id;
   const isPrivate = msg.chat.type === "private";
   const rawText = msg.text ?? msg.caption ?? "";
+
+  // ── Лид-бот: вся личка (включая /start с меткой кампании) → лид-хендлер ──
+  // Перехватываем ДО команд: /start у лид-бота несёт метку из рекламной ссылки,
+  // а не токен привязки. Группы лид-бот не обслуживает (пойдут ниже, binding не
+  // найдётся → no-op).
+  if (ctx.mode === "lead" && isPrivate) {
+    await handleLeadMessage(msg, isEdited, ctx);
+    return;
+  }
 
   // ── Команды (начинаются с "/") ──
   if (!isEdited && rawText.startsWith("/")) {

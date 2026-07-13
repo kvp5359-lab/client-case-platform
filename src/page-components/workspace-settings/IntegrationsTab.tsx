@@ -20,7 +20,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Calendar as CalendarIcon, Mail, MessageCircle, MessageSquare, Sparkles } from 'lucide-react'
+import { Calendar as CalendarIcon, Mail, Megaphone, MessageCircle, MessageSquare, Sparkles } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { integrationsKeys } from '@/hooks/queryKeys'
 import {
@@ -33,6 +33,7 @@ import { ChannelDefaultIconColorSetting } from './ChannelDefaultIconColorSetting
 import { EmailSection } from './EmailSection'
 import { BotTokenDialog } from './IntegrationsTab/BotTokenDialog'
 import { EmployeeBotsSection } from './IntegrationsTab/EmployeeBotsSection'
+import { LeadBotsSection } from './IntegrationsTab/LeadBotsSection'
 import { GmailSection } from './IntegrationsTab/GmailSection'
 import { GoogleCalendarSection } from './IntegrationsTab/GoogleCalendarSection'
 import { PersonalTelegramSection } from './IntegrationsTab/PersonalTelegramSection'
@@ -70,7 +71,7 @@ export function IntegrationsTab() {
         .from('workspace_integrations')
         .select('id, type, is_active, config, secrets')
         .eq('workspace_id', workspaceId)
-        .in('type', ['telegram_workspace_bot', 'telegram_employee_bot'])
+        .in('type', ['telegram_workspace_bot', 'telegram_employee_bot', 'telegram_lead_bot'])
         .order('created_at', { ascending: true })
       if (error) throw error
       return (data ?? []).map((row) => ({
@@ -97,6 +98,10 @@ export function IntegrationsTab() {
   )
   const employeeBots = useMemo(
     () => integrations.filter((i) => i.type === 'telegram_employee_bot'),
+    [integrations],
+  )
+  const leadBots = useMemo(
+    () => integrations.filter((i) => i.type === 'telegram_lead_bot'),
     [integrations],
   )
   const employeeBotByUserId = useMemo(() => {
@@ -179,6 +184,7 @@ export function IntegrationsTab() {
 
   const sections: Array<{ id: SectionKey; label: string; icon: typeof MessageCircle }> = [
     { id: 'telegram', label: 'Telegram', icon: MessageCircle },
+    { id: 'lead_bots', label: 'Лид-боты', icon: Megaphone },
     { id: 'gmail', label: 'Gmail', icon: Mail },
     { id: 'business', label: 'Личный Telegram сотрудника', icon: Sparkles },
     { id: 'wazzup', label: 'WhatsApp (Wazzup)', icon: MessageSquare },
@@ -220,6 +226,15 @@ export function IntegrationsTab() {
               title="Telegram-группа"
             />
           </>
+        )}
+        {section === 'lead_bots' && (
+          <LeadBotsSection
+            workspaceId={workspaceId!}
+            leadBots={leadBots}
+            employees={employees}
+            onAction={setDialog}
+            onSaved={refreshIntegrations}
+          />
         )}
         {section === 'gmail' && (
           <>
