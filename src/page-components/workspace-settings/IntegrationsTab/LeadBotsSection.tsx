@@ -12,6 +12,15 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { useGlobalThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
+import type { ThreadTemplate } from '@/types/threadTemplate'
 import type { WorkspaceParticipant } from '@/hooks/shared/useWorkspaceParticipants'
 import type { BotIntegration, DialogState } from './types'
 
@@ -30,6 +39,11 @@ export function LeadBotsSection({
   onAction,
   onSaved,
 }: LeadBotsSectionProps) {
+  // Шаблоны диалога (иконка/цвет/статус/дедлайн/исполнители нового чата).
+  // Библиотека воркспейса; email-шаблоны отсекаем — лид-диалог идёт в Telegram.
+  const { data: allTemplates = [] } = useGlobalThreadTemplates(workspaceId)
+  const templates = allTemplates.filter((t) => !t.is_email)
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
@@ -62,6 +76,7 @@ export function LeadBotsSection({
               key={bot.id}
               bot={bot}
               employees={employees}
+              templates={templates}
               onAction={onAction}
               onSaved={onSaved}
             />
@@ -109,15 +124,18 @@ export function LeadBotsSection({
 function LeadBotRow({
   bot,
   employees,
+  templates,
   onAction,
   onSaved,
 }: {
   bot: BotIntegration
   employees: WorkspaceParticipant[]
+  templates: ThreadTemplate[]
   onAction: (state: DialogState) => void
   onSaved: () => void
 }) {
   const [open, setOpen] = useState(false)
+  const [templateId, setTemplateId] = useState(bot.config.template_id ?? '')
   const [responsible, setResponsible] = useState<string[]>(
     bot.config.responsible_user_ids ?? [],
   )
@@ -136,8 +154,10 @@ function LeadBotRow({
     mutationFn: async () => {
       const newConfig = {
         ...bot.config,
+        template_id: templateId || undefined,
         responsible_user_ids: responsible,
         // Главный ответственный (owner нового диалога) — первый в списке.
+        // При заданном шаблоне доступ дают исполнители шаблона (task_assignees).
         owner_user_id: responsible[0],
         welcome_message: welcome.trim() || undefined,
         base_campaign: campaign.trim() || undefined,
@@ -208,36 +228,63 @@ function LeadBotRow({
       {open && (
         <div className="border-t px-3 py-3 space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-xs">Ответственные (все видят входящие диалоги)</Label>
-            {employees.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Нет сотрудников в воркспейсе.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {employees.map((p) => {
-                  if (!p.user_id) return null
-                  const uid = p.user_id
-                  const name =
-                    [p.name, p.last_name].filter(Boolean).join(' ') || p.email || '—'
-                  return (
-                    <label
-                      key={p.id}
-                      className="flex items-center gap-2 text-sm px-2 py-1 rounded hover:bg-muted/50 cursor-pointer"
-                    >
-                      <Checkbox
-                        checked={responsible.includes(uid)}
-                        onCheckedChange={() => toggleResponsible(uid)}
-                      />
-                      <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="truncate">{name}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            )}
+            <Label className="text-xs">Шаблон диалога</Label>
+            <Select
+              value={templateId || '__none__'}
+              onValueChange={(v) => setTemplateId(v === '__none__' ? '' : v)}
+            >
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue placeholder="— без шаблона —" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— без шаблона —</SelectItem>
+                {templates.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-[11px] text-muted-foreground">
-              Первый в списке — владелец диалога; остальные добавляются в участники.
+              Задаёт иконку, цвет, статус, срок и исполнителей нового диалога. Без
+              шаблона — иконка/цвет как у «Личного Telegram», а исполнители берутся
+              из списка ответственных ниже.
             </p>
           </div>
+
+          {!templateId && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Ответственные (все видят входящие диалоги)</Label>
+              {employees.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Нет сотрудников в воркспейсе.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {employees.map((p) => {
+                    if (!p.user_id) return null
+                    const uid = p.user_id
+                    const name =
+                      [p.name, p.last_name].filter(Boolean).join(' ') || p.email || '—'
+                    return (
+                      <label
+                        key={p.id}
+                        className="flex items-center gap-2 text-sm px-2 py-1 rounded hover:bg-muted/50 cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={responsible.includes(uid)}
+                          onCheckedChange={() => toggleResponsible(uid)}
+                        />
+                        <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="truncate">{name}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                Первый в списке — владелец диалога; остальные добавляются в участники.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label className="text-xs" htmlFor={`welcome-${bot.id}`}>

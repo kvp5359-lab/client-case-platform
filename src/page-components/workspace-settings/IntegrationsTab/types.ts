@@ -29,7 +29,9 @@ export type BotIntegration = {
     owner_user_id?: string
     bot_avatar_url?: string
     // Лид-боты (telegram_lead_bot):
-    /** Пул ответственных — попадают в участники диалога («все видят всё»). */
+    /** Шаблон диалога: иконка/цвет/статус/дедлайн/доступ/исполнители нового чата. */
+    template_id?: string
+    /** Пул ответственных (fallback, если шаблон не выбран). */
     responsible_user_ids?: string[]
     /** Приветствие при первом контакте клиента. */
     welcome_message?: string

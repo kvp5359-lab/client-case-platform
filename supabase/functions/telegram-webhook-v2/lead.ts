@@ -29,12 +29,74 @@ import type { IntegrationContext, TgMessage } from "./types.ts";
 interface LeadBotConfig {
   /** Главный ответственный (owner треда). Если пусто — берётся первый из пула. */
   owner_user_id?: string;
-  /** Пул ответственных — попадают в участники треда («все видят всё»). */
+  /** Пул ответственных — попадают в участники треда («все видят всё»).
+   *  Используется, только если НЕ задан template_id (иначе исполнители из шаблона). */
   responsible_user_ids?: string[];
+  /** Шаблон диалога: иконка/цвет/статус/дедлайн/доступ/исполнители нового чата. */
+  template_id?: string;
   /** Приветствие, отправляется при первом контакте. */
   welcome_message?: string;
   /** Базовая метка кампании на бота (детализация — из deep-link ?start=). */
   base_campaign?: string;
+}
+
+/** Поля треда из шаблона диалога (thread_templates), применяемые к новому лид-диалогу. */
+interface LeadTemplateApply {
+  icon?: string;
+  accentColor?: string;
+  /** Доп. колонки треда (status_id, deadline, access_type, access_roles). */
+  extraColumns: Record<string, unknown>;
+  /** participant_id[] исполнителей шаблона → task_assignees. */
+  assigneeIds: string[];
+}
+
+/**
+ * Читает шаблон диалога лид-бота и раскладывает его поля для применения к
+ * создаваемому треду. Зеркалит фронтовый applyTemplate, но для канала-приёма:
+ * имя треда берётся по контакту (не из шаблона), первое сообщение шаблона не
+ * применяется (у лид-бота своё приветствие). Нет шаблона → пустой результат.
+ */
+async function resolveLeadTemplate(
+  templateId: string | undefined,
+): Promise<LeadTemplateApply> {
+  const empty: LeadTemplateApply = { extraColumns: {}, assigneeIds: [] };
+  if (!templateId) return empty;
+
+  const { data } = await service
+    .from("thread_templates")
+    .select(
+      "icon, accent_color, default_status_id, deadline_days, access_type, access_roles, thread_template_assignees(participant_id)",
+    )
+    .eq("id", templateId)
+    .maybeSingle();
+  if (!data) return empty;
+
+  const tpl = data as {
+    icon: string | null;
+    accent_color: string | null;
+    default_status_id: string | null;
+    deadline_days: number | null;
+    access_type: string | null;
+    access_roles: string[] | null;
+    thread_template_assignees: { participant_id: string }[] | null;
+  };
+
+  const extraColumns: Record<string, unknown> = {};
+  if (tpl.default_status_id) extraColumns.status_id = tpl.default_status_id;
+  if (tpl.deadline_days != null) {
+    extraColumns.deadline = new Date(
+      Date.now() + tpl.deadline_days * 86_400_000,
+    ).toISOString();
+  }
+  if (tpl.access_type) extraColumns.access_type = tpl.access_type;
+  if (tpl.access_roles) extraColumns.access_roles = tpl.access_roles;
+
+  return {
+    icon: tpl.icon ?? undefined,
+    accentColor: tpl.accent_color ?? undefined,
+    extraColumns,
+    assigneeIds: (tpl.thread_template_assignees ?? []).map((a) => a.participant_id),
+  };
 }
 
 /** Добавить пул ответственных в участники треда (доступ + «все видят всё»). */
@@ -118,6 +180,11 @@ export async function handleLeadMessage(
     const ownerUserId =
       config.owner_user_id ?? config.responsible_user_ids?.[0] ?? null;
 
+    // Шаблон диалога (если у бота задан) — иконка/цвет/статус/дедлайн/доступ +
+    // исполнители. Иконку/цвет из шаблона кладём в extraColumns, чтобы перебить
+    // channel_defaults, которые проставляет createDirectThread.
+    const tpl = await resolveLeadTemplate(config.template_id);
+
     const created = await createDirectThread(service, {
       workspaceId: ctx.workspaceId,
       ownerUserId,
@@ -132,6 +199,9 @@ export async function handleLeadMessage(
           campaign: config.base_campaign ?? null,
           start_payload: startPayload,
         },
+        ...tpl.extraColumns,
+        ...(tpl.icon ? { icon: tpl.icon } : {}),
+        ...(tpl.accentColor ? { accent_color: tpl.accentColor } : {}),
       },
     });
 
@@ -171,12 +241,26 @@ export async function handleLeadMessage(
       }
     } else {
       threadId = created.threadId;
-      // Пул ответственных → участники треда.
-      await addResponsibleMembers(
-        threadId,
-        ctx.workspaceId,
-        config.responsible_user_ids ?? [],
-      );
+      // Исполнители: из шаблона (task_assignees) при заданном template_id, иначе
+      // пул ответственных → участники треда (project_thread_members). Оба дают
+      // доступ к диалогу («все видят всё»).
+      if (tpl.assigneeIds.length) {
+        await service
+          .from("task_assignees")
+          .upsert(
+            tpl.assigneeIds.map((pid) => ({
+              thread_id: created.threadId,
+              participant_id: pid,
+            })),
+            { onConflict: "thread_id,participant_id", ignoreDuplicates: true },
+          );
+      } else {
+        await addResponsibleMembers(
+          threadId,
+          ctx.workspaceId,
+          config.responsible_user_ids ?? [],
+        );
+      }
       // Приветствие — только при первом контакте (у победителя создания).
       if (config.welcome_message) {
         await sendMessage(clientTgUserId, config.welcome_message);
