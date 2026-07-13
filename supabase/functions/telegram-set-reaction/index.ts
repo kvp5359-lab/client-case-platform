@@ -9,6 +9,7 @@ import { corsHeadersFor } from "../_shared/edge.ts";
 import { safeJsonParse, findMissingField } from "../_shared/validation.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { resolveBotToken } from "../_shared/telegramBotToken.ts";
+import { getLeadChatInfo } from "../_shared/leadChat.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -128,15 +129,10 @@ Deno.serve(async (req: Request) => {
     // У отвечающего сотрудника нет диалога с этим клиентом своим личным ботом,
     // а карта telegram_bot_msg_ids лид-входящих ведётся под ключом 'secretary'
     // (приём с asPersonalBot=null). Форсим лид-бота, минуя личный бот сотрудника.
-    let isLeadChat = false;
-    if (chat.integration_id) {
-      const { data: leadInteg } = await supabaseAdmin
-        .from("workspace_integrations")
-        .select("type")
-        .eq("id", chat.integration_id)
-        .maybeSingle();
-      isLeadChat = (leadInteg as { type: string } | null)?.type === "telegram_lead_bot";
-    }
+    const { isLead: isLeadChat } = await getLeadChatInfo(
+      supabaseAdmin,
+      chat.integration_id,
+    );
 
     let reactorToken: string | null = null;
     // Ключ бота в карте telegram_bot_msg_ids: employee — его integration id

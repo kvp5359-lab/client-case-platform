@@ -23,7 +23,7 @@ import {
   syncTelegramIncomingMessage,
   applyTelegramEdit,
 } from "../_shared/syncTelegramIncomingMessage.ts";
-import { ensureDirectThread } from "../_shared/ensureDirectThread.ts";
+import { createDirectThread } from "../_shared/createDirectThread.ts";
 import type { IntegrationContext, TgMessage } from "./types.ts";
 
 interface LeadBotConfig {
@@ -85,24 +85,40 @@ export async function handleLeadMessage(
   // Существующий диалог этого клиента с этим лид-ботом?
   const { data: existingBinding } = await service
     .from("project_telegram_chats")
-    .select("thread_id, project_id")
+    .select("id, thread_id, project_id")
     .eq("telegram_chat_id", clientTgUserId)
     .eq("integration_id", ctx.id)
     .eq("is_active", true)
     .maybeSingle();
 
-  let threadId: string;
+  let threadId: string | null = null;
   let projectId: string | null = null;
 
   if (existingBinding?.thread_id) {
-    threadId = existingBinding.thread_id as string;
-    projectId = (existingBinding.project_id as string | null) ?? null;
-  } else {
+    // Тред мог быть удалён в корзину — тогда пишем не в него, а заводим новый.
+    const { data: t } = await service
+      .from("project_threads")
+      .select("id, project_id, is_deleted")
+      .eq("id", existingBinding.thread_id as string)
+      .maybeSingle();
+    if (t && (t as { is_deleted?: boolean }).is_deleted !== true) {
+      threadId = (t as { id: string }).id;
+      projectId = (t as { project_id: string | null }).project_id ?? null;
+    } else {
+      // Тред удалён → деактивируем протухший binding, заведём новый ниже.
+      await service
+        .from("project_telegram_chats")
+        .update({ is_active: false })
+        .eq("id", existingBinding.id as string);
+    }
+  }
+
+  if (!threadId) {
     // Новый холодный лид → личный диалог (project_id=NULL).
     const ownerUserId =
       config.owner_user_id ?? config.responsible_user_ids?.[0] ?? null;
 
-    const created = await ensureDirectThread(service, {
+    const created = await createDirectThread(service, {
       workspaceId: ctx.workspaceId,
       ownerUserId,
       clientTgUserId,
@@ -110,8 +126,6 @@ export async function handleLeadMessage(
       channelDefaultKey: "telegram_personal",
       fallbackIcon: "telegram",
       fallbackAccent: "blue",
-      // Существующий тред уже проверили через binding выше.
-      findExistingThreadId: async () => null,
       extraColumns: {
         lead_source: {
           bot_integration_id: ctx.id,
@@ -120,11 +134,15 @@ export async function handleLeadMessage(
         },
       },
     });
-    threadId = created.threadId;
 
-    // Связь диалог↔клиент↔бот — обслуживает и приём, и отправку ответов.
-    await service.from("project_telegram_chats").insert({
-      thread_id: threadId,
+    // Занимаем связь диалог↔клиент↔бот. Partial unique
+    // (telegram_chat_id, integration_id) WHERE is_active защищает от гонки:
+    // клиент нажал Start и сразу написал → два webhook'а параллельно. Кто
+    // вставил binding первым — владелец диалога; проигравший удаляет свой
+    // пустой тред и подхватывает диалог победителя (welcome/участники — у
+    // победителя, дубля приветствия нет).
+    const { error: bindErr } = await service.from("project_telegram_chats").insert({
+      thread_id: created.threadId,
       project_id: null,
       workspace_id: ctx.workspaceId,
       telegram_chat_id: clientTgUserId,
@@ -134,21 +152,44 @@ export async function handleLeadMessage(
       is_active: true,
     });
 
-    // Пул ответственных → участники треда.
-    await addResponsibleMembers(
-      threadId,
-      ctx.workspaceId,
-      config.responsible_user_ids ?? [],
-    );
-
-    // Приветствие — только при первом контакте.
-    if (config.welcome_message) {
-      await sendMessage(clientTgUserId, config.welcome_message);
+    if (bindErr) {
+      if (bindErr.code === "23505") {
+        // Гонка: другой webhook уже создал диалог. Удаляем свой пустой тред и
+        // подхватываем диалог победителя.
+        await service.from("project_threads").delete().eq("id", created.threadId);
+        const { data: winner } = await service
+          .from("project_telegram_chats")
+          .select("thread_id, project_id")
+          .eq("telegram_chat_id", clientTgUserId)
+          .eq("integration_id", ctx.id)
+          .eq("is_active", true)
+          .maybeSingle();
+        threadId = (winner?.thread_id as string | null) ?? created.threadId;
+        projectId = (winner?.project_id as string | null) ?? null;
+      } else {
+        throw bindErr;
+      }
+    } else {
+      threadId = created.threadId;
+      // Пул ответственных → участники треда.
+      await addResponsibleMembers(
+        threadId,
+        ctx.workspaceId,
+        config.responsible_user_ids ?? [],
+      );
+      // Приветствие — только при первом контакте (у победителя создания).
+      if (config.welcome_message) {
+        await sendMessage(clientTgUserId, config.welcome_message);
+      }
     }
   }
 
-  // @username в карточку контакта (зеркало Business/MTProto).
-  if (clientUsername) {
+  // threadId выставлен во всех ветках выше; guard для типа.
+  if (!threadId) return;
+
+  // @username в карточку контакта (зеркало Business/MTProto). Валидируем формат
+  // Telegram-username ([A-Za-z0-9_]) перед подстановкой в PostgREST-.or-фильтр.
+  if (clientUsername && /^[A-Za-z0-9_]{1,32}$/.test(clientUsername)) {
     await service
       .from("participants")
       .update({ telegram_username: clientUsername })
@@ -172,7 +213,7 @@ export async function handleLeadMessage(
     return;
   }
 
-  // Participant отправителя (создан ensureDirectThread при новом треде).
+  // Participant отправителя (создан createDirectThread при новом треде).
   const { data: contact } = await service
     .from("participants")
     .select("id")

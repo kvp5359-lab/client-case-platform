@@ -11,6 +11,7 @@ import { safeJsonParse, findMissingField, isValidUUID } from "../_shared/validat
 import { htmlToTelegramHtml, escapeHtmlEntities, isHtmlContent } from "../_shared/htmlFormatting.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { resolveBotToken, findEmployeeBot, ERR_NO_SECRETARY_IN_GROUP, isBotNotInChatError, rebindSecretaryInGroup } from "../_shared/telegramBotToken.ts";
+import { getLeadChatInfo } from "../_shared/leadChat.ts";
 import { detectChatMigration } from "../_shared/telegramMigration.ts";
 import { isReplyNotFoundError, loadReplyQuoteHtml } from "./helpers.ts";
 import { sendAttachmentsWithFallback } from "./attachments.ts";
@@ -182,31 +183,17 @@ Deno.serve(async (req: Request) => {
     // project_telegram_chats.integration_id). Префикс «Имя:» по умолчанию не
     // добавляем, но это настраивается флагом бота config.show_sender_name
     // (несколько сотрудников на одном лид-боте → можно показывать, кто пишет).
-    let isLeadChat = false;
-    let leadShowSenderName = false;
-    {
-      const { data: chatRow } = await serviceClient
-        .from("project_telegram_chats")
-        .select("integration_id")
-        .eq("telegram_chat_id", body.telegram_chat_id)
-        .eq("is_active", true)
-        .maybeSingle();
-      const leadIntegrationId = (chatRow as { integration_id: string | null } | null)
-        ?.integration_id;
-      if (leadIntegrationId) {
-        const { data: integ } = await serviceClient
-          .from("workspace_integrations")
-          .select("type, config")
-          .eq("id", leadIntegrationId)
-          .maybeSingle();
-        isLeadChat = (integ as { type: string } | null)?.type === "telegram_lead_bot";
-        if (isLeadChat) {
-          leadShowSenderName =
-            (integ as { config: { show_sender_name?: boolean } | null } | null)?.config
-              ?.show_sender_name === true;
-        }
-      }
-    }
+    const { data: chatRow } = await serviceClient
+      .from("project_telegram_chats")
+      .select("integration_id")
+      .eq("telegram_chat_id", body.telegram_chat_id)
+      .eq("is_active", true)
+      .maybeSingle();
+    const { isLead: isLeadChat, showSenderName: leadShowSenderName } =
+      await getLeadChatInfo(
+        serviceClient,
+        (chatRow as { integration_id: string | null } | null)?.integration_id,
+      );
 
     const employeeBot = isLeadChat
       ? null
