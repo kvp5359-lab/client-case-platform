@@ -123,6 +123,9 @@ function LeadBotRow({
   )
   const [welcome, setWelcome] = useState(bot.config.welcome_message ?? '')
   const [campaign, setCampaign] = useState(bot.config.base_campaign ?? '')
+  const [showSenderName, setShowSenderName] = useState(
+    bot.config.show_sender_name ?? false,
+  )
 
   const botAvatarUrl = bot.config.bot_avatar_url
   const label = bot.config.bot_username
@@ -138,6 +141,7 @@ function LeadBotRow({
         owner_user_id: responsible[0],
         welcome_message: welcome.trim() || undefined,
         base_campaign: campaign.trim() || undefined,
+        show_sender_name: showSenderName,
       }
       const { error } = await supabase
         .from('workspace_integrations')
@@ -263,6 +267,21 @@ function LeadBotRow({
               <code className="text-[10px]">?start=…</code>.
             </p>
           </div>
+
+          <label className="flex items-start gap-2 text-sm px-1 cursor-pointer">
+            <Checkbox
+              className="mt-0.5"
+              checked={showSenderName}
+              onCheckedChange={(v) => setShowSenderName(v === true)}
+            />
+            <span>
+              Показывать имя отправителя клиенту
+              <span className="block text-[11px] text-muted-foreground">
+                Если ботом отвечают несколько сотрудников — перед сообщением будет
+                видно, кто пишет («Имя: …»). По умолчанию выключено.
+              </span>
+            </span>
+          </label>
 
           <div className="flex justify-end">
             <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>

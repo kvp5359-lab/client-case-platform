@@ -35,6 +35,8 @@ export type BotIntegration = {
     welcome_message?: string
     /** Базовая метка кампании (детализация — из deep-link ?start=). */
     base_campaign?: string
+    /** Показывать имя отправителя клиенту (префикс «Имя:»). Несколько сотрудников на боте. */
+    show_sender_name?: boolean
   }
   has_token: boolean
 }

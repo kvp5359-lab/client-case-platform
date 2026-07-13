@@ -179,8 +179,11 @@ Deno.serve(async (req: Request) => {
     // Лид-DM: чат привязан к telegram_lead_bot (личка рекламного бота). Тогда НЕ
     // форсим личного бота сотрудника — у него нет диалога с этим клиентом, и
     // sendMessage упадёт. Отвечаем самим лид-ботом (через resolveBotToken по
-    // project_telegram_chats.integration_id). Префикс «Имя:» тоже не нужен.
+    // project_telegram_chats.integration_id). Префикс «Имя:» по умолчанию не
+    // добавляем, но это настраивается флагом бота config.show_sender_name
+    // (несколько сотрудников на одном лид-боте → можно показывать, кто пишет).
     let isLeadChat = false;
+    let leadShowSenderName = false;
     {
       const { data: chatRow } = await serviceClient
         .from("project_telegram_chats")
@@ -193,10 +196,15 @@ Deno.serve(async (req: Request) => {
       if (leadIntegrationId) {
         const { data: integ } = await serviceClient
           .from("workspace_integrations")
-          .select("type")
+          .select("type, config")
           .eq("id", leadIntegrationId)
           .maybeSingle();
         isLeadChat = (integ as { type: string } | null)?.type === "telegram_lead_bot";
+        if (isLeadChat) {
+          leadShowSenderName =
+            (integ as { config: { show_sender_name?: boolean } | null } | null)?.config
+              ?.show_sender_name === true;
+        }
       }
     }
 
@@ -298,8 +306,8 @@ Deno.serve(async (req: Request) => {
     }
 
     // Через личный бот сотрудника — Telegram сам покажет имя/аватарку, префикс не нужен.
-    // В лид-DM (личка рекламного бота) префикс «Имя:» клиенту тоже ни к чему.
-    let showSenderName = !isEmployeeBot && !isLeadChat;
+    // В лид-DM префикс «Имя:» — по настройке бота (config.show_sender_name).
+    let showSenderName = !isEmployeeBot && (!isLeadChat || leadShowSenderName);
     if (showSenderName && body.project_id) {
       // thread_id текущего сообщения — без него «последнее сообщение» приходило
       // из любого другого треда того же проекта с тем же channel ("client"). Если
