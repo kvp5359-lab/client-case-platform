@@ -56,6 +56,7 @@ import type { TaskPanelTab, TaskPanelTabType } from '@/types/taskPanelTabs'
 import { SYSTEM_TABS, SYSTEM_TAB_BY_TYPE, type SystemTabDef } from './tab-bar/systemTabs'
 import { DraggableTab } from './tab-bar/DraggableTab'
 import { SortableSeparator, SEPARATOR_ID } from './tab-bar/SortableSeparator'
+import { useScrollActiveTabIntoView } from '@/hooks/useScrollActiveTabIntoView'
 
 type TaskPanelTabBarProps = {
   tabs: TaskPanelTab[]
@@ -311,14 +312,12 @@ export function TaskPanelTabBar({
 
   // Активная вкладка всегда видима: при смене активной — проматываем к ней.
   // Закреплённые всегда на экране (не в скролле), для них scrollIntoView безвреден;
-  // незакреплённые проматываются внутри своего контейнера.
-  useEffect(() => {
-    if (!activeTabId) return
-    const el = rowRef.current?.querySelector<HTMLElement>(
-      `[data-tab-id="${activeTabId}"]`,
-    )
-    el?.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' })
-  }, [activeTabId, orderedTabs])
+  // незакреплённые проматываются внутри своего контейнера. Ищем во всём ряду
+  // (rowRef), т.к. активная может быть и среди закреплённых, и в скролле.
+  useScrollActiveTabIntoView(rowRef, activeTabId, {
+    behavior: 'smooth',
+    deps: [orderedTabs],
+  })
 
   // Меню «бутерброд»: все вкладки списком (закреплённые / обычные) + доступные
   // для открытия системные разделы. Контролируемое, чтобы крестик закрытия

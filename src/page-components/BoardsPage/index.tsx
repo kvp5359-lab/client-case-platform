@@ -15,11 +15,10 @@
  * вкладок — отдельной задачей (нужно общее поле порядка в БД).
  */
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Kanban, ListChecks, FolderOpen, Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useOverflowTabs } from '@/hooks/useOverflowTabs'
 import { toast } from 'sonner'
 import { getUserFacingErrorMessage } from '@/utils/errorMessage'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
@@ -57,6 +56,7 @@ import { BoardTab } from './BoardTab'
 import { ItemListTab } from '@/page-components/ItemListsPage/ItemListTab'
 import { ItemListTabContent } from '@/page-components/ItemListsPage/ItemListTabContent'
 import { usePageTitle } from '@/hooks/usePageTitle'
+import { useScrollActiveTabIntoView } from '@/hooks/useScrollActiveTabIntoView'
 
 const LIST_PREFIX = 'list-'
 
@@ -203,8 +203,8 @@ export default function BoardsPage() {
     )
   }
 
-  // Вкладки досок и списков — единый ряд с overflow-бутербродом (общий механизм
-  // useOverflowTabs, тот же, что у вкладок проекта). Хук ДО раннего return ниже.
+  // Вкладки досок и списков — единый ряд, листается горизонтально (свайп/скролл
+  // без видимого ползунка), справа всегда кнопка-«бутерброд» со всеми вкладками.
   const tabItems = useMemo(
     () => [
       ...(boards ?? []).map((b) => ({ id: `board:${b.id}`, kind: 'board' as const, board: b })),
@@ -217,12 +217,8 @@ export default function BoardsPage() {
     : activeList
       ? `list:${activeList.id}`
       : null
-  const {
-    rowRef: tabsRowRef,
-    measureRef: tabsMeasureRef,
-    visible: visibleTabs,
-    hidden: hiddenTabs,
-  } = useOverflowTabs({ items: tabItems, activeId: activeTabId, reservePx: 72, activeExtraPx: 28 })
+  const tabsScrollRef = useRef<HTMLDivElement>(null)
+  useScrollActiveTabIntoView(tabsScrollRef, activeTabId)
 
   if (!workspaceId || !user) return null
 
@@ -245,32 +241,10 @@ export default function BoardsPage() {
           </div>
         )}
 
-        {/* Строка вкладок — overflow-бутерброд вместо горизонтального скролла. */}
+        {/* Строка вкладок — листается горизонтально, справа всегда бутерброд. */}
         <div className="flex items-center px-3 py-2 shrink-0">
-          <div ref={tabsRowRef} className="relative flex-1 min-w-0 flex items-center gap-2 group/tabs">
-            {/* Скрытый ряд-клон для замера ширин (все вкладки). */}
-            <div
-              ref={tabsMeasureRef}
-              aria-hidden
-              className="absolute left-0 top-0 -z-10 flex items-center opacity-0 pointer-events-none"
-            >
-              {tabItems.map((it) => (
-                <span
-                  key={it.id}
-                  data-tab-id={it.id}
-                  className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm px-2.5 py-1"
-                >
-                  {it.kind === 'board' ? (
-                    <Kanban className="h-3.5 w-3.5" />
-                  ) : (
-                    <ListChecks className="h-3.5 w-3.5" />
-                  )}
-                  {it.kind === 'board' ? it.board.name : it.list.name}
-                </span>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-1 bg-muted rounded-lg p-1 w-fit max-w-full">
+          <div className="relative flex-1 min-w-0 flex items-center gap-2 group/tabs">
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1 min-w-0 max-w-full">
               {isLoading ? (
                 <div className="flex items-center gap-1">
                   <Skeleton className="h-6 w-20 rounded-full" />
@@ -279,61 +253,68 @@ export default function BoardsPage() {
                 </div>
               ) : (
                 <>
-                  {visibleTabs.map((it) =>
-                    it.kind === 'board' ? (
-                      <BoardTab
-                        key={it.id}
-                        board={it.board}
-                        isActive={activeBoard?.id === it.board.id}
-                        isPinned={isBoardPinned(it.board.id)}
-                        canPin={isOwner}
-                        hasBoardFilter={(() => {
-                          const f = normalizeBoardGlobalFilter(it.board.global_filter)
-                          return f.project.rules.length > 0 || f.thread.rules.length > 0
-                        })()}
-                        workspaceId={workspaceId}
-                        canManageSections={canManageShared}
-                        onSelect={() => navigateToBoard(it.board.id)}
-                        onEdit={() => { navigateToBoard(it.board.id); editDialog.open() }}
-                        onEditFilter={() => { navigateToBoard(it.board.id); filterDialog.open() }}
-                        onCreateFunnel={() => { navigateToBoard(it.board.id); funnelDialog.open() }}
-                        onDelete={() => handleDeleteBoard(it.board)}
-                        onAddList={() => { navigateToBoard(it.board.id); createListColumnDialog.open() }}
-                        onTogglePin={() => toggleBoardPin(it.board.id)}
-                      />
-                    ) : (
-                      <ItemListTab
-                        key={it.id}
-                        list={it.list}
-                        isActive={activeList?.id === it.list.id}
-                        isPinned={isListPinned(it.list.id)}
-                        canPin={canManageShared}
-                        canManage={it.list.owner_user_id === user.id || it.list.owner_user_id === null}
-                        workspaceId={workspaceId}
-                        canManageSections={canManageShared}
-                        onSelect={() => navigateToList(it.list.id)}
-                        onEditSettings={() => { navigateToList(it.list.id); settingsListDialog.open() }}
-                        onDelete={() => handleDeleteList(it.list)}
-                        onTogglePin={() => toggleListPin(it.list.id)}
-                      />
-                    ),
-                  )}
+                  {/* Скроллящийся ряд вкладок (ползунок скрыт). py/-my — припуск,
+                      чтобы overflow не подрезал тень активной вкладки. */}
+                  <div
+                    ref={tabsScrollRef}
+                    className="flex items-center gap-1 min-w-0 overflow-x-auto scrollbar-hide py-0.5 -my-0.5"
+                  >
+                    {tabItems.map((it) => (
+                      <div key={it.id} data-tab-id={it.id} className="shrink-0">
+                        {it.kind === 'board' ? (
+                          <BoardTab
+                            board={it.board}
+                            isActive={activeBoard?.id === it.board.id}
+                            isPinned={isBoardPinned(it.board.id)}
+                            canPin={isOwner}
+                            hasBoardFilter={(() => {
+                              const f = normalizeBoardGlobalFilter(it.board.global_filter)
+                              return f.project.rules.length > 0 || f.thread.rules.length > 0
+                            })()}
+                            workspaceId={workspaceId}
+                            canManageSections={canManageShared}
+                            onSelect={() => navigateToBoard(it.board.id)}
+                            onEdit={() => { navigateToBoard(it.board.id); editDialog.open() }}
+                            onEditFilter={() => { navigateToBoard(it.board.id); filterDialog.open() }}
+                            onCreateFunnel={() => { navigateToBoard(it.board.id); funnelDialog.open() }}
+                            onDelete={() => handleDeleteBoard(it.board)}
+                            onAddList={() => { navigateToBoard(it.board.id); createListColumnDialog.open() }}
+                            onTogglePin={() => toggleBoardPin(it.board.id)}
+                          />
+                        ) : (
+                          <ItemListTab
+                            list={it.list}
+                            isActive={activeList?.id === it.list.id}
+                            isPinned={isListPinned(it.list.id)}
+                            canPin={canManageShared}
+                            canManage={it.list.owner_user_id === user.id || it.list.owner_user_id === null}
+                            workspaceId={workspaceId}
+                            canManageSections={canManageShared}
+                            onSelect={() => navigateToList(it.list.id)}
+                            onEditSettings={() => { navigateToList(it.list.id); settingsListDialog.open() }}
+                            onDelete={() => handleDeleteList(it.list)}
+                            onTogglePin={() => toggleListPin(it.list.id)}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
 
-                  {/* Бутерброд с невлезшими вкладками (клик = переход). */}
-                  {hiddenTabs.length > 0 && (
+                  {/* Бутерброд — всегда справа, вне скролла. В меню — ВСЕ вкладки. */}
+                  {tabItems.length > 0 && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button
                           type="button"
-                          title="Ещё вкладки"
-                          aria-label="Ещё вкладки"
+                          title="Все вкладки"
+                          aria-label="Все вкладки"
                           className="ml-0.5 shrink-0 h-7 w-8 flex items-center justify-center rounded-md bg-background shadow text-muted-foreground hover:text-foreground transition-colors"
                         >
                           <Menu className="h-4 w-4" />
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="max-h-[70vh] overflow-y-auto">
-                        {hiddenTabs.map((it) => (
+                        {tabItems.map((it) => (
                           <DropdownMenuItem
                             key={it.id}
                             onClick={() =>
