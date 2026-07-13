@@ -93,7 +93,7 @@ Deno.serve(async (req: Request) => {
     const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { data: chat } = await supabaseAdmin
       .from("project_telegram_chats")
-      .select("workspace_id")
+      .select("workspace_id, integration_id")
       .eq("telegram_chat_id", body.chat_id)
       .eq("is_active", true)
       .limit(1)
@@ -124,31 +124,60 @@ Deno.serve(async (req: Request) => {
     // Бот реагирующего: его личный employee-бот (owner_user_id = user.id), иначе
     // бот-секретарь группы (если он есть). Реакцию ставим ИМЕННО им — тогда в TG
     // корректная подпись.
-    const { data: empBots } = await supabaseAdmin
-      .from("workspace_integrations")
-      .select("id, config, secrets")
-      .eq("workspace_id", convWorkspaceId)
-      .eq("type", "telegram_employee_bot")
-      .eq("is_active", true);
-    const myBot = (empBots ?? []).find(
-      (r) => (r.config as { owner_user_id?: string } | null)?.owner_user_id === user.id,
-    );
-    let reactorToken: string | null =
-      (myBot?.secrets as { token?: string } | null)?.token ?? null;
+    // Лид-DM (чат привязан к telegram_lead_bot): реакцию ставит САМ лид-бот.
+    // У отвечающего сотрудника нет диалога с этим клиентом своим личным ботом,
+    // а карта telegram_bot_msg_ids лид-входящих ведётся под ключом 'secretary'
+    // (приём с asPersonalBot=null). Форсим лид-бота, минуя личный бот сотрудника.
+    let isLeadChat = false;
+    if (chat.integration_id) {
+      const { data: leadInteg } = await supabaseAdmin
+        .from("workspace_integrations")
+        .select("type")
+        .eq("id", chat.integration_id)
+        .maybeSingle();
+      isLeadChat = (leadInteg as { type: string } | null)?.type === "telegram_lead_bot";
+    }
+
+    let reactorToken: string | null = null;
     // Ключ бота в карте telegram_bot_msg_ids: employee — его integration id
     // (= workspace_integrations.id, тот же, что asPersonalBot.integrationId при
-    // приёме), секретарь — литерал 'secretary'.
-    let reactorBotKey: string | null = myBot ? (myBot.id as string) : null;
-    if (!reactorToken) {
+    // приёме), секретарь/лид-бот — литерал 'secretary'.
+    let reactorBotKey: string | null = null;
+
+    if (isLeadChat) {
       try {
-        const sec = await resolveBotToken(supabaseAdmin, body.chat_id);
-        reactorToken = sec.token;
+        const lead = await resolveBotToken(supabaseAdmin, body.chat_id);
+        reactorToken = lead.token;
         reactorBotKey = "secretary";
       } catch (e) {
         console.warn(
-          "[telegram-set-reaction] no reactor bot (no personal, no secretary):",
+          "[telegram-set-reaction] lead bot token resolve failed:",
           e instanceof Error ? e.message : String(e),
         );
+      }
+    } else {
+      const { data: empBots } = await supabaseAdmin
+        .from("workspace_integrations")
+        .select("id, config, secrets")
+        .eq("workspace_id", convWorkspaceId)
+        .eq("type", "telegram_employee_bot")
+        .eq("is_active", true);
+      const myBot = (empBots ?? []).find(
+        (r) => (r.config as { owner_user_id?: string } | null)?.owner_user_id === user.id,
+      );
+      reactorToken = (myBot?.secrets as { token?: string } | null)?.token ?? null;
+      reactorBotKey = myBot ? (myBot.id as string) : null;
+      if (!reactorToken) {
+        try {
+          const sec = await resolveBotToken(supabaseAdmin, body.chat_id);
+          reactorToken = sec.token;
+          reactorBotKey = "secretary";
+        } catch (e) {
+          console.warn(
+            "[telegram-set-reaction] no reactor bot (no personal, no secretary):",
+            e instanceof Error ? e.message : String(e),
+          );
+        }
       }
     }
 
