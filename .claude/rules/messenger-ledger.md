@@ -63,7 +63,7 @@
   - `sync.ts` — `mode==='lead' && private` перехватывает ВСЮ личку (вкл. `/start`) ДО команд.
   - `types.ts` — `mode:'...'|'lead'` + `TgUser.is_bot?` (заодно убрало pre-existing ошибку sync.ts:200).
   - `index.ts` — принять `telegram_lead_bot`→`mode='lead'`.
-  - `telegram-send-message/index.ts` — **гейт лид-DM**: чат привязан к `telegram_lead_bot` → skip `findEmployeeBot` (у сотрудника нет диалога с клиентом → доставка упала бы) + `showSenderName=false` (без префикса «Имя:»).
+  - `telegram-send-message/index.ts` — **гейт лид-DM**: чат привязан к `telegram_lead_bot` → skip `findEmployeeBot` (у сотрудника нет диалога с клиентом → доставка упала бы). Префикс «Имя:» — по настройке бота `config.show_sender_name` (несколько сотрудников на одном лид-боте → можно показывать, кто пишет; дефолт false). Задеплоено отдельным коммитом `451f5edb`.
   - `_shared/syncTelegramIncomingMessage.ts` — **fix reply-lookup при `project_id=NULL`**: `.eq("project_id", null)` не матчит → ветвление `.is`. Чинит и Business-fallback. `ChatBinding.project_id` → `string|null`.
 - **Реализация (фронт):** `IntegrationsTab/types.ts` (тип+config: `responsible_user_ids/welcome_message/base_campaign`), `LeadBotsSection.tsx` (нов — список+добавить+настройки: пул чекбоксами, приветствие, метка), `BotTokenDialog.tsx` (регистрация webhook и для lead), `IntegrationsTab.tsx` (вкладка «Лид-боты», запрос типа, мемо, рендер). `owner_user_id` треда = первый из пула ответственных.
 - **Грабли (новое):**
