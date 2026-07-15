@@ -83,10 +83,8 @@ type JunctionRow = {
   initial_message_html: string | null
   access_type: 'all' | 'roles' | null
   access_roles: string[] | null
-  /** Источник правды об исполнителях привязки (см. ThreadTemplateProjectOverride).
-   *  'extend' задаётся только у привязок каналов — в проектном редакторе такого
-   *  режима нет, поэтому для формы он читается как «наследовать». */
-  assignees_mode: 'inherit' | 'override' | 'extend'
+  /** Источник правды об исполнителях привязки (см. ThreadTemplateProjectOverride). */
+  assignees_mode: 'inherit' | 'override'
   thread_templates: ThreadTemplate | null
 }
 

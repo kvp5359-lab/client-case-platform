@@ -24,10 +24,9 @@ export { CREATOR_ASSIGNEE_ID } from './participants'
  * initial_message_html = осознанное переопределение «без сообщения».
  *
  * Исполнители: assignees_overridden=false → наследуем thread_template_assignees;
- * true → используем override_assignee_ids (даже пустой набор = «никого»). Это
- * форма для редактора с двумя режимами; в БД источник правды — трёхзначный
- * project_template_thread_templates.assignees_mode (третий режим 'extend',
- * «дополнить», есть только у привязок каналов и настраивается на их экране).
+ * true → используем override_assignee_ids (даже пустой набор = «никого»).
+ * В БД тот же выбор хранит project_template_thread_templates.assignees_mode —
+ * источник правды для применения (см. resolve_thread_template_binding).
  */
 export type ThreadTemplateProjectOverride = {
   /** id строки-привязки — ключ для общей БД-функции применения (folding).

@@ -231,21 +231,21 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
   // «Создатель задачи» — псевдо-исполнитель в списке (в БД это флаг шаблона,
   // а не участник). Пикер выносит его в отдельную группу «Автоматически» по id,
   // поэтому роль ему не нужна.
-  const participantsWithCreator: WorkspaceParticipant[] = !showCreatorAssignee
-    ? participants
-    : [
-    {
-      id: CREATOR_ASSIGNEE_ID,
-      name: 'Создатель задачи',
-      last_name: null,
-      email: null,
-      avatar_url: null,
-      user_id: null,
-      workspace_roles: [],
-      can_login: false,
-    },
-    ...participants,
-  ]
+  const assigneeOptions: WorkspaceParticipant[] = showCreatorAssignee
+    ? [
+        {
+          id: CREATOR_ASSIGNEE_ID,
+          name: 'Создатель задачи',
+          last_name: null,
+          email: null,
+          avatar_url: null,
+          user_id: null,
+          workspace_roles: [],
+          can_login: false,
+        },
+        ...participants,
+      ]
+    : participants
 
   const [iconColorOpen, setIconColorOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
@@ -637,7 +637,7 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
               workspaceId={workspaceId}
               assigneeIds={assigneeIds}
               onToggle={onToggleAssignee}
-              participantsOverride={participantsWithCreator}
+              participantsOverride={assigneeOptions}
             />
           </div>
         </div>

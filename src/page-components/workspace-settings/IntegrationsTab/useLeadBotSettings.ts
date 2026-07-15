@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { threadTemplateKeys } from '@/hooks/queryKeys'
 import type { ThreadTemplate, ThreadTemplateFormData } from '@/types/threadTemplate'
 import type { WorkspaceParticipant } from '@/hooks/shared/useWorkspaceParticipants'
+import { buildLeadBotConfig } from './leadBotConfig'
 import type { BotIntegration } from './types'
 
 /**
@@ -122,21 +123,13 @@ export function useLeadBotSettings({
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const newConfig = {
-        ...bot.config,
-        template_id: templateId || undefined,
-        // Ответственные — только для ботов БЕЗ шаблона (легаси-путь: владелец
-        // диалога + участники треда). С шаблоном исполнители приходят из него
-        // (и его переопределений для этого бота), поэтому поле не пишем.
-        responsible_user_ids: templateId ? undefined : responsibleUserIds,
-        // Владелец нового диалога; с шаблоном приём возьмёт первого исполнителя.
-        owner_user_id: responsibleUserIds[0],
-        // Приветствие при шаблоне не читается (берётся из его «первого
-        // сообщения»), но и не стираем — иначе снятие шаблона потеряло бы текст.
-        welcome_message: welcome.trim() || undefined,
-        base_campaign: campaign.trim() || undefined,
-        show_sender_name: showSenderName,
-      }
+      const newConfig = buildLeadBotConfig(bot.config, {
+        templateId,
+        responsibleUserIds,
+        welcome,
+        campaign,
+        showSenderName,
+      })
       const { error } = await supabase
         .from('workspace_integrations')
         .update({ config: newConfig })
