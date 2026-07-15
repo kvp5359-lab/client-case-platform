@@ -36,7 +36,12 @@ AS $$
     b.default_status_id,
     COALESCE(b.deadline_days, tt.deadline_days),
     COALESCE(b.access_type, tt.access_type),
-    COALESCE(b.access_roles, tt.access_roles),
+    -- Роли следуют за access_type (зеркало фронта): задано переопределение
+    -- access_type → берём его роли (пусто = «никаких»), иначе базовые.
+    CASE
+      WHEN b.access_type IS NOT NULL THEN COALESCE(b.access_roles, '{}'::text[])
+      ELSE tt.access_roles
+    END,
     COALESCE(b.initial_message_html, tt.initial_message_html),
     CASE
       WHEN b.override_assignees THEN (
