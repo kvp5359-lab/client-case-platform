@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
+import { CREATOR_ASSIGNEE_ID } from '@/types/threadTemplate'
 import type {
   ThreadTemplate,
   ThreadTemplateFormData,
@@ -87,7 +88,12 @@ export function useThreadTemplateForm({
   const [deadlineDays, setDeadlineDays] = useState<string>(
     effDeadline != null ? String(effDeadline) : '',
   )
-  const [assigneeIds, setAssigneeIds] = useState<Set<string>>(new Set(effAssignees))
+  // Флаг «назначить создателя» показывается псевдо-исполнителем в списке.
+  const [assigneeIds, setAssigneeIds] = useState<Set<string>>(() => {
+    const init = new Set(effAssignees)
+    if (template?.assign_to_creator) init.add(CREATOR_ASSIGNEE_ID)
+    return init
+  })
   const [emailSubject, setEmailSubject] = useState(template?.email_subject_template ?? '')
   const [initialMessageHtml, setInitialMessageHtml] = useState(effMessage)
 
@@ -216,7 +222,9 @@ export function useThreadTemplateForm({
               : []
             : null,
           assignees_overridden: assigneesOverridden,
-          override_assignee_ids: assigneesOverridden ? Array.from(assigneeIds) : [],
+          override_assignee_ids: assigneesOverridden
+            ? Array.from(assigneeIds).filter((id) => id !== CREATOR_ASSIGNEE_ID)
+            : [],
         }
       : undefined
     onSave({
@@ -236,7 +244,10 @@ export function useThreadTemplateForm({
       deadline_days: days != null && !isNaN(days) ? days : null,
       on_complete_set_project_status_id: isTask ? onCompleteStatusId : null,
       // Исполнители — для всех типов треда (задача/чат/email) одинаково.
-      assignee_ids: Array.from(assigneeIds),
+      // «Создатель задачи» — не участник, а флаг: в таблицу исполнителей
+      // (FK на participants) его не записать.
+      assign_to_creator: assigneeIds.has(CREATOR_ASSIGNEE_ID),
+      assignee_ids: Array.from(assigneeIds).filter((id) => id !== CREATOR_ASSIGNEE_ID),
       default_contact_email: isEmail ? enrichedEmails.map((e) => e.email).join(', ') : '',
       email_subject_template: isEmail ? emailSubject.trim() : '',
       initial_message_html: initialMessageHtml.trim() || '',

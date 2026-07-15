@@ -9043,6 +9043,7 @@ export type Database = {
           icon: string
           id: string
           initial_message_html: string | null
+          assign_to_creator: boolean
           is_email: boolean
           name: string
           on_complete_set_project_status_id: string | null
@@ -9070,6 +9071,7 @@ export type Database = {
           icon?: string
           id?: string
           initial_message_html?: string | null
+          assign_to_creator?: boolean
           is_email?: boolean
           name: string
           on_complete_set_project_status_id?: string | null
@@ -9097,6 +9099,7 @@ export type Database = {
           icon?: string
           id?: string
           initial_message_html?: string | null
+          assign_to_creator?: boolean
           is_email?: boolean
           name?: string
           on_complete_set_project_status_id?: string | null

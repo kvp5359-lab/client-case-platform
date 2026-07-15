@@ -64,6 +64,7 @@ export function useProjectTemplateThreadListMutations(params: {
           default_description: data.default_description,
           thread_type: data.thread_type,
           is_email: data.is_email,
+          assign_to_creator: data.assign_to_creator,
           thread_name_template: data.thread_name_template,
           accent_color: data.accent_color,
           icon: data.icon,

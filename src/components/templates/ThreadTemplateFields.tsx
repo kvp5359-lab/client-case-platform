@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { CREATOR_ASSIGNEE_ID } from '@/types/threadTemplate'
 import { Users, UserCheck, CircleDashed, Calendar, Mail } from 'lucide-react'
 import {
   Select,
@@ -217,6 +218,22 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
     onInitialMessageChange,
     projectOverride,
   } = props
+
+  // «Создатель задачи» — псевдо-исполнитель в списке (в БД это флаг шаблона,
+  // а не участник). Роль сотрудника — чтобы попал в первую группу списка.
+  const participantsWithCreator: WorkspaceParticipant[] = [
+    {
+      id: CREATOR_ASSIGNEE_ID,
+      name: 'Создатель задачи',
+      last_name: null,
+      email: null,
+      avatar_url: null,
+      user_id: null,
+      workspace_roles: ['Сотрудник'],
+      can_login: false,
+    },
+    ...participants,
+  ]
 
   const [iconColorOpen, setIconColorOpen] = useState(false)
   const [statusOpen, setStatusOpen] = useState(false)
@@ -608,7 +625,7 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
               workspaceId={workspaceId}
               assigneeIds={assigneeIds}
               onToggle={onToggleAssignee}
-              participantsOverride={participants}
+              participantsOverride={participantsWithCreator}
             />
           </div>
         </div>

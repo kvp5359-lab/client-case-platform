@@ -8,6 +8,13 @@ export type ThreadTemplateAssignee = {
 }
 
 /**
+ * Псевдо-исполнитель «Создатель задачи» — показывается пунктом в списке
+ * исполнителей шаблона. В БД хранится флагом thread_templates.assign_to_creator
+ * (в таблицу исполнителей его не записать: там FK на конкретного участника).
+ */
+export const CREATOR_ASSIGNEE_ID = '__creator__'
+
+/**
  * Пер-проектные переопределения полей шаблона треда для конкретного типа
  * проекта (хранятся в связке project_template_thread_templates + таблице
  * project_template_thread_assignees). Заполняется только при загрузке шаблона
@@ -57,6 +64,7 @@ export type ThreadTemplate = {
   description: string | null
   thread_type: 'chat' | 'task'
   is_email: boolean
+  assign_to_creator?: boolean
   thread_name_template: string | null
   accent_color: string
   icon: string
@@ -96,6 +104,7 @@ export type ThreadTemplateFormData = {
   description: string
   thread_type: 'chat' | 'task'
   is_email: boolean
+  assign_to_creator: boolean
   thread_name_template: string
   accent_color: string
   icon: string

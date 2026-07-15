@@ -236,6 +236,25 @@ export async function seedProjectContent(
     promises.push(createFormKitFromTemplate(formTemplateId, projectId, workspaceId).then(() => {}))
   }
 
+  // «Создатель задачи» из шаблона — это текущий пользователь (тот, кто создаёт
+  // проект). Резолвим его participant_id один раз и только если нужен.
+  let creatorParticipantId: string | null = null
+  if (selectedThreadTemplates.some((t) => t.assign_to_creator)) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (user) {
+      const { data: me } = await supabase
+        .from('participants')
+        .select('id')
+        .eq('workspace_id', workspaceId)
+        .eq('user_id', user.id)
+        .eq('is_deleted', false)
+        .maybeSingle()
+      creatorParticipantId = me?.id ?? null
+    }
+  }
+
   // Инстанциация шаблонов тредов: создаём project_threads, копируем assignees,
   // проставляем source_template_id (чтобы меню "+" скрывало уже созданные).
   for (const tpl of selectedThreadTemplates) {
@@ -294,6 +313,11 @@ export async function seedProjectContent(
           .select('id')
           .single()
         if (threadErr) throw threadErr
+
+        // «Создатель задачи» из шаблона → фактический создатель проекта.
+        if (tpl.assign_to_creator && creatorParticipantId) {
+          effAssigneeIds = Array.from(new Set([...effAssigneeIds, creatorParticipantId]))
+        }
 
         // Исполнители применяем к треду любого типа (задача/чат/email) —
         // назначение даёт доступ и осмысленно не только для задач.
