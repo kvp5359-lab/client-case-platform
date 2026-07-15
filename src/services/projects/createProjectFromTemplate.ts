@@ -267,8 +267,10 @@ export async function seedProjectContent(
           }
         }
 
+        // Срок применяем к треду любого типа (задача/чат/email) — как и
+        // исполнителей. В UI шаблона он задаётся для всех типов.
         const deadline =
-          tpl.thread_type === 'task' && effDeadlineDays != null
+          effDeadlineDays != null
             ? addDays(new Date(), effDeadlineDays).toISOString()
             : null
         const { data: thread, error: threadErr } = await supabase
