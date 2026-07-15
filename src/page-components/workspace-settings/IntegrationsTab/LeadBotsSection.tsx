@@ -173,6 +173,58 @@ function LeadBotRow({
         .update({ config: newConfig })
         .eq('id', bot.id)
       if (error) throw error
+
+      if (!templateId) return
+
+      // Единый механизм «шаблон + переопределения»: у канала своя строка-привязка
+      // (та же таблица, что у проект-шаблонов, владелец = integration_id).
+      // Partial unique (integration_id, thread_template_id) → PostgREST upsert по
+      // нему не умеет (42P10), поэтому ручной select → insert/update.
+      const overridePids = employees
+        .filter((p) => p.user_id && responsible.includes(p.user_id))
+        .map((p) => p.id)
+
+      const { data: existing } = await supabase
+        .from('project_template_thread_templates')
+        .select('id')
+        .eq('integration_id', bot.id)
+        .eq('thread_template_id', templateId)
+        .maybeSingle()
+
+      let bindingId = existing?.id
+      if (bindingId) {
+        const { error: upErr } = await supabase
+          .from('project_template_thread_templates')
+          .update({ override_assignees: overridePids.length > 0 })
+          .eq('id', bindingId)
+        if (upErr) throw upErr
+      } else {
+        const { data: created, error: insErr } = await supabase
+          .from('project_template_thread_templates')
+          .insert({
+            integration_id: bot.id,
+            thread_template_id: templateId,
+            sort_order: 0,
+            override_assignees: overridePids.length > 0,
+          })
+          .select('id')
+          .single()
+        if (insErr) throw insErr
+        bindingId = created.id
+      }
+
+      // Переопределение исполнителей канала — переписываем набор целиком.
+      const { error: delErr } = await supabase
+        .from('project_template_thread_assignees')
+        .delete()
+        .eq('binding_id', bindingId)
+      if (delErr) throw delErr
+      if (overridePids.length > 0) {
+        const { error: aErr } = await supabase
+          .from('project_template_thread_assignees')
+          .insert(overridePids.map((pid) => ({ binding_id: bindingId, participant_id: pid })))
+        if (aErr) throw aErr
+      }
     },
     onSuccess: () => {
       toast.success('Настройки лид-бота сохранены')
@@ -319,18 +371,25 @@ function LeadBotRow({
               </p>
             </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs" htmlFor={`welcome-${bot.id}`}>
-              Приветствие (первое сообщение клиенту)
-            </Label>
-            <Textarea
-              id={`welcome-${bot.id}`}
-              value={welcome}
-              onChange={(e) => setWelcome(e.target.value)}
-              placeholder="Здравствуйте! Спасибо за обращение. Чем можем помочь?"
-              rows={3}
-            />
-          </div>
+          {templateId ? (
+            <p className="text-[11px] text-muted-foreground px-1">
+              Приветствие клиенту — это «Первое сообщение» шаблона. Меняется в
+              разделе «Шаблоны» → нужный шаблон диалога.
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              <Label className="text-xs" htmlFor={`welcome-${bot.id}`}>
+                Приветствие (первое сообщение клиенту)
+              </Label>
+              <Textarea
+                id={`welcome-${bot.id}`}
+                value={welcome}
+                onChange={(e) => setWelcome(e.target.value)}
+                placeholder="Здравствуйте! Спасибо за обращение. Чем можем помочь?"
+                rows={3}
+              />
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label className="text-xs" htmlFor={`campaign-${bot.id}`}>

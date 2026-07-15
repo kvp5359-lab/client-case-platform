@@ -19,6 +19,7 @@ import { downloadAttachments } from "./media.ts";
 import { formatUserName, extractForward } from "./pure.ts";
 import { sendMessage } from "./tg-api.ts";
 import { telegramEntitiesToHtml } from "../_shared/telegramEntitiesToHtml.ts";
+import { htmlToTelegramHtml } from "../_shared/htmlFormatting.ts";
 import {
   syncTelegramIncomingMessage,
   applyTelegramEdit,
@@ -40,78 +41,108 @@ interface LeadBotConfig {
   base_campaign?: string;
 }
 
-/** Поля треда из шаблона диалога (thread_templates), применяемые к новому лид-диалогу. */
+/** Поля треда из шаблона диалога, применяемые к новому лид-диалогу. */
 interface LeadTemplateApply {
   icon?: string;
   accentColor?: string;
   /** Доп. колонки треда (status_id, deadline, access_type, access_roles). */
   extraColumns: Record<string, unknown>;
-  /** participant_id[] исполнителей шаблона → task_assignees. */
+  /** participant_id[] исполнителей → task_assignees. */
   assigneeIds: string[];
+  /** Первое сообщение шаблона — приветствие клиенту (HTML). */
+  welcomeHtml?: string;
+}
+
+/** Эффективные поля шаблона (после folding «переопределения ?? база»). */
+interface ResolvedTemplateFields {
+  icon: string | null;
+  accent_color: string | null;
+  status_id: string | null;
+  deadline_days: number | null;
+  access_type: string | null;
+  access_roles: string[] | null;
+  initial_message_html: string | null;
+  assignee_ids: string[] | null;
+}
+
+/** Раскладывает эффективные поля шаблона в форму для создания треда. */
+function toLeadTemplateApply(f: ResolvedTemplateFields): LeadTemplateApply {
+  const extraColumns: Record<string, unknown> = {};
+  if (f.status_id) extraColumns.status_id = f.status_id;
+  if (f.deadline_days != null) {
+    extraColumns.deadline = new Date(
+      Date.now() + f.deadline_days * 86_400_000,
+    ).toISOString();
+  }
+  if (f.access_type) extraColumns.access_type = f.access_type;
+  if (f.access_roles) extraColumns.access_roles = f.access_roles;
+
+  return {
+    icon: f.icon ?? undefined,
+    accentColor: f.accent_color ?? undefined,
+    extraColumns,
+    assigneeIds: f.assignee_ids ?? [],
+    welcomeHtml: f.initial_message_html ?? undefined,
+  };
 }
 
 /**
- * Читает шаблон диалога лид-бота и раскладывает его поля для применения к
- * создаваемому треду. Зеркалит фронтовый applyTemplate, но для канала-приёма:
- * имя треда берётся по контакту (не из шаблона), первое сообщение шаблона не
- * применяется (у лид-бота своё приветствие). Нет шаблона → пустой результат.
+ * Шаблон диалога лид-бота → поля создаваемого треда.
+ *
+ * Единый механизм «шаблон + переопределения»: у канала есть строка-привязка
+ * (project_template_thread_templates с integration_id = бот), в ней живут его
+ * переопределения; применение — общая RPC resolve_thread_template_binding
+ * (та же, что для проект-шаблонов). Привязки нет (шаблон выбран, но не
+ * настраивался) → фолбэк на базовый шаблон как есть.
+ *
+ * Имя треда берётся по контакту (не из шаблона) — лид-специфика.
  */
 async function resolveLeadTemplate(
+  botIntegrationId: string,
   templateId: string | undefined,
 ): Promise<LeadTemplateApply> {
   const empty: LeadTemplateApply = { extraColumns: {}, assigneeIds: [] };
   if (!templateId) return empty;
 
+  const { data: binding } = await service
+    .from("project_template_thread_templates")
+    .select("id")
+    .eq("integration_id", botIntegrationId)
+    .eq("thread_template_id", templateId)
+    .maybeSingle();
+
+  if (binding?.id) {
+    const { data } = await service.rpc("resolve_thread_template_binding", {
+      p_binding_id: binding.id as string,
+    });
+    const r = (Array.isArray(data) ? data[0] : data) as ResolvedTemplateFields | null;
+    if (r) return toLeadTemplateApply(r);
+  }
+
+  // Фолбэк: базовый шаблон без переопределений канала.
   const { data } = await service
     .from("thread_templates")
     .select(
-      "icon, accent_color, default_status_id, deadline_days, access_type, access_roles, thread_template_assignees(participant_id)",
+      "icon, accent_color, default_status_id, deadline_days, access_type, access_roles, initial_message_html, thread_template_assignees(participant_id)",
     )
     .eq("id", templateId)
     .maybeSingle();
   if (!data) return empty;
 
-  const tpl = data as {
-    icon: string | null;
-    accent_color: string | null;
+  const tpl = data as Omit<ResolvedTemplateFields, "status_id" | "assignee_ids"> & {
     default_status_id: string | null;
-    deadline_days: number | null;
-    access_type: string | null;
-    access_roles: string[] | null;
     thread_template_assignees: { participant_id: string }[] | null;
   };
-
-  const extraColumns: Record<string, unknown> = {};
-  if (tpl.default_status_id) extraColumns.status_id = tpl.default_status_id;
-  if (tpl.deadline_days != null) {
-    extraColumns.deadline = new Date(
-      Date.now() + tpl.deadline_days * 86_400_000,
-    ).toISOString();
-  }
-  if (tpl.access_type) extraColumns.access_type = tpl.access_type;
-  if (tpl.access_roles) extraColumns.access_roles = tpl.access_roles;
-
-  return {
-    icon: tpl.icon ?? undefined,
-    accentColor: tpl.accent_color ?? undefined,
-    extraColumns,
-    assigneeIds: (tpl.thread_template_assignees ?? []).map((a) => a.participant_id),
-  };
-}
-
-/** Резолвит user_id[] сотрудников в participant_id[] воркспейса. */
-async function resolveUserIdsToParticipants(
-  workspaceId: string,
-  userIds: string[],
-): Promise<string[]> {
-  if (!userIds.length) return [];
-  const { data } = await service
-    .from("participants")
-    .select("id")
-    .eq("workspace_id", workspaceId)
-    .in("user_id", userIds)
-    .eq("is_deleted", false);
-  return ((data ?? []) as { id: string }[]).map((p) => p.id);
+  return toLeadTemplateApply({
+    icon: tpl.icon,
+    accent_color: tpl.accent_color,
+    status_id: tpl.default_status_id,
+    deadline_days: tpl.deadline_days,
+    access_type: tpl.access_type,
+    access_roles: tpl.access_roles,
+    initial_message_html: tpl.initial_message_html,
+    assignee_ids: (tpl.thread_template_assignees ?? []).map((a) => a.participant_id),
+  });
 }
 
 /** Добавить пул ответственных в участники треда (доступ + «все видят всё»). */
@@ -198,7 +229,7 @@ export async function handleLeadMessage(
     // Шаблон диалога (если у бота задан) — иконка/цвет/статус/дедлайн/доступ +
     // исполнители. Иконку/цвет из шаблона кладём в extraColumns, чтобы перебить
     // channel_defaults, которые проставляет createDirectThread.
-    const tpl = await resolveLeadTemplate(config.template_id);
+    const tpl = await resolveLeadTemplate(ctx.id, config.template_id);
 
     const created = await createDirectThread(service, {
       workspaceId: ctx.workspaceId,
@@ -256,20 +287,14 @@ export async function handleLeadMessage(
       }
     } else {
       threadId = created.threadId;
-      // Исполнители (все дают доступ к диалогу, «все видят всё»):
-      //  • шаблон задан → исполнители шаблона (task_assignees), но пул
-      //    responsible_user_ids ПЕРЕОПРЕДЕЛЯЕТ их (доп. параметр поверх шаблона);
-      //  • шаблона нет → пул ответственных → участники треда (project_thread_members).
+      // Исполнители (дают доступ к диалогу, «все видят всё»):
+      //  • шаблон задан → эффективные исполнители из общей RPC (переопределения
+      //    канала уже учтены там) → task_assignees;
+      //  • шаблона нет → легаси-пул ответственных → участники (project_thread_members).
       if (config.template_id) {
-        const overridePids = config.responsible_user_ids?.length
-          ? await resolveUserIdsToParticipants(
-              ctx.workspaceId,
-              config.responsible_user_ids,
-            )
-          : tpl.assigneeIds;
-        if (overridePids.length) {
+        if (tpl.assigneeIds.length) {
           await service.from("task_assignees").upsert(
-            overridePids.map((pid) => ({
+            tpl.assigneeIds.map((pid) => ({
               thread_id: created.threadId,
               participant_id: pid,
             })),
@@ -284,8 +309,13 @@ export async function handleLeadMessage(
         );
       }
       // Приветствие — только при первом контакте (у победителя создания).
-      if (config.welcome_message) {
-        await sendMessage(clientTgUserId, config.welcome_message);
+      // Источник: первое сообщение шаблона (единый механизм), либо явное
+      // welcome_message бота (легаси-боты без шаблона).
+      const welcome = tpl.welcomeHtml
+        ? htmlToTelegramHtml(tpl.welcomeHtml)
+        : config.welcome_message;
+      if (welcome) {
+        await sendMessage(clientTgUserId, welcome);
       }
     }
   }

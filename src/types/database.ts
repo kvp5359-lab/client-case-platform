@@ -6869,27 +6869,31 @@ export type Database = {
       }
       project_template_thread_assignees: {
         Row: {
+          binding_id: string
           participant_id: string
-          template_id: string
-          thread_template_id: string
+          template_id: string | null
+          thread_template_id: string | null
         }
         Insert: {
+          // Заполняется триггером ptta_fill_binding_id, если не передан явно.
+          binding_id?: string
           participant_id: string
-          template_id: string
-          thread_template_id: string
+          template_id?: string | null
+          thread_template_id?: string | null
         }
         Update: {
+          binding_id?: string
           participant_id?: string
-          template_id?: string
-          thread_template_id?: string
+          template_id?: string | null
+          thread_template_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "project_template_thread_assig_template_id_thread_template__fkey"
-            columns: ["template_id", "thread_template_id"]
+            foreignKeyName: "project_template_thread_assignees_binding_fkey"
+            columns: ["binding_id"]
             isOneToOne: false
             referencedRelation: "project_template_thread_templates"
-            referencedColumns: ["template_id", "thread_template_id"]
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "project_template_thread_assignees_participant_id_fkey"
@@ -6907,11 +6911,13 @@ export type Database = {
           created_at: string
           deadline_days: number | null
           default_status_id: string | null
+          id: string
           initial_message_html: string | null
+          integration_id: string | null
           on_complete_set_project_status_id: string | null
           override_assignees: boolean
           sort_order: number
-          template_id: string
+          template_id: string | null
           thread_template_id: string
         }
         Insert: {
@@ -6920,11 +6926,13 @@ export type Database = {
           created_at?: string
           deadline_days?: number | null
           default_status_id?: string | null
+          id?: string
           initial_message_html?: string | null
+          integration_id?: string | null
           on_complete_set_project_status_id?: string | null
           override_assignees?: boolean
           sort_order?: number
-          template_id: string
+          template_id?: string | null
           thread_template_id: string
         }
         Update: {
@@ -6933,11 +6941,13 @@ export type Database = {
           created_at?: string
           deadline_days?: number | null
           default_status_id?: string | null
+          id?: string
           initial_message_html?: string | null
+          integration_id?: string | null
           on_complete_set_project_status_id?: string | null
           override_assignees?: boolean
           sort_order?: number
-          template_id?: string
+          template_id?: string | null
           thread_template_id?: string
         }
         Relationships: [
