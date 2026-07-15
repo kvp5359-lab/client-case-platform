@@ -215,7 +215,7 @@ export function SlotsEditor({ config, description, workspaceId }: SlotsEditorPro
       <div className="flex flex-wrap items-center gap-1.5">
         {[...slots]
           .sort((a, b) => a.sort_order - b.sort_order)
-          .map((slot) => {
+          .map((slot, idx) => {
             const isDragging = draggedSlotId === slot.id
             const isOver = dragOverSlotId === slot.id
             const hasPrompt = !!(slot.ai_naming_prompt || slot.ai_check_prompt)
@@ -242,13 +242,18 @@ export function SlotsEditor({ config, description, workspaceId }: SlotsEditorPro
                     setEditingSlot(slot)
                   }
                 }}
-                className={`group/chip inline-flex items-center gap-1.5 border border-dashed rounded-full px-2 py-1 cursor-pointer transition-colors ${indicatorClass} ${
+                className={`group/chip relative inline-flex items-center gap-1.5 border border-dashed rounded-full px-2 py-1 cursor-pointer transition-[background-color,border-color,box-shadow] ${indicatorClass} ${
                   isDragging
                     ? 'opacity-40'
-                    : 'border-amber-700/30 hover:border-amber-700/50 hover:bg-amber-50/40'
+                    : 'border-amber-700/30 hover:border-amber-700/50 hover:bg-amber-50 md:hover:z-20 md:hover:-mr-10 md:hover:shadow-md'
                 }`}
                 title="Редактировать слот"
               >
+                {/* Номер по порядку в папке. Считается от отсортированного списка, а не от
+                    sort_order: тот после перетаскиваний может идти с дырами. */}
+                <span className="text-[10px] font-medium text-amber-700/50 tabular-nums flex-shrink-0">
+                  {idx + 1}
+                </span>
                 <FileUp className="h-3 w-3 text-amber-700/50 flex-shrink-0" />
                 <span className="text-xs text-amber-800/70 italic">{slot.name}</span>
                 {slot.knowledge_article_id ? (
@@ -279,7 +284,15 @@ export function SlotsEditor({ config, description, workspaceId }: SlotsEditorPro
                     aria-label="Свой AI-промпт"
                   />
                 )}
-                <div className="md:hidden md:group-hover/chip:inline-flex items-center gap-0.5 flex-shrink-0">
+                {/* Эти кнопки появляются на hover ВНУТРИ чипа и удлиняют его на 40px:
+                    gap-1.5 родителя (6px) + две кнопки w-4 (по 16px) с gap-0.5 (2px).
+                    Ровно на эти 40px чип уходит в минус по margin-right (md:hover:-mr-10
+                    выше) — иначе рост сдвигал бы соседние слоты и ронял их на другую
+                    строку при каждом движении мыши. Меняешь размер или число кнопок —
+                    пересчитай -mr-10. Непрозрачный фон и z-20 у чипа нужны, чтобы
+                    наехавший чип перекрывал соседа, а не просвечивал сквозь него.
+                    На тач-экранах (<md) hover нет — там кнопки просто всегда видны. */}
+                <div className="flex items-center gap-0.5 flex-shrink-0 md:hidden md:group-hover/chip:flex">
                   <button
                     type="button"
                     className="inline-flex items-center justify-center h-4 w-4 text-amber-700/60 hover:text-amber-700"
