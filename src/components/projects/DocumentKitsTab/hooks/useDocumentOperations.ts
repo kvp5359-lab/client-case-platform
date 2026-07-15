@@ -91,7 +91,7 @@ export function useDocumentOperations({
         return
       }
 
-      await openDocumentInNewTab(currentFile.file_path, currentFile.file_id)
+      await openDocumentInNewTab(currentFile.file_path, currentFile.file_id, currentFile.file_name)
     } catch (error) {
       handleError(error, 'Ошибка при открытии документа')
     }

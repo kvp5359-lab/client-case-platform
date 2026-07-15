@@ -146,6 +146,7 @@ Deno.serve(async (req) => {
     prefix?: string;
     expiresIn?: number;
     download?: string | boolean;
+    inline?: string;
   };
   try {
     body = await req.json();
@@ -181,11 +182,20 @@ Deno.serve(async (req) => {
         // Зеркало Supabase `createSignedUrl({ download })`: заставляем R2 отдать файл
         // как вложение с человеческим именем (S3 override response-content-disposition).
         // Параметр включается в подпись (signQuery), поэтому подделать нельзя.
-        if (op === "sign_get" && body.download) {
-          const name = typeof body.download === "string" ? body.download : path.split("/").pop() ?? "file";
+        //
+        // `inline` — тот же override, но disposition=inline: файл открывается прямо
+        // во вкладке (PDF/картинка), а имя всё равно человеческое. Без него браузер
+        // берёт имя из URL (у blob-ссылки это UUID) — см. openDocumentInNewTab.
+        // `download` (скачать) имеет приоритет над `inline` (открыть).
+        if (op === "sign_get" && (body.download || body.inline)) {
+          const disposition = body.download ? "attachment" : "inline";
+          // `||`, не `??`: при download=false нужен inline-режим и его имя
+          // (`??` вернул бы false и имя молча взялось бы из пути = UUID).
+          const explicit = body.download || body.inline;
+          const name = typeof explicit === "string" ? explicit : path.split("/").pop() ?? "file";
           url.searchParams.set(
             "response-content-disposition",
-            `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
+            `${disposition}; filename*=UTF-8''${encodeURIComponent(name)}`,
           );
         }
         const signed = await r2.sign(new Request(url.toString(), { method }), {

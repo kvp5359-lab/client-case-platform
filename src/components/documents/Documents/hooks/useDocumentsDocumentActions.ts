@@ -94,7 +94,7 @@ export function useDocumentsDocumentActions({
         return
       }
       try {
-        await openDocumentInNewTab(currentFile.file_path, currentFile.file_id)
+        await openDocumentInNewTab(currentFile.file_path, currentFile.file_id, currentFile.file_name)
       } catch {
         toast.error('Ошибка при открытии документа')
       }

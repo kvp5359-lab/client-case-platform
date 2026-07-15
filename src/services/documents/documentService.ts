@@ -427,16 +427,9 @@ export async function getDocumentPublicUrl(
   }
 }
 
-/**
- * Скачивание файла документа как Blob
- */
-export async function downloadDocumentBlob(
-  filePath: string,
-  fileId?: string | null,
-): Promise<Blob> {
+/** Скачивание по уже известным bucket/path — чтобы не резолвить их повторно. */
+async function downloadBlobFromBucket(bucket: string, path: string): Promise<Blob> {
   try {
-    const { bucket, path } = await resolveFileBucket(filePath, fileId)
-
     const { data, error } = await downloadFromStorage(bucket, path)
 
     if (error || !data) {
@@ -452,18 +445,59 @@ export async function downloadDocumentBlob(
 }
 
 /**
- * Открытие документа в новой вкладке через Blob URL
- * Файл скачивается через авторизованный запрос и открывается как blob:
- * — пользователь видит blob:https://app.relostart.com/... вместо signed URL
- * — ссылку нельзя скопировать и передать третьим лицам
+ * Скачивание файла документа как Blob
+ */
+export async function downloadDocumentBlob(
+  filePath: string,
+  fileId?: string | null,
+): Promise<Blob> {
+  try {
+    const { bucket, path } = await resolveFileBucket(filePath, fileId)
+    return await downloadBlobFromBucket(bucket, path)
+  } catch (error) {
+    if (error instanceof DocumentError) throw error
+    logger.error('Ошибка скачивания файла:', error)
+    throw new DocumentError('Не удалось скачать файл', error)
+  }
+}
+
+/** Сколько живёт ссылка на просмотр документа. Хватает открыть вкладку, но не разослать. */
+const VIEW_URL_TTL_SECONDS = 300
+
+/**
+ * Открытие документа в новой вкладке.
+ *
+ * Основной путь — короткоживущая (5 мин) подписанная ссылка с `inline` и именем
+ * файла: браузер берёт имя вкладки и имя при скачивании из просмотрщика именно
+ * оттуда. Blob-ссылка так не умеет — у неё в адресе всегда UUID, он и попадал
+ * в заголовок вкладки и в скачанный файл.
+ *
+ * Фолбэк — прежний blob (файл качаем сами и открываем из памяти): нужен, когда
+ * имя неизвестно либо хранилище не умеет inline-имя (тогда слой вернёт ошибку).
+ * Blob-ссылку нельзя скопировать и передать третьим лицам, подписанную — можно,
+ * поэтому TTL держим коротким.
  */
 export async function openDocumentInNewTab(
   filePath: string,
   fileId?: string | null,
+  fileName?: string | null,
 ): Promise<void> {
-  const blob = await downloadDocumentBlob(filePath, fileId)
+  const { bucket, path } = await resolveFileBucket(filePath, fileId)
+
+  if (fileName) {
+    const { data, error } = await createStorageSignedUrl(bucket, path, VIEW_URL_TTL_SECONDS, {
+      inline: fileName,
+    })
+    if (!error && data) {
+      window.open(data.signedUrl, '_blank', 'noopener')
+      return
+    }
+    logger.error('Не удалось создать ссылку на просмотр, открываем через blob:', error)
+  }
+
+  const blob = await downloadBlobFromBucket(bucket, path)
   const url = window.URL.createObjectURL(blob)
-  window.open(url, '_blank')
+  window.open(url, '_blank', 'noopener')
   // Освобождаем Object URL после 5 с — задержка нужна, чтобы браузер успел
   // инициировать загрузку blob-данных в новую вкладку. При немедленном revoke
   // вкладка получит пустой/обрывающийся ответ, т.к. blob ещё не прочитан.

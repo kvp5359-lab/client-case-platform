@@ -47,14 +47,28 @@ export function downloadFromStorage(bucket: BucketRef, path: string) {
   return supabase.storage.from(bucket).download(path)
 }
 
-/** Создать подписанную ссылку (приватные бакеты). `expiresIn` — секунды. */
+/**
+ * Создать подписанную ссылку (приватные бакеты). `expiresIn` — секунды.
+ *
+ * `download` — отдать как вложение (скачать) с этим именем.
+ * `inline` — открыть во вкладке под этим именем (иначе браузер возьмёт имя из
+ * адреса). Поддержка зависит от бэкенда: Supabase Storage такого override не
+ * умеет и вернёт ошибку `inline_not_supported` — вызывающий должен это
+ * пережить (например, открыть файл через blob). Знание «какой бэкенд что
+ * умеет» живёт здесь и наружу не протекает.
+ */
 export function createStorageSignedUrl(
   bucket: BucketRef,
   path: string,
   expiresIn: number,
-  options?: { download?: string | boolean; transform?: Record<string, unknown> },
+  options?: { download?: string | boolean; inline?: string; transform?: Record<string, unknown> },
 ) {
-  if (isBucketOnR2(bucket)) return r2SignedUrl(bucket, path, expiresIn, { download: options?.download })
+  if (isBucketOnR2(bucket)) {
+    return r2SignedUrl(bucket, path, expiresIn, { download: options?.download, inline: options?.inline })
+  }
+  if (options?.inline) {
+    return Promise.resolve({ data: null, error: { message: 'inline_not_supported' } } as const)
+  }
   return supabase.storage.from(bucket).createSignedUrl(path, expiresIn, options)
 }
 

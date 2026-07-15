@@ -4,6 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { supabase } from '@/lib/supabase'
+import { createStorageSignedUrl } from '@/lib/storage'
 import {
   uploadDocument,
   moveDocument,
@@ -14,6 +15,7 @@ import {
   reorderDocuments,
   getDocumentPublicUrl,
   downloadDocumentBlob,
+  openDocumentInNewTab,
   updateDocument,
 } from './documentService'
 import { DocumentError } from '../errors/AppError'
@@ -22,6 +24,14 @@ type SupabaseFrom = ReturnType<typeof supabase.from>
 type StorageFrom = ReturnType<typeof supabase.storage.from>
 
 vi.mock('@/lib/supabase')
+
+// Слой хранилища оставляем настоящим (его ветвление по бэкенду — часть
+// поведения), но `createStorageSignedUrl` оборачиваем, чтобы в тестах можно
+// было сыграть и R2-ветку (она зависит от env, читаемого при импорте модуля).
+vi.mock('@/lib/storage', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/storage')>()
+  return { ...actual, createStorageSignedUrl: vi.fn(actual.createStorageSignedUrl) }
+})
 
 describe('documentService', () => {
   beforeEach(() => {
@@ -301,6 +311,65 @@ describe('documentService', () => {
       } as unknown as StorageFrom)
 
       await expect(downloadDocumentBlob('path/file.pdf')).rejects.toThrow(DocumentError)
+    })
+  })
+
+  describe('openDocumentInNewTab', () => {
+    const openSpy = vi.fn()
+
+    beforeEach(() => {
+      openSpy.mockClear()
+      vi.stubGlobal('open', openSpy)
+    })
+
+    it('открывает подписанную ссылку с именем файла, не скачивая его', async () => {
+      vi.mocked(createStorageSignedUrl).mockResolvedValueOnce({
+        data: { signedUrl: 'https://r2.example/signed' },
+        error: null,
+      })
+      const download = vi.fn()
+      vi.mocked(supabase.storage.from).mockReturnValue({ download } as unknown as StorageFrom)
+
+      await openDocumentInNewTab('path/file.pdf', null, 'Договор.pdf')
+
+      expect(createStorageSignedUrl).toHaveBeenCalledWith(
+        expect.any(String),
+        'path/file.pdf',
+        expect.any(Number),
+        { inline: 'Договор.pdf' },
+      )
+      expect(openSpy).toHaveBeenCalledWith('https://r2.example/signed', '_blank', 'noopener')
+      // Файл не качаем — в этом и смысл: вкладка открывается сразу.
+      expect(download).not.toHaveBeenCalled()
+    })
+
+    it('падает на blob, если хранилище не умеет inline-имя', async () => {
+      vi.mocked(createStorageSignedUrl).mockResolvedValueOnce({
+        data: null,
+        error: { message: 'inline_not_supported' },
+      })
+      const mockBlob = new Blob(['content'])
+      vi.mocked(supabase.storage.from).mockReturnValue({
+        download: vi.fn().mockResolvedValue({ data: mockBlob, error: null }),
+      } as unknown as StorageFrom)
+      vi.stubGlobal('URL', { createObjectURL: () => 'blob:local', revokeObjectURL: vi.fn() })
+
+      await openDocumentInNewTab('path/file.pdf', null, 'Договор.pdf')
+
+      expect(openSpy).toHaveBeenCalledWith('blob:local', '_blank', 'noopener')
+    })
+
+    it('без имени файла подписанную ссылку не запрашивает', async () => {
+      const mockBlob = new Blob(['content'])
+      vi.mocked(supabase.storage.from).mockReturnValue({
+        download: vi.fn().mockResolvedValue({ data: mockBlob, error: null }),
+      } as unknown as StorageFrom)
+      vi.stubGlobal('URL', { createObjectURL: () => 'blob:local', revokeObjectURL: vi.fn() })
+
+      await openDocumentInNewTab('path/file.pdf')
+
+      expect(createStorageSignedUrl).not.toHaveBeenCalled()
+      expect(openSpy).toHaveBeenCalledWith('blob:local', '_blank', 'noopener')
     })
   })
 
