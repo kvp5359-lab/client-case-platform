@@ -293,7 +293,9 @@ export async function seedProjectContent(
           .single()
         if (threadErr) throw threadErr
 
-        if (tpl.thread_type === 'task' && effAssigneeIds.length > 0) {
+        // Исполнители применяем к треду любого типа (задача/чат/email) —
+        // назначение даёт доступ и осмысленно не только для задач.
+        if (effAssigneeIds.length > 0) {
           const rows = effAssigneeIds.map((pid) => ({ thread_id: thread.id, participant_id: pid }))
           const { error: aErr } = await supabase.from('task_assignees').insert(rows)
           if (aErr) {

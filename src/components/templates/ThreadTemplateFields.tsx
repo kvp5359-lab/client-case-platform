@@ -587,7 +587,9 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
         </div>
       )}
 
-      {(isTask || isEmail) && (
+      {/* Исполнители — одинаково для всех типов треда (задача/чат/email):
+          назначение даёт доступ к треду и работает для любого типа. */}
+      {(
         <div className="flex flex-col gap-1">
           {projectOverride ? (
             overrideHeader('Исполнители', projectOverride.assignees)

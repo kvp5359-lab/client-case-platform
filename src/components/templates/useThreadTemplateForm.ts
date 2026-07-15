@@ -235,7 +235,8 @@ export function useThreadTemplateForm({
       default_description: defaultDescription.trim() || null,
       deadline_days: days != null && !isNaN(days) ? days : null,
       on_complete_set_project_status_id: isTask ? onCompleteStatusId : null,
-      assignee_ids: isTask || isEmail ? Array.from(assigneeIds) : [],
+      // Исполнители — для всех типов треда (задача/чат/email) одинаково.
+      assignee_ids: Array.from(assigneeIds),
       default_contact_email: isEmail ? enrichedEmails.map((e) => e.email).join(', ') : '',
       email_subject_template: isEmail ? emailSubject.trim() : '',
       initial_message_html: initialMessageHtml.trim() || '',
