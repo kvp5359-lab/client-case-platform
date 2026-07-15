@@ -20,6 +20,10 @@ export type ThreadTemplateAssignee = {
  * true → используем override_assignee_ids (даже пустой набор = «никого»).
  */
 export type ThreadTemplateProjectOverride = {
+  /** id строки-привязки — ключ для общей БД-функции применения (folding).
+   *  Есть только когда override загружен из БД (mapJunctionRow); форма
+   *  редактора его не строит. */
+  bindingId?: string
   deadline_days: number | null
   initial_message_html: string | null
   access_type: 'all' | 'roles' | null

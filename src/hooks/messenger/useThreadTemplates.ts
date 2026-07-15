@@ -74,6 +74,7 @@ export function useGlobalThreadTemplates(workspaceId: string | undefined) {
  * самой junction-строки. Так все потребители работают с привычной формой.
  */
 type JunctionRow = {
+  id: string
   sort_order: number
   default_status_id: string | null
   on_complete_set_project_status_id: string | null
@@ -99,6 +100,7 @@ function mapJunctionRow(
     default_status_id: r.default_status_id,
     on_complete_set_project_status_id: r.on_complete_set_project_status_id,
     projectOverride: {
+      bindingId: r.id,
       deadline_days: r.deadline_days,
       initial_message_html: r.initial_message_html,
       access_type: r.access_type,
@@ -110,7 +112,7 @@ function mapJunctionRow(
 }
 
 const JUNCTION_SELECT =
-  'sort_order, default_status_id, on_complete_set_project_status_id, deadline_days, initial_message_html, access_type, access_roles, override_assignees, thread_templates(*, thread_template_assignees(participant_id))'
+  'id, sort_order, default_status_id, on_complete_set_project_status_id, deadline_days, initial_message_html, access_type, access_roles, override_assignees, thread_templates(*, thread_template_assignees(participant_id))'
 
 /**
  * Override-исполнители типа проекта (project_template_thread_assignees) —

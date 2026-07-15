@@ -12353,6 +12353,38 @@ export type Database = {
         }
         Returns: string
       }
+      resolve_thread_template_binding: {
+        Args: { p_binding_id: string }
+        Returns: {
+          thread_template_id: string
+          thread_type: string
+          is_email: boolean
+          icon: string
+          accent_color: string
+          status_id: string | null
+          deadline_days: number | null
+          access_type: string | null
+          access_roles: string[] | null
+          initial_message_html: string | null
+          assignee_ids: string[]
+        }[]
+      }
+      resolve_thread_template_for_integration: {
+        Args: { p_integration_id: string; p_thread_template_id: string }
+        Returns: {
+          thread_template_id: string
+          thread_type: string
+          is_email: boolean
+          icon: string
+          accent_color: string
+          status_id: string | null
+          deadline_days: number | null
+          access_type: string | null
+          access_roles: string[] | null
+          initial_message_html: string | null
+          assignee_ids: string[]
+        }[]
+      }
       resolve_inbound_email_address: {
         Args: { p_address: string }
         Returns: {

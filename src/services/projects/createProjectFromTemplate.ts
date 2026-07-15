@@ -241,14 +241,31 @@ export async function seedProjectContent(
   for (const tpl of selectedThreadTemplates) {
     promises.push(
       (async () => {
-        // Пер-проектные переопределения (если шаблон загружен в контексте типа
-        // проекта). Эффективное значение = override ?? общее («рыба»).
+        // Эффективные поля = базовый шаблон + пер-проектные переопределения.
+        // Folding живёт в ОДНОЙ БД-функции (её же зовут каналы) — здесь только
+        // применение. Шаблон без привязки (standalone из библиотеки) — база как есть.
         const po = tpl.projectOverride
-        const effDeadlineDays =
-          po && po.deadline_days != null ? po.deadline_days : tpl.deadline_days
-        const effAccessType = po && po.access_type != null ? po.access_type : tpl.access_type
-        const effAccessRoles =
-          po && po.access_type != null ? (po.access_roles ?? []) : (tpl.access_roles ?? [])
+        let effDeadlineDays = tpl.deadline_days
+        let effAccessType = tpl.access_type
+        let effAccessRoles = tpl.access_roles ?? []
+        let effStatusId = tpl.default_status_id
+        let effAssigneeIds = (tpl.thread_template_assignees ?? []).map((a) => a.participant_id)
+
+        if (po?.bindingId) {
+          const { data: resolved, error: resolveErr } = await supabase.rpc(
+            'resolve_thread_template_binding',
+            { p_binding_id: po.bindingId },
+          )
+          if (resolveErr) throw resolveErr
+          const r = Array.isArray(resolved) ? resolved[0] : resolved
+          if (r) {
+            effDeadlineDays = r.deadline_days
+            effAccessType = (r.access_type ?? tpl.access_type) as typeof tpl.access_type
+            effAccessRoles = r.access_roles ?? []
+            effStatusId = r.status_id
+            effAssigneeIds = r.assignee_ids ?? []
+          }
+        }
 
         const deadline =
           tpl.thread_type === 'task' && effDeadlineDays != null
@@ -265,7 +282,7 @@ export async function seedProjectContent(
             access_roles: effAccessType === 'roles' ? effAccessRoles : [],
             accent_color: tpl.accent_color,
             icon: tpl.icon,
-            status_id: tpl.default_status_id,
+            status_id: effStatusId,
             deadline,
             sort_order: sortOffset + tpl.sort_order + 100,
             source_template_id: tpl.id,
@@ -276,12 +293,8 @@ export async function seedProjectContent(
           .single()
         if (threadErr) throw threadErr
 
-        const assigneeIds =
-          po && po.assignees_overridden
-            ? po.override_assignee_ids
-            : (tpl.thread_template_assignees ?? []).map((a) => a.participant_id)
-        if (tpl.thread_type === 'task' && assigneeIds.length > 0) {
-          const rows = assigneeIds.map((pid) => ({ thread_id: thread.id, participant_id: pid }))
+        if (tpl.thread_type === 'task' && effAssigneeIds.length > 0) {
+          const rows = effAssigneeIds.map((pid) => ({ thread_id: thread.id, participant_id: pid }))
           const { error: aErr } = await supabase.from('task_assignees').insert(rows)
           if (aErr) {
             logger.warn(`Не удалось назначить исполнителей в треде ${thread.id}: ${aErr.message}`)
