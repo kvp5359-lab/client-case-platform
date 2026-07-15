@@ -202,9 +202,6 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
       return `${p.name ?? ''} ${p.last_name ?? ''}`.toLowerCase().includes(q)
     })
     .sort((a, b) => {
-      // Псевдо-исполнитель «Создатель задачи» (список шаблона) — всегда первым.
-      if (a.id === CREATOR_ASSIGNEE_ID) return -1
-      if (b.id === CREATOR_ASSIGNEE_ID) return 1
       const aIsMe = a.user_id === user?.id
       const bIsMe = b.user_id === user?.id
       if (aIsMe && !bIsMe) return -1
@@ -212,7 +209,12 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
       return (a.name ?? '').localeCompare(b.name ?? '', 'ru')
     })
 
-  const staff = filtered.filter((p) => getRoleGroup(p.workspace_roles) === 'staff')
+  // Динамические исполнители (сейчас — «Создатель задачи» из шаблона): не люди,
+  // а правило подстановки → отдельная группа, не мешаем их с сотрудниками.
+  const dynamicAssignees = filtered.filter((p) => p.id === CREATOR_ASSIGNEE_ID)
+  const staff = filtered.filter(
+    (p) => p.id !== CREATOR_ASSIGNEE_ID && getRoleGroup(p.workspace_roles) === 'staff',
+  )
   const external = filtered.filter((p) => getRoleGroup(p.workspace_roles) === 'external')
   const clients = filtered.filter((p) => getRoleGroup(p.workspace_roles) === 'client')
 
@@ -267,6 +269,7 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
   }
 
   const groups = [
+    { items: dynamicAssignees, label: 'Автоматически' },
     { items: staff, label: 'Сотрудники' },
     { items: external, label: 'Внешние сотрудники' },
     { items: clients, label: 'Клиенты' },

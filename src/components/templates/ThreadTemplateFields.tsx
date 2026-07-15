@@ -220,7 +220,8 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
   } = props
 
   // «Создатель задачи» — псевдо-исполнитель в списке (в БД это флаг шаблона,
-  // а не участник). Роль сотрудника — чтобы попал в первую группу списка.
+  // а не участник). Пикер выносит его в отдельную группу «Автоматически» по id,
+  // поэтому роль ему не нужна.
   const participantsWithCreator: WorkspaceParticipant[] = [
     {
       id: CREATOR_ASSIGNEE_ID,
@@ -229,7 +230,7 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
       email: null,
       avatar_url: null,
       user_id: null,
-      workspace_roles: ['Сотрудник'],
+      workspace_roles: [],
       can_login: false,
     },
     ...participants,
