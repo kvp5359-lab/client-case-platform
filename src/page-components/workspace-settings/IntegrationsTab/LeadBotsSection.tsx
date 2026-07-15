@@ -2,7 +2,13 @@
 
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, Loader2, Megaphone, Plus, Settings2 } from 'lucide-react'
+import { ChevronDown, HelpCircle, Loader2, Megaphone, Plus, Settings2 } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { Badge } from '@/components/ui/badge'
@@ -30,6 +36,54 @@ import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads.type
 import type { ThreadTemplate } from '@/types/threadTemplate'
 import type { WorkspaceParticipant } from '@/hooks/shared/useWorkspaceParticipants'
 import type { BotIntegration, DialogState } from './types'
+
+/** Подсказка «?» рядом с подписью поля — вместо простыни поясняющего текста. */
+function HelpHint({ text }: { text: string }) {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="text-muted-foreground/60 hover:text-muted-foreground"
+            aria-label="Подсказка"
+          >
+            <HelpCircle className="h-3.5 w-3.5" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" align="start" className="max-w-xs text-xs font-normal">
+          {text}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+/** Строка настройки: подпись + «?» + опциональное действие справа. */
+function FieldRow({
+  label,
+  hint,
+  action,
+  children,
+}: {
+  label: string
+  hint: string
+  action?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <Label className="text-xs">{label}</Label>
+          <HelpHint text={hint} />
+        </div>
+        {action}
+      </div>
+      {children}
+    </div>
+  )
+}
 
 type LeadBotsSectionProps = {
   workspaceId: string
@@ -170,11 +224,11 @@ function LeadBotRow({
     queryFn: async (): Promise<string[]> => {
       const { data: binding } = await supabase
         .from('project_template_thread_templates')
-        .select('id, override_assignees')
+        .select('id, assignees_mode')
         .eq('integration_id', bot.id)
         .eq('thread_template_id', templateId)
         .maybeSingle()
-      if (!binding?.id || !binding.override_assignees) return []
+      if (!binding?.id || binding.assignees_mode !== 'extend') return []
       const { data: rows } = await supabase
         .from('project_template_thread_assignees')
         .select('participant_id')
@@ -296,9 +350,11 @@ function LeadBotRow({
       const overridePids = responsible
 
       const bindingId = await ensureBinding()
+      // «Дополнительные» — режим extend: исполнители шаблона остаются,
+      // указанные здесь добавляются к ним (не заменяют).
       const { error: upErr } = await supabase
         .from('project_template_thread_templates')
-        .update({ override_assignees: overridePids.length > 0 })
+        .update({ assignees_mode: overridePids.length > 0 ? 'extend' : 'inherit' })
         .eq('id', bindingId)
       if (upErr) throw upErr
 
@@ -448,11 +504,12 @@ function LeadBotRow({
       </div>
 
       {open && (
-        <div className="border-t px-3 py-3 space-y-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2">
-              <Label className="text-xs">Шаблон диалога</Label>
-              {selectedTemplate && (
+        <div className="border-t px-3 py-3 space-y-3">
+          <FieldRow
+            label="Шаблон диалога"
+            hint="Задаёт вид и параметры нового диалога: иконку, цвет, статус, срок, исполнителей и приветствие. Без шаблона — вид как у «Личного Telegram»."
+            action={
+              selectedTemplate && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -460,10 +517,11 @@ function LeadBotRow({
                   onClick={() => void openTemplateDialog()}
                 >
                   <Settings2 className="h-3.5 w-3.5 mr-1" />
-                  Настроить шаблон
+                  Настроить
                 </Button>
-              )}
-            </div>
+              )
+            }
+          >
             <Select
               value={templateId || '__none__'}
               onValueChange={(v) => setTemplateId(v === '__none__' ? '' : v)}
@@ -488,104 +546,62 @@ function LeadBotRow({
                 })}
               </SelectContent>
             </Select>
-            {selectedTemplate ? (
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                {(() => {
-                  const Icon = getChatIconComponent(selectedTemplate.icon)
-                  return (
-                    <Icon
-                      className={`h-4 w-4 ${COLOR_TEXT[selectedTemplate.accent_color as ThreadAccentColor] ?? ''}`}
-                    />
-                  )
-                })()}
-                <span>
-                  Новый диалог создаётся с этой иконкой/цветом, а также статусом,
-                  сроком и исполнителями шаблона. Ниже можно переопределить исполнителей.
-                </span>
-              </div>
-            ) : (
-              <p className="text-[11px] text-muted-foreground">
-                Без шаблона — иконка/цвет как у «Личного Telegram», исполнители — из
-                списка ответственных ниже.
-              </p>
-            )}
-          </div>
+          </FieldRow>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs">
-              {templateId
-                ? 'Исполнители — переопределить шаблон (пусто = из шаблона)'
-                : 'Ответственные (все видят входящие диалоги)'}
-            </Label>
+          <FieldRow
+            label={templateId ? 'Дополнительные исполнители' : 'Ответственные'}
+            hint={
+              templateId
+                ? 'Добавляются к исполнителям шаблона, не заменяя их. Все назначенные видят входящие диалоги этого бота.'
+                : 'Кто ведёт входящие диалоги этого бота. Первый в списке — владелец диалога, остальные добавляются в участники.'
+            }
+          >
             {employees.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Нет сотрудников в воркспейсе.</p>
-              ) : (
-                <ParticipantsPicker
-                  participants={pickerParticipants}
-                  selectedIds={responsible}
-                  onChange={setResponsible}
-                  placeholder="Выберите участников..."
-                />
-              )}
-              <p className="text-[11px] text-muted-foreground">
-                {templateId
-                  ? 'Выбранные здесь заменят исполнителей шаблона для этого бота.'
-                  : 'Первый в списке — владелец диалога; остальные добавляются в участники.'}
-              </p>
-            </div>
+              <p className="text-xs text-muted-foreground">Нет сотрудников в воркспейсе.</p>
+            ) : (
+              <ParticipantsPicker
+                participants={pickerParticipants}
+                selectedIds={responsible}
+                onChange={setResponsible}
+                placeholder="Выберите участников..."
+              />
+            )}
+          </FieldRow>
 
-          {templateId ? (
-            <p className="text-[11px] text-muted-foreground px-1">
-              Приветствие клиенту — это «Первое сообщение» шаблона. Меняется в
-              разделе «Шаблоны» → нужный шаблон диалога.
-            </p>
-          ) : (
-            <div className="space-y-1.5">
-              <Label className="text-xs" htmlFor={`welcome-${bot.id}`}>
-                Приветствие (первое сообщение клиенту)
-              </Label>
+          {!templateId && (
+            <FieldRow
+              label="Приветствие"
+              hint="Первое сообщение, которое бот отправит клиенту при первом контакте. С шаблоном берётся из его «Первого сообщения»."
+            >
               <Textarea
-                id={`welcome-${bot.id}`}
                 value={welcome}
                 onChange={(e) => setWelcome(e.target.value)}
                 placeholder="Здравствуйте! Спасибо за обращение. Чем можем помочь?"
                 rows={3}
               />
-            </div>
+            </FieldRow>
           )}
 
-          <div className="space-y-1.5">
-            <Label className="text-xs" htmlFor={`campaign-${bot.id}`}>
-              Базовая метка кампании (необязательно)
-            </Label>
+          <FieldRow
+            label="Метка кампании"
+            hint="Проставляется каждому диалогу этого бота — видно, откуда пришёл лид. Детализация приходит из рекламной ссылки: t.me/бот?start=промо1"
+          >
             <Input
-              id={`campaign-${bot.id}`}
               value={campaign}
               onChange={(e) => setCampaign(e.target.value)}
               placeholder="Например: реклама-instagram"
             />
-            <p className="text-[11px] text-muted-foreground">
-              Проставляется каждому диалогу. Детализация приходит из ссылки{' '}
-              <code className="text-[10px]">?start=…</code>.
-            </p>
-          </div>
+          </FieldRow>
 
-          <label className="flex items-start gap-2 text-sm px-1 cursor-pointer">
-            <Checkbox
-              className="mt-0.5"
-              checked={showSenderName}
-              onCheckedChange={(v) => setShowSenderName(v === true)}
-            />
-            <span>
-              Показывать имя отправителя клиенту
-              <span className="block text-[11px] text-muted-foreground">
-                Если ботом отвечают несколько сотрудников — перед сообщением будет
-                видно, кто пишет («Имя: …»). По умолчанию выключено.
-              </span>
-            </span>
-          </label>
-
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <Checkbox
+                checked={showSenderName}
+                onCheckedChange={(v) => setShowSenderName(v === true)}
+              />
+              Показывать имя отправителя
+              <HelpHint text="Если боту отвечают несколько сотрудников — перед сообщением клиент увидит, кто пишет («Имя: …»). По умолчанию выключено." />
+            </label>
             <Button size="sm" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
               {saveMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
               Сохранить

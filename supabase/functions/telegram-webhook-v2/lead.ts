@@ -258,8 +258,8 @@ export async function handleLeadMessage(
     } else {
       threadId = created.threadId;
       // Исполнители (дают доступ к диалогу, «все видят всё»):
-      //  • шаблон задан → эффективные исполнители из общей RPC (переопределения
-      //    канала уже учтены там) → task_assignees;
+      //  • шаблон задан → эффективные исполнители из общей RPC (исполнители
+      //    шаблона + дополнительные этого бота — режим extend) → task_assignees;
       //  • шаблона нет → легаси-пул ответственных → участники (project_thread_members).
       if (config.template_id) {
         if (tpl.assigneeIds.length) {

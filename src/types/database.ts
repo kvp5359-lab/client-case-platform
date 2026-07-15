@@ -6908,6 +6908,7 @@ export type Database = {
         Row: {
           access_roles: string[] | null
           access_type: string | null
+          assignees_mode: string
           created_at: string
           deadline_days: number | null
           default_status_id: string | null
@@ -6923,6 +6924,7 @@ export type Database = {
         Insert: {
           access_roles?: string[] | null
           access_type?: string | null
+          assignees_mode?: string
           created_at?: string
           deadline_days?: number | null
           default_status_id?: string | null
@@ -6938,6 +6940,7 @@ export type Database = {
         Update: {
           access_roles?: string[] | null
           access_type?: string | null
+          assignees_mode?: string
           created_at?: string
           deadline_days?: number | null
           default_status_id?: string | null
