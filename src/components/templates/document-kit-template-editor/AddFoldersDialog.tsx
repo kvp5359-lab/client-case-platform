@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Folder } from 'lucide-react'
+import { CommentNote } from '../CommentNote'
 import { FolderTemplate } from './types'
 
 type AddFoldersDialogProps = {
@@ -77,6 +78,7 @@ export function AddFoldersDialog({
                   <Checkbox checked={selectedFolderIds.includes(folder.id)} />
                   <Folder className="w-4 h-4 text-amber-500 flex-shrink-0" />
                   <span className="text-sm font-medium truncate">{folder.name}</span>
+                  <CommentNote comment={folder.comment} />
                 </div>
               ))}
             </div>

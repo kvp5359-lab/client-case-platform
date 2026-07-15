@@ -2989,11 +2989,13 @@ export type Database = {
         Row: {
           ai_check_prompt: string | null
           ai_naming_prompt: string | null
+          comment: string | null
           created_at: string
           description: string | null
           id: string
           knowledge_article_id: string | null
           name: string
+          order_index: number
           settings: Json
           updated_at: string
           workspace_id: string
@@ -3001,11 +3003,13 @@ export type Database = {
         Insert: {
           ai_check_prompt?: string | null
           ai_naming_prompt?: string | null
+          comment?: string | null
           created_at?: string
           description?: string | null
           id?: string
           knowledge_article_id?: string | null
           name: string
+          order_index?: number
           settings?: Json
           updated_at?: string
           workspace_id: string
@@ -3013,11 +3017,13 @@ export type Database = {
         Update: {
           ai_check_prompt?: string | null
           ai_naming_prompt?: string | null
+          comment?: string | null
           created_at?: string
           description?: string | null
           id?: string
           knowledge_article_id?: string | null
           name?: string
+          order_index?: number
           settings?: Json
           updated_at?: string
           workspace_id?: string
@@ -8068,36 +8074,39 @@ export type Database = {
         Row: {
           ai_check_prompt: string | null
           ai_naming_prompt: string | null
+          comment: string | null
           created_at: string
           description: string | null
           id: string
           knowledge_article_id: string | null
           name: string
-          sort_order: number | null
+          sort_order: number
           updated_at: string
           workspace_id: string
         }
         Insert: {
           ai_check_prompt?: string | null
           ai_naming_prompt?: string | null
+          comment?: string | null
           created_at?: string
           description?: string | null
           id?: string
           knowledge_article_id?: string | null
           name: string
-          sort_order?: number | null
+          sort_order?: number
           updated_at?: string
           workspace_id: string
         }
         Update: {
           ai_check_prompt?: string | null
           ai_naming_prompt?: string | null
+          comment?: string | null
           created_at?: string
           description?: string | null
           id?: string
           knowledge_article_id?: string | null
           name?: string
-          sort_order?: number | null
+          sort_order?: number
           updated_at?: string
           workspace_id?: string
         }

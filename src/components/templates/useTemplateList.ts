@@ -190,11 +190,16 @@ export function useTemplateList<
 
   const reorderMutation = useMutation({
     mutationFn: async (orderedIds: string[]) => {
-      await Promise.all(
+      // supabase-js не бросает на ошибку, а возвращает её в результате — без
+      // явной проверки отказ RLS или сбой сети прошли бы как успех, и порядок
+      // молча откатился бы на invalidate без единого слова пользователю.
+      const results = await Promise.all(
         orderedIds.map((id, idx) =>
           supabaseDyn.from(tableName).update({ order_index: idx } as AnyRecord).eq('id', id),
         ),
       )
+      const failed = results.find((r) => r.error)
+      if (failed?.error) throw failed.error
     },
     onMutate: async (orderedIds: string[]) => {
       await queryClient.cancelQueries({ queryKey: fullQueryKey })

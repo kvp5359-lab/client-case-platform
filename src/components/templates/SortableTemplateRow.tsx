@@ -18,10 +18,19 @@ type SortableTemplateRowProps = {
   id: string
   /** Отключить перетаскивание (например, во время поиска) */
   disabled?: boolean
+  /** Уплотнённая строка: меньше вертикальные отступы и ручка. Высота строки задаётся
+   *  самым высоким элементом внутри, поэтому ручку тоже надо ужимать — иначе она
+   *  удержит прежнюю высоту, сколько ни срезай padding. */
+  compact?: boolean
   children: React.ReactNode
 }
 
-export function SortableTemplateRow({ id, disabled, children }: SortableTemplateRowProps) {
+export function SortableTemplateRow({
+  id,
+  disabled,
+  compact,
+  children,
+}: SortableTemplateRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id,
     disabled,
@@ -37,11 +46,12 @@ export function SortableTemplateRow({ id, disabled, children }: SortableTemplate
 
   return (
     <TableRow ref={setNodeRef} style={style} className="group">
-      <TableCell className="w-8 pr-0">
+      <TableCell className={cn('w-8 pr-0', compact && 'py-1')}>
         <button
           type="button"
           className={cn(
-            'flex h-7 w-6 items-center justify-center text-muted-foreground/40 transition-opacity',
+            'flex w-6 items-center justify-center text-muted-foreground/40 transition-opacity',
+            compact ? 'h-6' : 'h-7',
             disabled
               ? 'cursor-not-allowed opacity-0'
               : 'cursor-grab md:opacity-0 md:group-hover:opacity-100 active:cursor-grabbing hover:text-muted-foreground',

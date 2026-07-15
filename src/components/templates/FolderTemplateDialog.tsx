@@ -8,8 +8,8 @@
 import { useState } from 'react'
 import { Database } from '@/types/database'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { NameWithCommentField } from './NameWithCommentField'
 import {
   Dialog,
   DialogContent,
@@ -31,6 +31,7 @@ type FolderTemplate = Database['public']['Tables']['folder_templates']['Row']
 
 export type FolderFormData = {
   name: string
+  comment: string
   description: string
   ai_naming_prompt: string
   ai_check_prompt: string
@@ -93,12 +94,12 @@ export function FolderTemplateDialog({
           <div className="space-y-5 py-2">
             <div className="space-y-2">
               <Label htmlFor="name">Название *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Например: Паспорта, Договоры, Банковские документы"
-                className="text-lg font-semibold h-11"
+              <NameWithCommentField
+                nameId="name"
+                name={formData.name}
+                comment={formData.comment}
+                onNameChange={(value) => setFormData({ ...formData, name: value })}
+                onCommentChange={(value) => setFormData({ ...formData, comment: value })}
                 required
               />
             </div>

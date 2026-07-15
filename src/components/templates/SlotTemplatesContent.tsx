@@ -24,6 +24,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { EditSlotDialog, type SlotDialogValue } from './EditSlotDialog'
 import { SlotTemplatesTable } from './SlotTemplatesTable'
+import { fetchNextOrderIndex } from './nextOrderIndex'
 
 type SlotTemplate = Database['public']['Tables']['slot_templates']['Row']
 
@@ -46,7 +47,7 @@ export function SlotTemplatesContent() {
         .from('slot_templates')
         .select('*')
         .eq('workspace_id', workspaceId)
-        .order('created_at', { ascending: false })
+        .order('sort_order', { ascending: true })
       if (error) throw error
       return data ?? []
     },
@@ -55,6 +56,9 @@ export function SlotTemplatesContent() {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey })
 
+  const nextSortOrder = () =>
+    fetchNextOrderIndex({ table: 'slot_templates', workspaceId, column: 'sort_order' })
+
   const saveMutation = useMutation({
     mutationFn: async (data: SlotDialogValue) => {
       if (editingTemplate) {
@@ -62,6 +66,7 @@ export function SlotTemplatesContent() {
           .from('slot_templates')
           .update({
             name: data.name,
+            comment: data.comment ?? null,
             description: data.description,
             knowledge_article_id: data.knowledge_article_id,
             ai_naming_prompt: data.ai_naming_prompt,
@@ -73,10 +78,12 @@ export function SlotTemplatesContent() {
         const { error } = await supabase.from('slot_templates').insert({
           workspace_id: workspaceId ?? '',
           name: data.name,
+          comment: data.comment ?? null,
           description: data.description,
           knowledge_article_id: data.knowledge_article_id,
           ai_naming_prompt: data.ai_naming_prompt,
           ai_check_prompt: data.ai_check_prompt,
+          sort_order: await nextSortOrder(),
         })
         if (error) throw error
       }
@@ -97,10 +104,12 @@ export function SlotTemplatesContent() {
       const { error } = await supabase.from('slot_templates').insert({
         workspace_id: workspaceId ?? '',
         name: `${template.name} (копия)`,
+        comment: template.comment,
         description: template.description,
         knowledge_article_id: template.knowledge_article_id,
         ai_naming_prompt: template.ai_naming_prompt,
         ai_check_prompt: template.ai_check_prompt,
+        sort_order: await nextSortOrder(),
       })
       if (error) throw error
     },
@@ -109,6 +118,41 @@ export function SlotTemplatesContent() {
       logger.error('Ошибка копирования шаблона слота:', error)
       toast.error('Не удалось скопировать шаблон')
     },
+  })
+
+  const reorderMutation = useMutation({
+    mutationFn: async (orderedIds: string[]) => {
+      // supabase-js не бросает на ошибку, а возвращает её в результате — без
+      // явной проверки отказ RLS или сбой сети прошли бы как успех, и порядок
+      // молча откатился бы на invalidate без единого слова пользователю.
+      const results = await Promise.all(
+        orderedIds.map((id, idx) =>
+          supabase.from('slot_templates').update({ sort_order: idx }).eq('id', id),
+        ),
+      )
+      const failed = results.find((r) => r.error)
+      if (failed?.error) throw failed.error
+    },
+    // Оптимистично переставляем сразу: иначе строка возвращалась бы на место
+    // до ответа сервера.
+    onMutate: async (orderedIds: string[]) => {
+      await queryClient.cancelQueries({ queryKey })
+      const prev = queryClient.getQueryData<SlotTemplate[]>(queryKey)
+      if (prev) {
+        const byId = new Map(prev.map((t) => [t.id, t]))
+        const next = orderedIds
+          .map((id) => byId.get(id))
+          .filter((t): t is SlotTemplate => !!t)
+        queryClient.setQueryData<SlotTemplate[]>(queryKey, next)
+      }
+      return { prev }
+    },
+    onError: (error, _ids, context) => {
+      if (context?.prev) queryClient.setQueryData(queryKey, context.prev)
+      logger.error('Ошибка сортировки шаблонов слотов:', error)
+      toast.error('Не удалось сохранить порядок')
+    },
+    onSettled: invalidate,
   })
 
   const deleteMutation = useMutation({
@@ -213,6 +257,7 @@ export function SlotTemplatesContent() {
           onEdit={handleEdit}
           onCopy={(t) => copyMutation.mutate(t)}
           onDelete={handleDelete}
+          onReorder={(orderedIds) => reorderMutation.mutate(orderedIds)}
           isCopying={copyMutation.isPending}
           isDeleting={deleteMutation.isPending}
         />
@@ -228,10 +273,12 @@ export function SlotTemplatesContent() {
         }}
         instanceKey={editingTemplate?.id}
         title={editingTemplate ? 'Редактировать шаблон слота' : 'Создать шаблон слота'}
+        withComment
         value={
           editingTemplate
             ? {
                 name: editingTemplate.name,
+                comment: editingTemplate.comment,
                 description: editingTemplate.description,
                 knowledge_article_id: editingTemplate.knowledge_article_id,
                 ai_naming_prompt: editingTemplate.ai_naming_prompt,

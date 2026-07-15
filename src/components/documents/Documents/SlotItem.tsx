@@ -9,6 +9,7 @@
 
 import { memo, useState, useCallback, useRef, useEffect } from 'react'
 import { FileUp, Pencil, Trash2, Loader2 } from 'lucide-react'
+import { AutoSizeInput } from '@/components/ui/auto-size-input'
 import { DocumentItem } from './DocumentItem'
 import { SlotHelpButton } from './SlotHelpButton'
 import { useDocumentsContext } from './DocumentsContext'
@@ -215,26 +216,23 @@ export const SlotItem = memo(function SlotItem({
           className={`h-4 w-4 flex-shrink-0 transition-all duration-200 ${isDragOver ? 'text-brand-500' : 'text-brand-600 group-hover/slot:text-brand-700 group-hover/slot:-translate-y-0.5'}`}
         />
         {isEditing ? (
-          <div className="relative inline-grid items-center min-w-[80px]">
-            <span className="invisible whitespace-pre text-sm px-0 col-start-1 row-start-1">
-              {editName || ' '}
-            </span>
-            <input
-              autoFocus
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              onBlur={handleRename}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleRename()
-                if (e.key === 'Escape') {
-                  setEditName(slot.name)
-                  setIsEditing(false)
-                }
-              }}
-              onClick={(e) => e.stopPropagation()}
-              className="text-sm bg-transparent border-b border-muted-foreground/30 outline-none py-0 px-0 w-full col-start-1 row-start-1"
-            />
-          </div>
+          <AutoSizeInput
+            autoFocus
+            value={editName}
+            onChange={setEditName}
+            onBlur={handleRename}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleRename()
+              if (e.key === 'Escape') {
+                setEditName(slot.name)
+                setIsEditing(false)
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="text-sm"
+            inputClassName="border-b border-muted-foreground/30 py-0 px-0"
+            containerClassName="relative items-center min-w-[80px]"
+          />
         ) : (
           <span
             className={`min-w-0 text-sm truncate transition-colors duration-200 ${isDragOver ? 'text-brand-600' : 'text-brand-600 group-hover/slot:text-brand-700'}`}

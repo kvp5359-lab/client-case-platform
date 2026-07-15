@@ -31,22 +31,13 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Pencil, Copy, Trash2, Search, Plus, Package } from 'lucide-react'
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core'
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  arrayMove,
-} from '@dnd-kit/sortable'
+import { DndContext, closestCenter } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { useTemplateDragEnd } from './useTemplateDragEnd'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useTemplateList } from './useTemplateList'
 import { SortableTemplateRow } from './SortableTemplateRow'
+import { fetchNextOrderIndex } from './nextOrderIndex'
 
 type DocumentKitTemplate = Database['public']['Tables']['document_kit_templates']['Row']
 
@@ -125,15 +116,11 @@ export function DocumentKitTemplatesContent() {
       }
     },
     customCopyFn: async (kit) => {
-      // Новый набор в конец списка
-      const { data: maxRow } = await supabase
-        .from('document_kit_templates')
-        .select('order_index')
-        .eq('workspace_id', workspaceId ?? '')
-        .order('order_index', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      const nextOrder = (maxRow?.order_index ?? -1) + 1
+      const nextOrder = await fetchNextOrderIndex({
+        table: 'document_kit_templates',
+        workspaceId,
+        column: 'order_index',
+      })
 
       const { data: newKit, error: createError } = await supabase
         .from('document_kit_templates')
@@ -171,20 +158,11 @@ export function DocumentKitTemplatesContent() {
     router.push(`/workspaces/${workspaceId}/settings/templates/document-kit-templates/${kit.id}`)
   }
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-  )
-  const dragDisabled = searchQuery.trim().length > 0
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-    const ids = filteredKits.map((k) => k.id)
-    const oldIndex = ids.indexOf(active.id as string)
-    const newIndex = ids.indexOf(over.id as string)
-    if (oldIndex === -1 || newIndex === -1) return
-    handleReorder(arrayMove(ids, oldIndex, newIndex))
-  }
+  const { sensors, dragDisabled, handleDragEnd } = useTemplateDragEnd({
+    items: filteredKits,
+    onReorder: handleReorder,
+    searchQuery,
+  })
 
   return (
     <>

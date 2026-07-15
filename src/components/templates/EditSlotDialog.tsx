@@ -27,6 +27,7 @@ import {
   type ArticleTreePickerGroup,
   type ArticleTreePickerLink,
 } from './ArticleTreePicker'
+import { NameWithCommentField } from './NameWithCommentField'
 
 export type SlotDialogValue = {
   name: string
@@ -34,6 +35,8 @@ export type SlotDialogValue = {
   knowledge_article_id: string | null
   ai_naming_prompt: string | null
   ai_check_prompt: string | null
+  /** Только для справочника шаблонов слотов (см. withComment). */
+  comment?: string | null
 }
 
 type EditSlotDialogProps = {
@@ -45,6 +48,12 @@ type EditSlotDialogProps = {
   value?: SlotDialogValue | null
   /** Стабильный ключ для сброса внутреннего состояния (обычно id слота). */
   instanceKey?: string
+  /**
+   * Показать поле «Комментарий» рядом с названием. Только для справочника
+   * шаблонов слотов: у слотов-экземпляров внутри папок такой колонки нет,
+   * и поле было бы обещанием, которое некуда сохранить.
+   */
+  withComment?: boolean
   isPending?: boolean
   articles?: Array<{ id: string; title: string }>
   groups?: ArticleTreePickerGroup[]
@@ -58,6 +67,7 @@ const EMPTY: SlotDialogValue = {
   knowledge_article_id: null,
   ai_naming_prompt: null,
   ai_check_prompt: null,
+  comment: null,
 }
 
 export function EditSlotDialog(props: EditSlotDialogProps) {
@@ -76,6 +86,7 @@ function EditSlotDialogInner({
   onOpenChange,
   title,
   value,
+  withComment,
   isPending,
   articles = [],
   groups = [],
@@ -84,6 +95,7 @@ function EditSlotDialogInner({
 }: EditSlotDialogProps) {
   const initial = value ?? EMPTY
   const [name, setName] = useState(initial.name)
+  const [comment, setComment] = useState(initial.comment ?? '')
   const [description, setDescription] = useState(initial.description ?? '')
   const [knowledgeArticleId, setKnowledgeArticleId] = useState<string | null>(
     initial.knowledge_article_id,
@@ -106,6 +118,9 @@ function EditSlotDialogInner({
       knowledge_article_id: descriptionMode === 'article' ? knowledgeArticleId : null,
       ai_naming_prompt: aiNamingPrompt.trim() || null,
       ai_check_prompt: aiCheckPrompt.trim() || null,
+      // Без withComment ключа в payload быть не должно: вызывающий для слотов
+      // внутри папок пишет в таблицу, где такой колонки нет.
+      ...(withComment ? { comment: comment.trim() || null } : {}),
     })
   }
 
@@ -119,13 +134,25 @@ function EditSlotDialogInner({
         <div className="space-y-4 py-2">
           <div className="space-y-2">
             <Label htmlFor="slot-name">Название</Label>
-            <Input
-              id="slot-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Например: Загранпаспорт, Диплом"
-              autoFocus
-            />
+            {withComment ? (
+              <NameWithCommentField
+                nameId="slot-name"
+                name={name}
+                comment={comment}
+                onNameChange={setName}
+                onCommentChange={setComment}
+                namePlaceholder="Название слота"
+                autoFocus
+              />
+            ) : (
+              <Input
+                id="slot-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Например: Загранпаспорт, Диплом"
+                autoFocus
+              />
+            )}
           </div>
 
           <div className="space-y-2">

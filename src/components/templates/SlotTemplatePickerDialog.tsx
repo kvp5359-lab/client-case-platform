@@ -20,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Search, Package, BookOpen, HelpCircle } from 'lucide-react'
 import { PageLoader } from '@/components/ui/loaders'
+import { CommentNote } from './CommentNote'
 import type { Database } from '@/types/database'
 
 type SlotTemplate = Database['public']['Tables']['slot_templates']['Row']
@@ -126,6 +127,7 @@ export function SlotTemplatePickerDialog({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-sm font-medium truncate">{t.name}</span>
+                        <CommentNote comment={t.comment} />
                         {t.knowledge_article_id ? (
                           <BookOpen className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
                         ) : t.description ? (

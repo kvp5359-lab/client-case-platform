@@ -21,11 +21,13 @@ import type { FolderFormData } from './FolderTemplateDialog'
 import { useTemplateList } from './useTemplateList'
 import { FolderTemplatesTable } from './FolderTemplatesTable'
 import { DefaultPromptsDialog } from './DefaultPromptsDialog'
+import { fetchNextOrderIndex } from './nextOrderIndex'
 
 type FolderTemplate = Database['public']['Tables']['folder_templates']['Row']
 
 const INITIAL_FORM: FolderFormData = {
   name: '',
+  comment: '',
   description: '',
   ai_naming_prompt: '',
   ai_check_prompt: '',
@@ -35,6 +37,9 @@ const INITIAL_FORM: FolderFormData = {
 export function FolderTemplatesContent() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
   const [defaultPromptsOpen, setDefaultPromptsOpen] = useState(false)
+
+  const nextOrderIndex = () =>
+    fetchNextOrderIndex({ table: 'folder_templates', workspaceId, column: 'order_index' })
 
   const {
     filteredItems: filteredTemplates,
@@ -50,6 +55,7 @@ export function FolderTemplatesContent() {
     handleCloseDialog: baseHandleCloseDialog,
     handleSubmit,
     handleCopy,
+    handleReorder,
     handleDelete,
     isSaving,
     isDeleting,
@@ -60,12 +66,15 @@ export function FolderTemplatesContent() {
     queryKey: 'folder-templates',
     workspaceId,
     initialFormData: INITIAL_FORM,
+    orderByColumn: 'order_index',
+    orderAscending: true,
     customCreateFn: async (data) => {
       if (editingTemplate) {
         const { error } = await supabase
           .from('folder_templates')
           .update({
             name: data.name,
+            comment: data.comment || null,
             description: data.description || null,
             ai_naming_prompt: data.ai_naming_prompt || null,
             ai_check_prompt: data.ai_check_prompt || null,
@@ -77,10 +86,12 @@ export function FolderTemplatesContent() {
         const { error } = await supabase.from('folder_templates').insert({
           workspace_id: workspaceId ?? '',
           name: data.name,
+          comment: data.comment || null,
           description: data.description || null,
           ai_naming_prompt: data.ai_naming_prompt || null,
           ai_check_prompt: data.ai_check_prompt || null,
           knowledge_article_id: data.knowledge_article_id || null,
+          order_index: await nextOrderIndex(),
         })
         if (error) throw error
       }
@@ -91,11 +102,13 @@ export function FolderTemplatesContent() {
         .insert({
           workspace_id: workspaceId ?? '',
           name: `${template.name} (копия)`,
+          comment: template.comment,
           description: template.description,
           ai_naming_prompt: template.ai_naming_prompt,
           ai_check_prompt: template.ai_check_prompt,
           knowledge_article_id: template.knowledge_article_id,
           settings: template.settings,
+          order_index: await nextOrderIndex(),
         })
         .select('id')
         .single()
@@ -192,6 +205,7 @@ export function FolderTemplatesContent() {
   const handleEdit = (template: FolderTemplate) => {
     setFormData({
       name: template.name,
+      comment: template.comment || '',
       description: template.description || '',
       ai_naming_prompt: template.ai_naming_prompt || '',
       ai_check_prompt: template.ai_check_prompt || '',
@@ -237,6 +251,7 @@ export function FolderTemplatesContent() {
           onEdit={handleEdit}
           onCopy={handleCopy}
           onDelete={(id) => handleDelete(id, 'Вы уверены, что хотите удалить этот шаблон папки?')}
+          onReorder={handleReorder}
           isCopying={isCopying}
           isDeleting={isDeleting}
         />
