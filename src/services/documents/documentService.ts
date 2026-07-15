@@ -13,6 +13,7 @@ import {
   createStorageSignedUrl,
   downloadFromStorage,
 } from '@/lib/storage'
+import { resolveFileLocation } from '../files/resolveFileLocation'
 import { logger } from '@/utils/logger'
 import { DocumentError } from '../errors'
 import { safeFetchOrThrow, safeDeleteOrThrow, safeUpdateOrThrow } from '../supabase/queryHelpers'
@@ -380,26 +381,14 @@ export async function reorderDocuments({
 }
 
 /**
- * Определяет bucket и path для файла: если есть fileId — из таблицы files, иначе fallback
+ * Определяет bucket и path для файла документа. Легаси-записи без file_id
+ * лежат в `document-files` — он и служит фолбэком.
  */
-async function resolveFileBucket(
+function resolveFileBucket(
   filePath: string,
   fileId?: string | null,
 ): Promise<{ bucket: string; path: string }> {
-  let bucket = 'document-files'
-  let path = filePath
-  if (fileId) {
-    const { data: fileRecord } = await supabase
-      .from('files')
-      .select('bucket, storage_path')
-      .eq('id', fileId)
-      .single()
-    if (fileRecord) {
-      bucket = fileRecord.bucket
-      path = fileRecord.storage_path
-    }
-  }
-  return { bucket, path }
+  return resolveFileLocation(filePath, fileId, STORAGE_BUCKETS.documentFiles)
 }
 
 /**

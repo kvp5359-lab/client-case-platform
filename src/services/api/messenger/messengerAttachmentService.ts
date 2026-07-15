@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { STORAGE_BUCKETS, createStorageSignedUrl, downloadFromStorage, removeFromStorage, uploadToStorage } from '@/lib/storage'
 import { ConversationError } from '@/services/errors/AppError'
+import { resolveFileLocation } from '@/services/files/resolveFileLocation'
 import { logger } from '@/utils/logger'
 import type { MessageAttachment } from './messengerService.types'
 
@@ -387,25 +388,15 @@ export async function deleteAttachment(
   return { channel, reason, messageEmptied }
 }
 
-/** Resolve bucket and path from file_id or fallback to legacy storage_path */
-async function resolveBucketAndPath(
+/**
+ * Resolve bucket and path from file_id or fallback to legacy storage_path.
+ * Легаси-вложения без file_id лежат в `message-attachments` — он и фолбэк.
+ */
+function resolveBucketAndPath(
   storagePath: string,
   fileId?: string | null,
 ): Promise<{ bucket: string; path: string }> {
-  let bucket = 'message-attachments'
-  let path = storagePath
-  if (fileId) {
-    const { data: fileRecord } = await supabase
-      .from('files')
-      .select('bucket, storage_path')
-      .eq('id', fileId)
-      .single()
-    if (fileRecord) {
-      bucket = fileRecord.bucket
-      path = fileRecord.storage_path
-    }
-  }
-  return { bucket, path }
+  return resolveFileLocation(storagePath, fileId, STORAGE_BUCKETS.messageAttachments)
 }
 
 /**
@@ -428,30 +419,44 @@ export function canInlinePreview(mimeType: string | null | undefined): boolean {
 /**
  * Get signed URL для просмотра/скачивания файла.
  *
- * Если передан `downloadName` — URL будет содержать `?download=<name>`,
- * Supabase Storage выставит `Content-Disposition: attachment; filename="..."`,
- * браузер сразу скачает файл с правильным именем. Без `downloadName` —
- * чистый signed URL для inline preview (pdf/image открываются в new tab).
+ * `download` — браузер сразу скачает файл с этим именем.
+ * `inline` — файл открывается во вкладке, но под этим именем: иначе браузер
+ * возьмёт имя из адреса (= storage_path) и покажет/скачает кривое имя.
+ * Хранилище может inline-имя не поддерживать (Supabase Storage) — тогда
+ * откатываемся на чистый signed URL: открыть получится, имя будет прежним.
  */
 export async function getAttachmentUrl(
   storagePath: string,
   fileId?: string | null,
-  downloadName?: string | null,
+  options?: { download?: string | null; inline?: string | null },
 ): Promise<string> {
   const { bucket, path } = await resolveBucketAndPath(storagePath, fileId)
+  const downloadName = options?.download
+  const inlineName = options?.inline
 
-  const { data, error } = await createStorageSignedUrl(bucket, 
-      path,
-      SIGNED_URL_EXPIRY_SEC,
-      downloadName ? { download: downloadName } : undefined,
-    )
+  const signed = async (opts?: { download?: string; inline?: string }) => {
+    const { data, error } = await createStorageSignedUrl(bucket, path, SIGNED_URL_EXPIRY_SEC, opts)
+    if (error) throw new ConversationError(`Ошибка получения URL: ${error.message}`)
+    return data.signedUrl
+  }
 
-  if (error) throw new ConversationError(`Ошибка получения URL: ${error.message}`)
+  if (downloadName) return signed({ download: downloadName })
 
-  const url = new URL(data.signedUrl)
+  let signedUrl: string
+  if (inlineName) {
+    try {
+      signedUrl = await signed({ inline: inlineName })
+    } catch {
+      signedUrl = await signed()
+    }
+  } else {
+    signedUrl = await signed()
+  }
+
+  const url = new URL(signedUrl)
   // Без downloadName удаляем param `download`, который Supabase иногда добавляет
   // по умолчанию — он бы превратил preview в скачивание.
-  if (!downloadName) url.searchParams.delete('download')
+  url.searchParams.delete('download')
   return url.toString()
 }
 
