@@ -26,6 +26,7 @@ import {
   type AvatarParticipant,
 } from '@/components/participants/ParticipantAvatars'
 import { supabase } from '@/lib/supabase'
+import { CREATOR_ASSIGNEE_ID } from '@/types/threadTemplate'
 import { cn } from '@/lib/utils'
 import { pluralizeRu } from '@/utils/format/pluralize'
 import { useAuth } from '@/contexts/AuthContext'
@@ -201,6 +202,9 @@ export function AssigneesPopover(props: AssigneesPopoverProps) {
       return `${p.name ?? ''} ${p.last_name ?? ''}`.toLowerCase().includes(q)
     })
     .sort((a, b) => {
+      // Псевдо-исполнитель «Создатель задачи» (список шаблона) — всегда первым.
+      if (a.id === CREATOR_ASSIGNEE_ID) return -1
+      if (b.id === CREATOR_ASSIGNEE_ID) return 1
       const aIsMe = a.user_id === user?.id
       const bIsMe = b.user_id === user?.id
       if (aIsMe && !bIsMe) return -1
