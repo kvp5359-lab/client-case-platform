@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, Loader2, Megaphone, Plus, Settings2, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -20,6 +20,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useGlobalThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
+import { ThreadTemplateDialog } from '@/components/templates/ThreadTemplateDialog'
+import { threadTemplateKeys } from '@/hooks/queryKeys'
+import type { ThreadTemplateFormData } from '@/types/threadTemplate'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads.types'
@@ -80,6 +83,7 @@ export function LeadBotsSection({
               bot={bot}
               employees={employees}
               templates={templates}
+              workspaceId={workspaceId}
               onAction={onAction}
               onSaved={onSaved}
             />
@@ -128,12 +132,14 @@ function LeadBotRow({
   bot,
   employees,
   templates,
+  workspaceId,
   onAction,
   onSaved,
 }: {
   bot: BotIntegration
   employees: WorkspaceParticipant[]
   templates: ThreadTemplate[]
+  workspaceId: string
   onAction: (state: DialogState) => void
   onSaved: () => void
 }) {
@@ -147,8 +153,42 @@ function LeadBotRow({
   const [showSenderName, setShowSenderName] = useState(
     bot.config.show_sender_name ?? false,
   )
+  const [syncedBindingKey, setSyncedBindingKey] = useState<string | null>(null)
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
 
   const selectedTemplate = templates.find((t) => t.id === templateId)
+  const queryClient = useQueryClient()
+
+  // Переопределение исполнителей живёт в привязке канала (источник правды для
+  // приёма) — читаем оттуда, а не из config, чтобы UI и приём не расходились.
+  const { data: bindingOverride } = useQuery({
+    queryKey: ['lead-bot-binding-assignees', bot.id, templateId],
+    queryFn: async (): Promise<string[]> => {
+      const { data: binding } = await supabase
+        .from('project_template_thread_templates')
+        .select('id, override_assignees')
+        .eq('integration_id', bot.id)
+        .eq('thread_template_id', templateId)
+        .maybeSingle()
+      if (!binding?.id || !binding.override_assignees) return []
+      const { data: rows } = await supabase
+        .from('project_template_thread_assignees')
+        .select('participant_id')
+        .eq('binding_id', binding.id)
+      const pids = new Set((rows ?? []).map((r) => r.participant_id))
+      // participant_id → user_id (чекбоксы работают по сотрудникам).
+      return employees.filter((p) => p.user_id && pids.has(p.id)).map((p) => p.user_id!)
+    },
+    enabled: open && !!templateId,
+  })
+
+  // Подтягиваем загруженное переопределение в форму (adjust state on change,
+  // без эффекта — паттерн проекта).
+  const loadedKey = bindingOverride ? `${bot.id}:${templateId}` : null
+  if (bindingOverride && loadedKey && loadedKey !== syncedBindingKey) {
+    setSyncedBindingKey(loadedKey)
+    setResponsible(bindingOverride)
+  }
 
   const botAvatarUrl = bot.config.bot_avatar_url
   const label = bot.config.bot_username
@@ -160,11 +200,13 @@ function LeadBotRow({
       const newConfig = {
         ...bot.config,
         template_id: templateId || undefined,
-        responsible_user_ids: responsible,
-        // Главный ответственный (owner нового диалога) — первый в списке.
-        // При заданном шаблоне доступ дают исполнители шаблона (task_assignees).
+        // Исполнители: при шаблоне — ТОЛЬКО в привязке (ниже), чтобы не
+        // дублировать состояние; в config остаются лишь для легаси-ботов
+        // без шаблона (там они идут в участники треда).
+        responsible_user_ids: templateId ? undefined : responsible,
+        // Владелец нового диалога — первый в списке.
         owner_user_id: responsible[0],
-        welcome_message: welcome.trim() || undefined,
+        welcome_message: templateId ? undefined : welcome.trim() || undefined,
         base_campaign: campaign.trim() || undefined,
         show_sender_name: showSenderName,
       }
@@ -229,10 +271,37 @@ function LeadBotRow({
     },
     onSuccess: () => {
       toast.success('Настройки лид-бота сохранены')
+      queryClient.invalidateQueries({
+        queryKey: ['lead-bot-binding-assignees', bot.id, templateId],
+      })
       onSaved()
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : 'Не удалось сохранить')
+    },
+  })
+
+  // Правка самого шаблона — переиспользуем готовый редактор из раздела «Шаблоны»
+  // (иконка/цвет/статус/срок/приветствие/базовые исполнители — всё там).
+  const saveTemplateMutation = useMutation({
+    mutationFn: async (data: ThreadTemplateFormData) => {
+      const { assignee_ids, projectOverride: _po, ...body } = data as ThreadTemplateFormData & {
+        projectOverride?: unknown
+      }
+      const { error } = await supabase.rpc('update_thread_template_with_assignees', {
+        p_template_id: templateId,
+        p_updates: body,
+        p_assignee_ids: assignee_ids ?? [],
+      })
+      if (error) throw error
+    },
+    onSuccess: () => {
+      toast.success('Шаблон сохранён')
+      queryClient.invalidateQueries({ queryKey: threadTemplateKeys.all })
+      setTemplateDialogOpen(false)
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Не удалось сохранить шаблон')
     },
   })
 
@@ -286,7 +355,20 @@ function LeadBotRow({
       {open && (
         <div className="border-t px-3 py-3 space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-xs">Шаблон диалога</Label>
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-xs">Шаблон диалога</Label>
+              {selectedTemplate && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs"
+                  onClick={() => setTemplateDialogOpen(true)}
+                >
+                  <Settings2 className="h-3.5 w-3.5 mr-1" />
+                  Настроить шаблон
+                </Button>
+              )}
+            </div>
             <Select
               value={templateId || '__none__'}
               onValueChange={(v) => setTemplateId(v === '__none__' ? '' : v)}
@@ -430,6 +512,17 @@ function LeadBotRow({
             </Button>
           </div>
         </div>
+      )}
+
+      {selectedTemplate && (
+        <ThreadTemplateDialog
+          open={templateDialogOpen}
+          onOpenChange={setTemplateDialogOpen}
+          workspaceId={workspaceId}
+          template={selectedTemplate}
+          onSave={(data) => saveTemplateMutation.mutate(data)}
+          isPending={saveTemplateMutation.isPending}
+        />
       )}
     </div>
   )
