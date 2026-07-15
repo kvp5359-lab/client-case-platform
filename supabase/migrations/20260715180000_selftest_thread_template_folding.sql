@@ -83,31 +83,37 @@ BEGIN
       END IF;
     END IF;
 
-    -- 3. Исполнители «заменить»: только из привязки.
+    -- 3. Исполнители «заменить»: только из привязки, шаблонные не участвуют.
     IF v_fail IS NULL THEN
       UPDATE public.project_template_thread_templates
       SET assignees_mode = 'override' WHERE id = v_binding;
       INSERT INTO public.project_template_thread_assignees (binding_id, participant_id)
         VALUES (v_binding, v_p2);
       SELECT * INTO r FROM public.resolve_thread_template_binding(v_binding);
-      IF r.assignee_ids <> ARRAY[v_p2] THEN v_fail := 'override: исполнители должны быть только из привязки';
+      IF r.assignee_ids <> ARRAY[v_p2] THEN
+        v_fail := 'override: исполнители должны быть только из привязки';
       END IF;
     END IF;
 
-    -- 4. Исполнители «дополнить»: шаблон + привязка, без дублей.
+    -- 4. Переопределение пустым набором = «никого» (а не «унаследовать»).
+    IF v_fail IS NULL THEN
+      DELETE FROM public.project_template_thread_assignees WHERE binding_id = v_binding;
+      SELECT * INTO r FROM public.resolve_thread_template_binding(v_binding);
+      IF r.assignee_ids <> '{}'::uuid[] THEN
+        v_fail := 'override пустым набором должен давать «никого», получено: ' || r.assignee_ids::text;
+      END IF;
+    END IF;
+
+    -- 5. Возврат к наследованию отдаёт исполнителей шаблона.
     IF v_fail IS NULL THEN
       UPDATE public.project_template_thread_templates
-      SET assignees_mode = 'extend' WHERE id = v_binding;
-      INSERT INTO public.project_template_thread_assignees (binding_id, participant_id)
-        VALUES (v_binding, v_p1);  -- уже есть в шаблоне → дубля быть не должно
+      SET assignees_mode = 'inherit' WHERE id = v_binding;
       SELECT * INTO r FROM public.resolve_thread_template_binding(v_binding);
-      IF array_length(r.assignee_ids, 1) <> 2
-         OR NOT (v_p1 = ANY(r.assignee_ids) AND v_p2 = ANY(r.assignee_ids)) THEN
-        v_fail := 'extend: ожидались исполнители шаблона + дополнительные без дублей';
+      IF r.assignee_ids <> ARRAY[v_p1] THEN v_fail := 'inherit после override: ожидались исполнители шаблона';
       END IF;
     END IF;
 
-    -- 5. Инвариант двух полей: булев — отражение режима (мост совместимости).
+    -- 6. Инвариант двух полей: булев — отражение режима (мост совместимости).
     IF v_fail IS NULL THEN
       PERFORM 1 FROM public.project_template_thread_templates
         WHERE id = v_binding AND override_assignees <> (assignees_mode = 'override');

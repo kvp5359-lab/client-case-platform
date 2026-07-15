@@ -13,9 +13,12 @@ import type { BotIntegration } from './types'
  * Состояние формы лид-бота + работа с его привязкой к шаблону диалога.
  *
  * Привязка (project_template_thread_templates с владельцем integration_id) —
- * тот же механизм «шаблон + переопределения», что у шаблонов проекта. Источник
- * правды об исполнителях привязки — assignees_mode; здесь мы пишем только
- * 'extend' («дополнить исполнителей шаблона») либо 'inherit'.
+ * тот же механизм «базовый шаблон + переопределения», что у шаблонов проекта:
+ * канал просто ещё один владелец переопределений, и правятся они тем же
+ * диалогом шаблона (включая исполнителей). Своих полей «про шаблон» у бота нет.
+ *
+ * Поле «Ответственные» в блоке бота — легаси-путь для ботов БЕЗ шаблона: там
+ * они идут во владельца диалога и участников треда, к шаблонам отношения не имеют.
  */
 export function useLeadBotSettings({
   bot,
@@ -41,7 +44,6 @@ export function useLeadBotSettings({
   const [welcome, setWelcome] = useState(bot.config.welcome_message ?? '')
   const [campaign, setCampaign] = useState(bot.config.base_campaign ?? '')
   const [showSenderName, setShowSenderName] = useState(bot.config.show_sender_name ?? false)
-  const [syncedBindingKey, setSyncedBindingKey] = useState<string | null>(null)
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false)
 
   const selectedTemplate = templates.find((t) => t.id === templateId)
@@ -51,37 +53,7 @@ export function useLeadBotSettings({
   const templateSaved = !!templateId && bot.config.template_id === templateId
 
   const bindingKeys = {
-    assignees: ['lead-bot-binding-assignees', bot.id, templateId] as const,
     template: ['lead-bot-binding-template', bot.id, templateId] as const,
-  }
-
-  // Дополнительные исполнители живут в привязке (источник правды для приёма) —
-  // читаем оттуда, а не из config, чтобы UI и приём не расходились.
-  const { data: bindingOverride } = useQuery({
-    queryKey: bindingKeys.assignees,
-    queryFn: async (): Promise<string[]> => {
-      const { data: binding } = await supabase
-        .from('project_template_thread_templates')
-        .select('id, assignees_mode')
-        .eq('integration_id', bot.id)
-        .eq('thread_template_id', templateId)
-        .maybeSingle()
-      if (!binding?.id || binding.assignees_mode !== 'extend') return []
-      const { data: rows } = await supabase
-        .from('project_template_thread_assignees')
-        .select('participant_id')
-        .eq('binding_id', binding.id)
-      return (rows ?? []).map((r) => r.participant_id)
-    },
-    enabled: open && templateSaved,
-  })
-
-  // Подтягиваем загруженное переопределение в форму (adjust state on change,
-  // без эффекта — паттерн проекта).
-  const loadedKey = bindingOverride ? `${bot.id}:${templateId}` : null
-  if (bindingOverride && loadedKey && loadedKey !== syncedBindingKey) {
-    setSyncedBindingKey(loadedKey)
-    setResponsible(bindingOverride)
   }
 
   /** Находит/создаёт строку-привязку канала к шаблону (общий механизм). */
@@ -113,11 +85,17 @@ export function useLeadBotSettings({
       const { data: b } = await supabase
         .from('project_template_thread_templates')
         .select(
-          'id, sort_order, default_status_id, on_complete_set_project_status_id, deadline_days, initial_message_html, access_type, access_roles',
+          'id, sort_order, default_status_id, on_complete_set_project_status_id, deadline_days, initial_message_html, access_type, access_roles, assignees_mode',
         )
         .eq('integration_id', bot.id)
         .eq('thread_template_id', templateId)
         .maybeSingle()
+      const { data: a } = b?.id
+        ? await supabase
+            .from('project_template_thread_assignees')
+            .select('participant_id')
+            .eq('binding_id', b.id)
+        : { data: [] }
       return {
         ...selectedTemplate,
         sort_order: b?.sort_order ?? selectedTemplate.sort_order,
@@ -129,11 +107,8 @@ export function useLeadBotSettings({
           initial_message_html: b?.initial_message_html ?? null,
           access_type: (b?.access_type as 'all' | 'roles' | null) ?? null,
           access_roles: b?.access_roles ?? null,
-          // Исполнителями привязки канала управляет поле «Дополнительные
-          // исполнители» (режим extend, которого в форме нет) — поэтому в
-          // редакторе блок скрыт (hideAssignees) и эти значения не читаются.
-          assignees_overridden: false,
-          override_assignee_ids: [],
+          assignees_overridden: b?.assignees_mode === 'override',
+          override_assignee_ids: (a ?? []).map((r) => r.participant_id),
         },
       }
     },
@@ -150,12 +125,11 @@ export function useLeadBotSettings({
       const newConfig = {
         ...bot.config,
         template_id: templateId || undefined,
-        // Исполнители: при шаблоне — ТОЛЬКО в привязке (ниже), чтобы не
-        // дублировать состояние; в config остаются лишь для легаси-ботов
-        // без шаблона (там они идут в участники треда, поэтому в user_id).
+        // Ответственные — только для ботов БЕЗ шаблона (легаси-путь: владелец
+        // диалога + участники треда). С шаблоном исполнители приходят из него
+        // (и его переопределений для этого бота), поэтому поле не пишем.
         responsible_user_ids: templateId ? undefined : responsibleUserIds,
-        // Владелец нового диалога. При шаблоне без дополнительных исполнителей
-        // список пуст — тогда владельца выберет приём по исполнителям шаблона.
+        // Владелец нового диалога; с шаблоном приём возьмёт первого исполнителя.
         owner_user_id: responsibleUserIds[0],
         // Приветствие при шаблоне не читается (берётся из его «первого
         // сообщения»), но и не стираем — иначе снятие шаблона потеряло бы текст.
@@ -168,38 +142,9 @@ export function useLeadBotSettings({
         .update({ config: newConfig })
         .eq('id', bot.id)
       if (error) throw error
-
-      if (!templateId) return
-
-      // Единый механизм «шаблон + переопределения»: у канала своя строка-привязка
-      // (та же таблица, что у проект-шаблонов, владелец = integration_id).
-      // Partial unique (integration_id, thread_template_id) → PostgREST upsert по
-      // нему не умеет (42P10), поэтому ручной select → insert/update.
-      const bindingId = await ensureBinding()
-      // «Дополнительные» — режим extend: исполнители шаблона остаются,
-      // указанные здесь добавляются к ним (не заменяют).
-      const { error: upErr } = await supabase
-        .from('project_template_thread_templates')
-        .update({ assignees_mode: responsible.length > 0 ? 'extend' : 'inherit' })
-        .eq('id', bindingId)
-      if (upErr) throw upErr
-
-      // Набор дополнительных исполнителей переписываем целиком.
-      const { error: delErr } = await supabase
-        .from('project_template_thread_assignees')
-        .delete()
-        .eq('binding_id', bindingId)
-      if (delErr) throw delErr
-      if (responsible.length > 0) {
-        const { error: aErr } = await supabase
-          .from('project_template_thread_assignees')
-          .insert(responsible.map((pid) => ({ binding_id: bindingId, participant_id: pid })))
-        if (aErr) throw aErr
-      }
     },
     onSuccess: () => {
       toast.success('Настройки лид-бота сохранены')
-      queryClient.invalidateQueries({ queryKey: bindingKeys.assignees })
       onSaved()
     },
     onError: (err) => {
@@ -207,10 +152,9 @@ export function useLeadBotSettings({
     },
   })
 
-  // Редактор шаблона из раздела «Шаблоны». Если пришли переопределения канала —
-  // пишем ИХ в привязку (базовый шаблон общий, его тело не трогаем этим путём).
-  // Исполнителей здесь НЕ трогаем: ими управляет поле «Дополнительные
-  // исполнители» (режим extend), и запись отсюда стирала бы его настройку.
+  // Редактор шаблона (тот же, что в разделе «Шаблоны»). Пришли переопределения
+  // канала — пишем ИХ в привязку; базовый шаблон общий, его тело этим путём не
+  // трогаем. Исполнители — здесь же: единственное место, где их переопределяют.
   const saveTemplateMutation = useMutation({
     mutationFn: async (data: ThreadTemplateFormData) => {
       const po = data.projectOverride
@@ -225,9 +169,28 @@ export function useLeadBotSettings({
             initial_message_html: po.initial_message_html,
             access_type: po.access_type,
             access_roles: po.access_roles,
+            assignees_mode: po.assignees_overridden ? 'override' : 'inherit',
           })
           .eq('id', bindingId)
         if (jErr) throw jErr
+
+        // Набор переопределённых исполнителей переписываем целиком.
+        const { error: delErr } = await supabase
+          .from('project_template_thread_assignees')
+          .delete()
+          .eq('binding_id', bindingId)
+        if (delErr) throw delErr
+        if (po.assignees_overridden && po.override_assignee_ids.length > 0) {
+          const { error: aErr } = await supabase
+            .from('project_template_thread_assignees')
+            .insert(
+              po.override_assignee_ids.map((pid) => ({
+                binding_id: bindingId,
+                participant_id: pid,
+              })),
+            )
+          if (aErr) throw aErr
+        }
         return
       }
 

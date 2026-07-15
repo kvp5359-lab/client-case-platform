@@ -103,12 +103,12 @@ export type ThreadTemplateFieldsProps = {
   isEmail: boolean
 
   /**
-   * Скрыть блок «Исполнители». Нужен там, где исполнителями привязки управляет
-   * другой экран (у лид-бота — поле «Дополнительные исполнители» с режимом
-   * «дополнить», которого в этой форме нет). Иначе форма показывала бы
-   * два режима вместо трёх и при сохранении затирала чужую настройку.
+   * Показывать псевдо-исполнителя «Создатель задачи». Выключается там, где
+   * создателя не существует: у входящего диалога канала его заводит клиент,
+   * приём этот флаг игнорирует — показывать пункт значило бы обещать то, чего
+   * не будет (снять его там тоже нельзя: флаг живёт в базовом шаблоне).
    */
-  hideAssignees?: boolean
+  showCreatorAssignee?: boolean
 
   // Имя шаблона (только в редакторе шаблона)
   showTemplateName?: boolean
@@ -184,7 +184,7 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
     workspaceId,
     isTask,
     isEmail,
-    hideAssignees,
+    showCreatorAssignee = true,
     showTemplateName,
     templateName = '',
     onTemplateNameChange,
@@ -231,7 +231,9 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
   // «Создатель задачи» — псевдо-исполнитель в списке (в БД это флаг шаблона,
   // а не участник). Пикер выносит его в отдельную группу «Автоматически» по id,
   // поэтому роль ему не нужна.
-  const participantsWithCreator: WorkspaceParticipant[] = [
+  const participantsWithCreator: WorkspaceParticipant[] = !showCreatorAssignee
+    ? participants
+    : [
     {
       id: CREATOR_ASSIGNEE_ID,
       name: 'Создатель задачи',
@@ -616,7 +618,7 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
 
       {/* Исполнители — одинаково для всех типов треда (задача/чат/email):
           назначение даёт доступ к треду и работает для любого типа. */}
-      {!hideAssignees && (
+      {(
         <div className="flex flex-col gap-1">
           {projectOverride ? (
             overrideHeader('Исполнители', projectOverride.assignees)

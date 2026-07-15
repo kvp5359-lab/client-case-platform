@@ -3842,7 +3842,7 @@
     {
       "args": "",
       "name": "_selftest_thread_template_folding",
-      "body_md5": "f7733809f7ebf150c92437fe5ba358c5"
+      "body_md5": "48ddc7a466eb1d975d41feece3ae8504"
     },
     {
       "args": "",
@@ -5227,7 +5227,7 @@
     {
       "args": "p_binding_id uuid",
       "name": "resolve_thread_template_binding",
-      "body_md5": "7ea73803ecc509ed9508b960220f4fd0"
+      "body_md5": "73877fe9798e097bd9035c7d6cde7895"
     },
     {
       "args": "p_integration_id uuid, p_thread_template_id uuid",

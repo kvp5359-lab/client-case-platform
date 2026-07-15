@@ -98,7 +98,7 @@ export function LeadBotRow({
             </div>
           )}
           <span className="font-medium text-sm truncate">{label}</span>
-          {responsible.length > 0 && (
+          {!templateId && responsible.length > 0 && (
             <Badge variant="secondary" className="text-[10px] shrink-0">
               {responsible.length} отв.
             </Badge>
@@ -172,25 +172,26 @@ export function LeadBotRow({
             )}
           </FieldRow>
 
-          <FieldRow
-            label={templateId ? 'Дополнительные исполнители' : 'Ответственные'}
-            hint={
-              templateId
-                ? 'Добавляются к исполнителям шаблона, не заменяя их. Все назначенные видят входящие диалоги этого бота.'
-                : 'Кто ведёт входящие диалоги этого бота. Первый в списке — владелец диалога, остальные добавляются в участники.'
-            }
-          >
-            {employees.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Нет сотрудников в воркспейсе.</p>
-            ) : (
-              <ParticipantsPicker
-                participants={pickerParticipants}
-                selectedIds={responsible}
-                onChange={setResponsible}
-                placeholder="Выберите участников..."
-              />
-            )}
-          </FieldRow>
+          {/* Ответственные — легаси-путь для ботов БЕЗ шаблона. С шаблоном
+              исполнители приходят из него и правятся в «Настроить» (там же
+              переопределяются для этого бота) — второго места нет. */}
+          {!templateId && (
+            <FieldRow
+              label="Ответственные"
+              hint="Кто ведёт входящие диалоги этого бота. Первый в списке — владелец диалога, остальные добавляются в участники."
+            >
+              {employees.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Нет сотрудников в воркспейсе.</p>
+              ) : (
+                <ParticipantsPicker
+                  participants={pickerParticipants}
+                  selectedIds={responsible}
+                  onChange={setResponsible}
+                  placeholder="Выберите участников..."
+                />
+              )}
+            </FieldRow>
+          )}
 
           {!templateId && (
             <FieldRow
@@ -236,13 +237,16 @@ export function LeadBotRow({
 
       {selectedTemplate && (
         <ThreadTemplateDialog
-          open={templateDialogOpen}
+          // Открываем только с загруженными переопределениями канала: форма
+          // инициализируется из template один раз (ключ монтирования — его id,
+          // он не меняется), поэтому пришедшие позже данные она бы не подхватила
+          // и показала бы базовый шаблон вместо переопределённого.
+          open={templateDialogOpen && !!channelTemplate}
           onOpenChange={setTemplateDialogOpen}
           workspaceId={workspaceId}
           template={channelTemplate ?? selectedTemplate}
-          // Исполнителями привязки управляет поле «Дополнительные исполнители»
-          // (режим «дополнить», которого в форме нет).
-          hideAssignees
+          // У входящего диалога создателя нет — приём этот флаг игнорирует.
+          showCreatorAssignee={false}
           onSave={(data) => saveTemplateMutation.mutate(data)}
           isPending={saveTemplateMutation.isPending}
         />
