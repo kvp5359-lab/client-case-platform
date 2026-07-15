@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, Loader2, Megaphone, Plus, Settings2, User } from 'lucide-react'
+import { ChevronDown, Loader2, Megaphone, Plus, Settings2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { Badge } from '@/components/ui/badge'
@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { ParticipantsPicker } from '@/components/participants/ParticipantsPicker'
 import { useGlobalThreadTemplates } from '@/hooks/messenger/useThreadTemplates'
 import { ThreadTemplateDialog } from '@/components/templates/ThreadTemplateDialog'
 import { threadTemplateKeys } from '@/hooks/queryKeys'
@@ -145,9 +146,12 @@ function LeadBotRow({
 }) {
   const [open, setOpen] = useState(false)
   const [templateId, setTemplateId] = useState(bot.config.template_id ?? '')
-  const [responsible, setResponsible] = useState<string[]>(
-    bot.config.responsible_user_ids ?? [],
-  )
+  // Исполнители держим в participant_id (как в привязке и в пикере проекта).
+  // Легаси-config хранит user_id → резолвим при инициализации.
+  const [responsible, setResponsible] = useState<string[]>(() => {
+    const uids = new Set(bot.config.responsible_user_ids ?? [])
+    return employees.filter((p) => p.user_id && uids.has(p.user_id)).map((p) => p.id)
+  })
   const [welcome, setWelcome] = useState(bot.config.welcome_message ?? '')
   const [campaign, setCampaign] = useState(bot.config.base_campaign ?? '')
   const [showSenderName, setShowSenderName] = useState(
@@ -175,9 +179,7 @@ function LeadBotRow({
         .from('project_template_thread_assignees')
         .select('participant_id')
         .eq('binding_id', binding.id)
-      const pids = new Set((rows ?? []).map((r) => r.participant_id))
-      // participant_id → user_id (чекбоксы работают по сотрудникам).
-      return employees.filter((p) => p.user_id && pids.has(p.id)).map((p) => p.user_id!)
+      return (rows ?? []).map((r) => r.participant_id)
     },
     enabled: open && !!templateId,
   })
@@ -195,6 +197,75 @@ function LeadBotRow({
     ? `@${bot.config.bot_username}`
     : bot.config.bot_display_name || 'Бот без токена'
 
+  /** Находит/создаёт строку-привязку канала к шаблону (общий механизм). */
+  const ensureBinding = async (): Promise<string> => {
+    const { data: existing } = await supabase
+      .from('project_template_thread_templates')
+      .select('id')
+      .eq('integration_id', bot.id)
+      .eq('thread_template_id', templateId)
+      .maybeSingle()
+    if (existing?.id) return existing.id
+    const { data: created, error } = await supabase
+      .from('project_template_thread_templates')
+      .insert({ integration_id: bot.id, thread_template_id: templateId })
+      .select('id')
+      .single()
+    if (error) throw error
+    return created.id
+  }
+
+  // Шаблон + переопределения ЭТОГО канала. Диалог включает режим
+  // «Из общего · переопределить» сам, увидев projectOverride.
+  const { data: channelTemplate } = useQuery({
+    queryKey: ['lead-bot-binding-template', bot.id, templateId],
+    queryFn: async (): Promise<ThreadTemplate | null> => {
+      if (!selectedTemplate) return null
+      const { data: b } = await supabase
+        .from('project_template_thread_templates')
+        .select(
+          'id, sort_order, default_status_id, on_complete_set_project_status_id, deadline_days, initial_message_html, access_type, access_roles, override_assignees',
+        )
+        .eq('integration_id', bot.id)
+        .eq('thread_template_id', templateId)
+        .maybeSingle()
+      if (!b?.id) return null
+      const { data: a } = await supabase
+        .from('project_template_thread_assignees')
+        .select('participant_id')
+        .eq('binding_id', b.id)
+      return {
+        ...selectedTemplate,
+        sort_order: b.sort_order,
+        default_status_id: b.default_status_id,
+        on_complete_set_project_status_id: b.on_complete_set_project_status_id,
+        projectOverride: {
+          bindingId: b.id,
+          deadline_days: b.deadline_days,
+          initial_message_html: b.initial_message_html,
+          access_type: b.access_type as 'all' | 'roles' | null,
+          access_roles: b.access_roles,
+          assignees_overridden: b.override_assignees,
+          override_assignee_ids: (a ?? []).map((r) => r.participant_id),
+        },
+      }
+    },
+    enabled: templateDialogOpen && !!selectedTemplate,
+  })
+
+  // Список для пикера — тот же компонент, что в «Исполнителях» проекта.
+  const pickerParticipants = employees.map((p) => ({
+    id: p.id,
+    name: [p.name, p.last_name].filter(Boolean).join(' ') || p.email || '—',
+    avatar_url: p.avatar_url ?? null,
+    workspace_roles: p.workspace_roles ?? [],
+  }))
+
+  // participant_id → user_id (легаси-config и владелец диалога — в user_id).
+  const responsibleUserIds = employees
+    .filter((p) => p.user_id && responsible.includes(p.id))
+    .map((p) => p.user_id!)
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       const newConfig = {
@@ -202,10 +273,10 @@ function LeadBotRow({
         template_id: templateId || undefined,
         // Исполнители: при шаблоне — ТОЛЬКО в привязке (ниже), чтобы не
         // дублировать состояние; в config остаются лишь для легаси-ботов
-        // без шаблона (там они идут в участники треда).
-        responsible_user_ids: templateId ? undefined : responsible,
+        // без шаблона (там они идут в участники треда, поэтому в user_id).
+        responsible_user_ids: templateId ? undefined : responsibleUserIds,
         // Владелец нового диалога — первый в списке.
-        owner_user_id: responsible[0],
+        owner_user_id: responsibleUserIds[0],
         welcome_message: templateId ? undefined : welcome.trim() || undefined,
         base_campaign: campaign.trim() || undefined,
         show_sender_name: showSenderName,
@@ -222,39 +293,14 @@ function LeadBotRow({
       // (та же таблица, что у проект-шаблонов, владелец = integration_id).
       // Partial unique (integration_id, thread_template_id) → PostgREST upsert по
       // нему не умеет (42P10), поэтому ручной select → insert/update.
-      const overridePids = employees
-        .filter((p) => p.user_id && responsible.includes(p.user_id))
-        .map((p) => p.id)
+      const overridePids = responsible
 
-      const { data: existing } = await supabase
+      const bindingId = await ensureBinding()
+      const { error: upErr } = await supabase
         .from('project_template_thread_templates')
-        .select('id')
-        .eq('integration_id', bot.id)
-        .eq('thread_template_id', templateId)
-        .maybeSingle()
-
-      let bindingId = existing?.id
-      if (bindingId) {
-        const { error: upErr } = await supabase
-          .from('project_template_thread_templates')
-          .update({ override_assignees: overridePids.length > 0 })
-          .eq('id', bindingId)
-        if (upErr) throw upErr
-      } else {
-        const { data: created, error: insErr } = await supabase
-          .from('project_template_thread_templates')
-          .insert({
-            // sort_order — проектное поле (порядок задач в шаблоне проекта),
-            // для канала неприменимо: оставляем БД-дефолт.
-            integration_id: bot.id,
-            thread_template_id: templateId,
-            override_assignees: overridePids.length > 0,
-          })
-          .select('id')
-          .single()
-        if (insErr) throw insErr
-        bindingId = created.id
-      }
+        .update({ override_assignees: overridePids.length > 0 })
+        .eq('id', bindingId)
+      if (upErr) throw upErr
 
       // Переопределение исполнителей канала — переписываем набор целиком.
       const { error: delErr } = await supabase
@@ -281,13 +327,48 @@ function LeadBotRow({
     },
   })
 
-  // Правка самого шаблона — переиспользуем готовый редактор из раздела «Шаблоны»
-  // (иконка/цвет/статус/срок/приветствие/базовые исполнители — всё там).
+  // Редактор шаблона из раздела «Шаблоны». Если пришли переопределения канала —
+  // пишем ИХ в привязку (базовый шаблон общий, его тело не трогаем этим путём).
   const saveTemplateMutation = useMutation({
     mutationFn: async (data: ThreadTemplateFormData) => {
-      const { assignee_ids, projectOverride: _po, ...body } = data as ThreadTemplateFormData & {
-        projectOverride?: unknown
+      const po = data.projectOverride
+      if (po) {
+        const bindingId = po.bindingId ?? (await ensureBinding())
+        const { error: jErr } = await supabase
+          .from('project_template_thread_templates')
+          .update({
+            default_status_id: data.default_status_id,
+            on_complete_set_project_status_id: data.on_complete_set_project_status_id,
+            deadline_days: po.deadline_days,
+            initial_message_html: po.initial_message_html,
+            access_type: po.access_type,
+            access_roles: po.access_roles,
+            override_assignees: po.assignees_overridden,
+          })
+          .eq('id', bindingId)
+        if (jErr) throw jErr
+
+        const { error: delErr } = await supabase
+          .from('project_template_thread_assignees')
+          .delete()
+          .eq('binding_id', bindingId)
+        if (delErr) throw delErr
+        if (po.assignees_overridden && po.override_assignee_ids.length > 0) {
+          const { error: aErr } = await supabase
+            .from('project_template_thread_assignees')
+            .insert(
+              po.override_assignee_ids.map((pid) => ({
+                binding_id: bindingId,
+                participant_id: pid,
+              })),
+            )
+          if (aErr) throw aErr
+        }
+        return
       }
+
+      // Без переопределений — правка тела общего шаблона.
+      const { assignee_ids, projectOverride: _po, ...body } = data
       const { error } = await supabase.rpc('update_thread_template_with_assignees', {
         p_template_id: templateId,
         p_updates: body,
@@ -298,6 +379,12 @@ function LeadBotRow({
     onSuccess: () => {
       toast.success('Шаблон сохранён')
       queryClient.invalidateQueries({ queryKey: threadTemplateKeys.all })
+      queryClient.invalidateQueries({
+        queryKey: ['lead-bot-binding-template', bot.id, templateId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['lead-bot-binding-assignees', bot.id, templateId],
+      })
       setTemplateDialogOpen(false)
     },
     onError: (err) => {
@@ -305,11 +392,19 @@ function LeadBotRow({
     },
   })
 
-  const toggleResponsible = (userId: string) => {
-    setResponsible((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
-    )
+  /** Открыть редактор переопределений: привязка должна существовать. */
+  const openTemplateDialog = async () => {
+    try {
+      await ensureBinding()
+      await queryClient.invalidateQueries({
+        queryKey: ['lead-bot-binding-template', bot.id, templateId],
+      })
+      setTemplateDialogOpen(true)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Не удалось открыть настройки шаблона')
+    }
   }
+
 
   return (
     <div className="rounded-md border bg-card">
@@ -362,7 +457,7 @@ function LeadBotRow({
                   variant="ghost"
                   size="sm"
                   className="h-6 text-xs"
-                  onClick={() => setTemplateDialogOpen(true)}
+                  onClick={() => void openTemplateDialog()}
                 >
                   <Settings2 className="h-3.5 w-3.5 mr-1" />
                   Настроить шаблон
@@ -425,27 +520,12 @@ function LeadBotRow({
             {employees.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Нет сотрудников в воркспейсе.</p>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  {employees.map((p) => {
-                    if (!p.user_id) return null
-                    const uid = p.user_id
-                    const name =
-                      [p.name, p.last_name].filter(Boolean).join(' ') || p.email || '—'
-                    return (
-                      <label
-                        key={p.id}
-                        className="flex items-center gap-2 text-sm px-2 py-1 rounded hover:bg-muted/50 cursor-pointer"
-                      >
-                        <Checkbox
-                          checked={responsible.includes(uid)}
-                          onCheckedChange={() => toggleResponsible(uid)}
-                        />
-                        <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="truncate">{name}</span>
-                      </label>
-                    )
-                  })}
-                </div>
+                <ParticipantsPicker
+                  participants={pickerParticipants}
+                  selectedIds={responsible}
+                  onChange={setResponsible}
+                  placeholder="Выберите участников..."
+                />
               )}
               <p className="text-[11px] text-muted-foreground">
                 {templateId
@@ -519,7 +599,7 @@ function LeadBotRow({
           open={templateDialogOpen}
           onOpenChange={setTemplateDialogOpen}
           workspaceId={workspaceId}
-          template={selectedTemplate}
+          template={channelTemplate ?? selectedTemplate}
           onSave={(data) => saveTemplateMutation.mutate(data)}
           isPending={saveTemplateMutation.isPending}
         />
