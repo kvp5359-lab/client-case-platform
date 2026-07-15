@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/tooltip'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -463,8 +464,14 @@ function LeadBotRow({
 
 
   return (
-    <div className="rounded-md border bg-card">
-      <div className="flex items-center justify-between gap-3 px-3 py-1.5">
+    <div className="rounded-md border bg-card shadow-sm">
+      {/* Шапка бота: своя подложка, чтобы отделяться от настроек под ней. */}
+      <div
+        className={cn(
+          'flex items-center justify-between gap-3 px-3 py-2 bg-muted/40',
+          open ? 'rounded-t-md border-b' : 'rounded-md',
+        )}
+      >
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {botAvatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -504,7 +511,7 @@ function LeadBotRow({
       </div>
 
       {open && (
-        <div className="border-t px-3 py-3 space-y-3">
+        <div className="px-3 py-3 space-y-3">
           <FieldRow
             label="Шаблон диалога"
             hint="Задаёт вид и параметры нового диалога: иконку, цвет, статус, срок, исполнителей и приветствие. Без шаблона — вид как у «Личного Telegram»."
