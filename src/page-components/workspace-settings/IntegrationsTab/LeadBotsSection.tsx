@@ -202,9 +202,10 @@ function LeadBotRow({
         const { data: created, error: insErr } = await supabase
           .from('project_template_thread_templates')
           .insert({
+            // sort_order — проектное поле (порядок задач в шаблоне проекта),
+            // для канала неприменимо: оставляем БД-дефолт.
             integration_id: bot.id,
             thread_template_id: templateId,
-            sort_order: 0,
             override_assignees: overridePids.length > 0,
           })
           .select('id')

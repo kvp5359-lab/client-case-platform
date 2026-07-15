@@ -104,45 +104,15 @@ async function resolveLeadTemplate(
   const empty: LeadTemplateApply = { extraColumns: {}, assigneeIds: [] };
   if (!templateId) return empty;
 
-  const { data: binding } = await service
-    .from("project_template_thread_templates")
-    .select("id")
-    .eq("integration_id", botIntegrationId)
-    .eq("thread_template_id", templateId)
-    .maybeSingle();
-
-  if (binding?.id) {
-    const { data } = await service.rpc("resolve_thread_template_binding", {
-      p_binding_id: binding.id as string,
-    });
-    const r = (Array.isArray(data) ? data[0] : data) as ResolvedTemplateFields | null;
-    if (r) return toLeadTemplateApply(r);
-  }
-
-  // Фолбэк: базовый шаблон без переопределений канала.
-  const { data } = await service
-    .from("thread_templates")
-    .select(
-      "icon, accent_color, default_status_id, deadline_days, access_type, access_roles, initial_message_html, thread_template_assignees(participant_id)",
-    )
-    .eq("id", templateId)
-    .maybeSingle();
-  if (!data) return empty;
-
-  const tpl = data as Omit<ResolvedTemplateFields, "status_id" | "assignee_ids"> & {
-    default_status_id: string | null;
-    thread_template_assignees: { participant_id: string }[] | null;
-  };
-  return toLeadTemplateApply({
-    icon: tpl.icon,
-    accent_color: tpl.accent_color,
-    status_id: tpl.default_status_id,
-    deadline_days: tpl.deadline_days,
-    access_type: tpl.access_type,
-    access_roles: tpl.access_roles,
-    initial_message_html: tpl.initial_message_html,
-    assignee_ids: (tpl.thread_template_assignees ?? []).map((a) => a.participant_id),
+  // Общая RPC: сама находит привязку канала и применяет её переопределения,
+  // а при отсутствии привязки отдаёт базовый шаблон. Folding-логика живёт
+  // ТОЛЬКО в БД — в edge её не дублируем.
+  const { data } = await service.rpc("resolve_thread_template_for_integration", {
+    p_integration_id: botIntegrationId,
+    p_thread_template_id: templateId,
   });
+  const r = (Array.isArray(data) ? data[0] : data) as ResolvedTemplateFields | null;
+  return r ? toLeadTemplateApply(r) : empty;
 }
 
 /** Добавить пул ответственных в участники треда (доступ + «все видят всё»). */
@@ -309,10 +279,11 @@ export async function handleLeadMessage(
         );
       }
       // Приветствие — только при первом контакте (у победителя создания).
-      // Источник: первое сообщение шаблона (единый механизм), либо явное
-      // welcome_message бота (легаси-боты без шаблона).
-      const welcome = tpl.welcomeHtml
-        ? htmlToTelegramHtml(tpl.welcomeHtml)
+      // Источник строго по конфигурации бота, без тихих подмен: есть шаблон →
+      // его «первое сообщение» (пусто в шаблоне = приветствия нет); нет шаблона
+      // → легаси-поле welcome_message (оно и показано в UI только в этом случае).
+      const welcome = config.template_id
+        ? (tpl.welcomeHtml ? htmlToTelegramHtml(tpl.welcomeHtml) : undefined)
         : config.welcome_message;
       if (welcome) {
         await sendMessage(clientTgUserId, welcome);
