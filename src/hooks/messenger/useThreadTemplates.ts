@@ -83,7 +83,10 @@ type JunctionRow = {
   initial_message_html: string | null
   access_type: 'all' | 'roles' | null
   access_roles: string[] | null
-  override_assignees: boolean
+  /** Источник правды об исполнителях привязки (см. ThreadTemplateProjectOverride).
+   *  'extend' задаётся только у привязок каналов — в проектном редакторе такого
+   *  режима нет, поэтому для формы он читается как «наследовать». */
+  assignees_mode: 'inherit' | 'override' | 'extend'
   thread_templates: ThreadTemplate | null
 }
 
@@ -105,14 +108,14 @@ function mapJunctionRow(
       initial_message_html: r.initial_message_html,
       access_type: r.access_type,
       access_roles: r.access_roles,
-      assignees_overridden: r.override_assignees,
+      assignees_overridden: r.assignees_mode === 'override',
       override_assignee_ids: overrideAssigneeIds,
     },
   }
 }
 
 const JUNCTION_SELECT =
-  'id, sort_order, default_status_id, on_complete_set_project_status_id, deadline_days, initial_message_html, access_type, access_roles, override_assignees, thread_templates(*, thread_template_assignees(participant_id))'
+  'id, sort_order, default_status_id, on_complete_set_project_status_id, deadline_days, initial_message_html, access_type, access_roles, assignees_mode, thread_templates(*, thread_template_assignees(participant_id))'
 
 /**
  * Override-исполнители типа проекта (project_template_thread_assignees) —

@@ -26,7 +26,7 @@ import {
   type AvatarParticipant,
 } from '@/components/participants/ParticipantAvatars'
 import { supabase } from '@/lib/supabase'
-import { CREATOR_ASSIGNEE_ID } from '@/types/threadTemplate'
+import { CREATOR_ASSIGNEE_ID } from '@/types/participants'
 import { cn } from '@/lib/utils'
 import { pluralizeRu } from '@/utils/format/pluralize'
 import { useAuth } from '@/contexts/AuthContext'

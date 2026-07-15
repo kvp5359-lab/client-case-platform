@@ -1707,22 +1707,22 @@
     },
     {
       "name": "ptta_select",
-      "def_md5": "552083ce7a7706dc9f968ea606939a3e",
+      "def_md5": "57f35433d024eb947ae17282999e322d",
       "table_name": "project_template_thread_assignees"
     },
     {
       "name": "ptta_write",
-      "def_md5": "7244b0efccb8c0397c13931ddf646b39",
+      "def_md5": "a43b9807f481fe5c64589a640c92ddbd",
       "table_name": "project_template_thread_assignees"
     },
     {
       "name": "pttt_select",
-      "def_md5": "8c8d8216f40818a52ba3898c52dfc295",
+      "def_md5": "07982fe9f4df9dfd3d81776ae4c7e250",
       "table_name": "project_template_thread_templates"
     },
     {
       "name": "pttt_write",
-      "def_md5": "d12bb00c142d427e64710e8efb189227",
+      "def_md5": "a31e48b658d92c9a9deda5939e1487b6",
       "table_name": "project_template_thread_templates"
     },
     {
@@ -2104,26 +2104,6 @@
       "name": "task_panel_tabs_update_own",
       "def_md5": "86e1b8e8e1fc041fb75ff8f3b351bbad",
       "table_name": "task_panel_tabs"
-    },
-    {
-      "name": "tasks_delete",
-      "def_md5": "0f207388e132d9578ba70026e373a7be",
-      "table_name": "tasks"
-    },
-    {
-      "name": "tasks_insert",
-      "def_md5": "f448a0fe3189cae6ae6c9b6e05680cc3",
-      "table_name": "tasks"
-    },
-    {
-      "name": "tasks_select",
-      "def_md5": "839352eab40a4e19c7403f5e8dba5b66",
-      "table_name": "tasks"
-    },
-    {
-      "name": "tasks_update",
-      "def_md5": "380b02a394d30bdc2afe0091bece1fee",
-      "table_name": "tasks"
     },
     {
       "name": "telegram_business_connections_select",
@@ -3373,6 +3353,16 @@
       "table_name": "project_template_statuses"
     },
     {
+      "name": "trg_ptta_fill_binding_id",
+      "def_md5": "9f792bf9771704e18b018da035b038f3",
+      "table_name": "project_template_thread_assignees"
+    },
+    {
+      "name": "trg_pttt_sync_assignees_mode",
+      "def_md5": "14df7766d592935ddb62d7bb06ae026f",
+      "table_name": "project_template_thread_templates"
+    },
+    {
       "name": "prevent_impersonation_writes",
       "def_md5": "3028d5ccdce275e5b270938a7df74eab",
       "table_name": "project_templates"
@@ -3614,36 +3604,6 @@
     },
     {
       "name": "prevent_impersonation_writes",
-      "def_md5": "3f525793fef3251c351e6674dd0bde31",
-      "table_name": "tasks"
-    },
-    {
-      "name": "trg_audit_task_delete",
-      "def_md5": "122e747b6c1620477e73143424c5f42b",
-      "table_name": "tasks"
-    },
-    {
-      "name": "trg_audit_task_insert",
-      "def_md5": "8506ea6c6380a218a475a2ab34966681",
-      "table_name": "tasks"
-    },
-    {
-      "name": "trg_audit_task_update",
-      "def_md5": "597af60e11ddb2c6ee13b346fe697728",
-      "table_name": "tasks"
-    },
-    {
-      "name": "trg_task_project_activity",
-      "def_md5": "bc543b07cb37a346ccdb82b3a7ae8e0b",
-      "table_name": "tasks"
-    },
-    {
-      "name": "update_tasks_updated_at",
-      "def_md5": "869ee517c18497dff8e3286e64abd5c2",
-      "table_name": "tasks"
-    },
-    {
-      "name": "prevent_impersonation_writes",
       "def_md5": "7ccfc3ebbb08833275df2ba498b30310",
       "table_name": "telegram_bot_sessions"
     },
@@ -3835,11 +3795,6 @@
       "body_md5": "c19a3352044c10e5c659e2f6627d2a3e"
     },
     {
-      "args": "",
-      "name": "_selftest_recompute_unread",
-      "body_md5": "c63e6e1b697e4d1d8171bbf14f5b3112"
-    },
-    {
       "args": "p_group jsonb, p_entity text",
       "name": "_board_compile_group",
       "body_md5": "6603d5525b9fca19342524b29fd451ca"
@@ -3878,6 +3833,16 @@
       "args": "",
       "name": "_schema_invariants",
       "body_md5": "e1641cd1532109e77f9af494c5ceb804"
+    },
+    {
+      "args": "",
+      "name": "_selftest_recompute_unread",
+      "body_md5": "c63e6e1b697e4d1d8171bbf14f5b3112"
+    },
+    {
+      "args": "",
+      "name": "_selftest_thread_template_folding",
+      "body_md5": "f7733809f7ebf150c92437fe5ba358c5"
     },
     {
       "args": "",
@@ -5130,6 +5095,16 @@
       "body_md5": "c057d298d4b0d1240645137cf3bf5499"
     },
     {
+      "args": "",
+      "name": "ptta_fill_binding_id",
+      "body_md5": "90074bc9599708ec2c08f8372f57c8d9"
+    },
+    {
+      "args": "",
+      "name": "pttt_sync_assignees_mode",
+      "body_md5": "186553e3e090c2ee2a21ba143b1b4373"
+    },
+    {
       "args": "p_message_id uuid",
       "name": "publish_scheduled_message",
       "body_md5": "14cd70e1e6c8329b638e611e1d8e4b6d"
@@ -5248,6 +5223,16 @@
       "args": "p_template_id uuid",
       "name": "resolve_template_qa_ids_impl",
       "body_md5": "f85111b20f83c627ff2b7cdc716f5fc4"
+    },
+    {
+      "args": "p_binding_id uuid",
+      "name": "resolve_thread_template_binding",
+      "body_md5": "7ea73803ecc509ed9508b960220f4fd0"
+    },
+    {
+      "args": "p_integration_id uuid, p_thread_template_id uuid",
+      "name": "resolve_thread_template_for_integration",
+      "body_md5": "bb8cb34802f87e16afe35d762ece3bfe"
     },
     {
       "args": "p_host text",

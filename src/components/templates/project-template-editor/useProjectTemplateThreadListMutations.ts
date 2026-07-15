@@ -86,7 +86,9 @@ export function useProjectTemplateThreadListMutations(params: {
             initial_message_html: projectOverride.initial_message_html,
             access_type: projectOverride.access_type,
             access_roles: projectOverride.access_roles,
-            override_assignees: projectOverride.assignees_overridden,
+            // Источник правды об исполнителях — assignees_mode (в проектном
+            // редакторе только два режима; 'extend' есть лишь у каналов).
+            assignees_mode: projectOverride.assignees_overridden ? 'override' : 'inherit',
           })
           .eq('template_id', projectTemplateId)
           .eq('thread_template_id', templateId)

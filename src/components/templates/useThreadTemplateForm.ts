@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
-import { CREATOR_ASSIGNEE_ID } from '@/types/threadTemplate'
+import { splitCreatorSentinel, withCreatorSentinel } from '@/lib/creatorAssignee'
 import type {
   ThreadTemplate,
   ThreadTemplateFormData,
@@ -89,11 +89,9 @@ export function useThreadTemplateForm({
     effDeadline != null ? String(effDeadline) : '',
   )
   // Флаг «назначить создателя» показывается псевдо-исполнителем в списке.
-  const [assigneeIds, setAssigneeIds] = useState<Set<string>>(() => {
-    const init = new Set(effAssignees)
-    if (template?.assign_to_creator) init.add(CREATOR_ASSIGNEE_ID)
-    return init
-  })
+  const [assigneeIds, setAssigneeIds] = useState<Set<string>>(() =>
+    withCreatorSentinel(effAssignees, !!template?.assign_to_creator),
+  )
   const [emailSubject, setEmailSubject] = useState(template?.email_subject_template ?? '')
   const [initialMessageHtml, setInitialMessageHtml] = useState(effMessage)
 
@@ -209,6 +207,10 @@ export function useThreadTemplateForm({
     if (!canSave) return
     const days = deadlineDays.trim() ? parseInt(deadlineDays, 10) : null
     const validDays = days != null && !isNaN(days) ? days : null
+    // Пикер отдаёт один набор, хранение раздельное: реальные исполнители в
+    // таблицу (FK на participants), «создатель» — флагом.
+    const { assignToCreator, assigneeIds: realAssigneeIds } = splitCreatorSentinel(assigneeIds)
+
     // Пер-проектный payload: для каждого поля — либо индивидуальное значение,
     // либо null (наследовать общий шаблон).
     const projectOverride: ThreadTemplateProjectOverride | undefined = isProjectMode
@@ -222,9 +224,7 @@ export function useThreadTemplateForm({
               : []
             : null,
           assignees_overridden: assigneesOverridden,
-          override_assignee_ids: assigneesOverridden
-            ? Array.from(assigneeIds).filter((id) => id !== CREATOR_ASSIGNEE_ID)
-            : [],
+          override_assignee_ids: assigneesOverridden ? realAssigneeIds : [],
         }
       : undefined
     onSave({
@@ -244,10 +244,8 @@ export function useThreadTemplateForm({
       deadline_days: days != null && !isNaN(days) ? days : null,
       on_complete_set_project_status_id: isTask ? onCompleteStatusId : null,
       // Исполнители — для всех типов треда (задача/чат/email) одинаково.
-      // «Создатель задачи» — не участник, а флаг: в таблицу исполнителей
-      // (FK на participants) его не записать.
-      assign_to_creator: assigneeIds.has(CREATOR_ASSIGNEE_ID),
-      assignee_ids: Array.from(assigneeIds).filter((id) => id !== CREATOR_ASSIGNEE_ID),
+      assign_to_creator: assignToCreator,
+      assignee_ids: realAssigneeIds,
       default_contact_email: isEmail ? enrichedEmails.map((e) => e.email).join(', ') : '',
       email_subject_template: isEmail ? emailSubject.trim() : '',
       initial_message_html: initialMessageHtml.trim() || '',

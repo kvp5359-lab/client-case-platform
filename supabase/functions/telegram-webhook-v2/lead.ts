@@ -2,8 +2,12 @@
  * Лид-бот: приёмник холодных лидов через рекламного бота (mode='lead').
  *
  * Обычный бот, которого рекламируют. Клиент пишет ему в личку → создаётся
- * личный диалог (project_id=NULL) с меткой кампании. Пул ответственных
- * (config.responsible_user_ids) добавляется в участники треда — «все видят всё».
+ * личный диалог (project_id=NULL) с меткой кампании. Доступ к диалогу («все
+ * видят всё») даёт назначение команды, и путей два:
+ *  • задан config.template_id → эффективные исполнители из общей функции
+ *    применения (шаблон + переопределения этого бота) идут в task_assignees;
+ *  • шаблона нет (легаси-бот) → config.responsible_user_ids идут в участники
+ *    треда (project_thread_members).
  *
  * Связь диалог↔клиент↔бот держит project_telegram_chats
  * (telegram_chat_id = id клиента, integration_id = лид-бот) — та же строка
@@ -97,6 +101,30 @@ function toLeadTemplateApply(f: ResolvedTemplateFields): LeadTemplateApply {
  *
  * Имя треда берётся по контакту (не из шаблона) — лид-специфика.
  */
+/**
+ * Владелец диалога по исполнителям шаблона: берём аккаунт первого из них.
+ * Исполнители — participants, из которых аккаунт есть не у всех (контакты
+ * клиентов), поэтому ищем первого с user_id.
+ */
+async function resolveOwnerFromAssignees(
+  assigneeIds: string[],
+): Promise<string | null> {
+  if (!assigneeIds.length) return null;
+  const { data } = await service
+    .from("participants")
+    .select("id, user_id")
+    .in("id", assigneeIds)
+    .not("user_id", "is", null);
+  const byId = new Map(
+    (data ?? []).map((p) => [p.id as string, p.user_id as string]),
+  );
+  for (const pid of assigneeIds) {
+    const uid = byId.get(pid);
+    if (uid) return uid;
+  }
+  return null;
+}
+
 async function resolveLeadTemplate(
   botIntegrationId: string,
   templateId: string | undefined,
@@ -192,14 +220,19 @@ export async function handleLeadMessage(
   }
 
   if (!threadId) {
-    // Новый холодный лид → личный диалог (project_id=NULL).
-    const ownerUserId =
-      config.owner_user_id ?? config.responsible_user_ids?.[0] ?? null;
-
     // Шаблон диалога (если у бота задан) — иконка/цвет/статус/дедлайн/доступ +
     // исполнители. Иконку/цвет из шаблона кладём в extraColumns, чтобы перебить
     // channel_defaults, которые проставляет createDirectThread.
     const tpl = await resolveLeadTemplate(ctx.id, config.template_id);
+
+    // Новый холодный лид → личный диалог (project_id=NULL).
+    // Владелец: явная настройка → первый из легаси-пула → первый исполнитель
+    // шаблона. Последнее важно для ботов на шаблоне без «дополнительных
+    // исполнителей»: пул в конфиге пуст, и диалог остался бы без владельца.
+    const ownerUserId =
+      config.owner_user_id ??
+      config.responsible_user_ids?.[0] ??
+      (await resolveOwnerFromAssignees(tpl.assigneeIds));
 
     const created = await createDirectThread(service, {
       workspaceId: ctx.workspaceId,

@@ -37,6 +37,9 @@ type ThreadTemplateDialogProps = {
    *  проекта при создании НОВОГО шаблона задачи (template=null), когда мы
    *  ещё не можем взять `template.owner_project_template_id`. */
   ownerProjectTemplateIdOverride?: string | null
+  /** Скрыть блок «Исполнители» — когда ими управляет вызывающий экран
+   *  (см. ThreadTemplateFieldsProps.hideAssignees). */
+  hideAssignees?: boolean
   onSave: (data: ThreadTemplateFormData) => void
   isPending?: boolean
 }
@@ -47,6 +50,7 @@ export function ThreadTemplateDialog({
   workspaceId,
   template,
   ownerProjectTemplateIdOverride,
+  hideAssignees,
   onSave,
   isPending,
 }: ThreadTemplateDialogProps) {
@@ -59,6 +63,7 @@ export function ThreadTemplateDialog({
             workspaceId={workspaceId}
             template={template}
             ownerProjectTemplateIdOverride={ownerProjectTemplateIdOverride}
+            hideAssignees={hideAssignees}
             onSave={onSave}
             isPending={isPending}
             onClose={() => onOpenChange(false)}
@@ -73,6 +78,7 @@ function ThreadTemplateDialogBody({
   workspaceId,
   template,
   ownerProjectTemplateIdOverride,
+  hideAssignees,
   onSave,
   isPending,
   onClose,
@@ -80,6 +86,7 @@ function ThreadTemplateDialogBody({
   workspaceId: string
   template: ThreadTemplate | null
   ownerProjectTemplateIdOverride?: string | null
+  hideAssignees?: boolean
   onSave: (data: ThreadTemplateFormData) => void
   isPending?: boolean
   onClose: () => void
@@ -200,8 +207,9 @@ function ThreadTemplateDialogBody({
 
       {isProjectMode && (
         <p className="text-xs text-muted-foreground px-1 -mt-1">
-          Имя, иконка и название — общие для всех типов проекта. Исполнителей, срок,
-          сообщение и доступ можно настроить индивидуально для этого типа.
+          Имя, иконка и название — общие для всех типов проекта.{' '}
+          {hideAssignees ? 'Срок' : 'Исполнителей, срок'}, сообщение и доступ можно
+          настроить индивидуально для этого типа.
         </p>
       )}
 
@@ -211,6 +219,7 @@ function ThreadTemplateDialogBody({
           projectOverride={projectOverrideCtl}
           isTask={isTask}
           isEmail={isEmail}
+          hideAssignees={hideAssignees}
           showTemplateName
           templateName={templateName}
           onTemplateNameChange={setTemplateName}

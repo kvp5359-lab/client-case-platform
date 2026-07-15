@@ -102,6 +102,14 @@ export type ThreadTemplateFieldsProps = {
   isTask: boolean
   isEmail: boolean
 
+  /**
+   * Скрыть блок «Исполнители». Нужен там, где исполнителями привязки управляет
+   * другой экран (у лид-бота — поле «Дополнительные исполнители» с режимом
+   * «дополнить», которого в этой форме нет). Иначе форма показывала бы
+   * два режима вместо трёх и при сохранении затирала чужую настройку.
+   */
+  hideAssignees?: boolean
+
   // Имя шаблона (только в редакторе шаблона)
   showTemplateName?: boolean
   templateName?: string
@@ -176,6 +184,7 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
     workspaceId,
     isTask,
     isEmail,
+    hideAssignees,
     showTemplateName,
     templateName = '',
     onTemplateNameChange,
@@ -607,7 +616,7 @@ export function ThreadTemplateFields(props: ThreadTemplateFieldsProps) {
 
       {/* Исполнители — одинаково для всех типов треда (задача/чат/email):
           назначение даёт доступ к треду и работает для любого типа. */}
-      {(
+      {!hideAssignees && (
         <div className="flex flex-col gap-1">
           {projectOverride ? (
             overrideHeader('Исполнители', projectOverride.assignees)

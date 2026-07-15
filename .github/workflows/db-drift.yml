@@ -39,10 +39,10 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      # Поведенческий self-test счётчиков непрочитанного (recompute_thread_unread_for):
-      # 4 сценария на fixture с самооткатом. Валит, если формула сломана.
-      - name: Self-test счётчиков непрочитанного
-        run: node scripts/check-recompute-selftest.mjs
+      # Поведенческие self-тесты критичных функций (счётчики непрочитанного,
+      # применение шаблона треда): fixture с самооткатом, наружу ничего не уходит.
+      - name: Self-тесты функций БД
+        run: node scripts/check-db-selftests.mjs
         env:
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

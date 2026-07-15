@@ -7,12 +7,11 @@ export type ThreadTemplateAssignee = {
   participant_id: string
 }
 
-/**
- * Псевдо-исполнитель «Создатель задачи» — показывается пунктом в списке
- * исполнителей шаблона. В БД хранится флагом thread_templates.assign_to_creator
- * (в таблицу исполнителей его не записать: там FK на конкретного участника).
- */
-export const CREATOR_ASSIGNEE_ID = '__creator__'
+/** Псевдо-исполнитель «Создатель задачи» (шаблон хранит его флагом
+ *  assign_to_creator). Определение — в нейтральном types/participants, чтобы
+ *  общий пикер исполнителей не зависел от домена шаблонов; здесь реэкспорт для
+ *  потребителей шаблонов. */
+export { CREATOR_ASSIGNEE_ID } from './participants'
 
 /**
  * Пер-проектные переопределения полей шаблона треда для конкретного типа
@@ -23,8 +22,12 @@ export const CREATOR_ASSIGNEE_ID = '__creator__'
  *
  * Скалярные поля: null = наследовать из общего шаблона. Пустая строка у
  * initial_message_html = осознанное переопределение «без сообщения».
+ *
  * Исполнители: assignees_overridden=false → наследуем thread_template_assignees;
- * true → используем override_assignee_ids (даже пустой набор = «никого»).
+ * true → используем override_assignee_ids (даже пустой набор = «никого»). Это
+ * форма для редактора с двумя режимами; в БД источник правды — трёхзначный
+ * project_template_thread_templates.assignees_mode (третий режим 'extend',
+ * «дополнить», есть только у привязок каналов и настраивается на их экране).
  */
 export type ThreadTemplateProjectOverride = {
   /** id строки-привязки — ключ для общей БД-функции применения (folding).
