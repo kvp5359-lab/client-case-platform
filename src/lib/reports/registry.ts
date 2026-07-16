@@ -1,13 +1,14 @@
 /**
- * Клиентский реестр датасетов отчётов — зеркало whitelist-реестра в RPC
- * run_report (supabase/migrations/20260704130100_run_report_engine.sql).
+ * Клиентский реестр датасетов отчётов — зеркало whitelist-реестра в БД
+ * (функция _report_registry(), см. миграции отчётов).
  *
- * ⚠️ Ключи датасетов/полей/показателей должны совпадать с серверными.
- * Здесь — только презентация: лейблы, типы для UI фильтров, форматы.
- * При добавлении поля/датасета править ОБА места.
+ * ⚠️ Ключи датасетов и полей должны совпадать с серверными (реестр живёт в
+ * функции _report_registry()). Здесь — только презентация: лейблы, типы для
+ * UI фильтров, форматы. При добавлении поля/датасета править ОБА места.
  */
 
 import type {
+  ReportColumnAgg,
   ReportConfig,
   ReportDatasetKey,
   ReportDateGranularity,
@@ -35,14 +36,33 @@ export type ReportFieldDef = {
   staticOptions?: { value: string; label: string }[]
   /** number-поле с денежным форматированием (2 знака + €). */
   money?: boolean
+  /**
+   * Ссылочное поле: в записях значение становится ссылкой на сущность.
+   * Сервер для таких полей отдаёт ещё и id (ключи cN_id / cN_pid).
+   */
+  link?: 'project' | 'thread'
 }
 
-export type ReportMeasureDef = {
-  key: string
-  label: string
-  format: 'money' | 'number'
-  /** Суммируем ли client-side для подытогов групп (avg — нет). */
-  additive: boolean
+/** Что можно выводить в строке группы для поля этого типа. */
+export function aggsForField(field: ReportFieldDef): ReportColumnAgg[] {
+  return field.type === 'number'
+    ? ['none', 'count', 'sum', 'avg', 'min', 'max']
+    : ['none', 'count']
+}
+
+export const AGG_LABELS: Record<ReportColumnAgg, string> = {
+  none: 'Ничего не выводить',
+  count: 'Количество записей',
+  sum: 'Сумма значений',
+  avg: 'Среднее значение',
+  min: 'Минимум',
+  max: 'Максимум',
+}
+
+/** Формат ячейки-агрегата: count — всегда штуки, остальное — как у поля. */
+export function aggFormat(field: ReportFieldDef | null, agg: ReportColumnAgg): 'money' | 'number' {
+  if (agg === 'count') return 'number'
+  return field?.money ? 'money' : 'number'
 }
 
 export type ReportDatasetDef = {
@@ -50,7 +70,6 @@ export type ReportDatasetDef = {
   label: string
   description: string
   fields: ReportFieldDef[]
-  measures: ReportMeasureDef[]
   /** Поле даты, к которому применяется быстрый период на странице отчёта. */
   periodField?: string
   /** Дефолт конфига при создании отчёта на этом датасете. */
@@ -85,21 +104,21 @@ export const REPORT_DATASETS: Record<ReportDatasetKey, ReportDatasetDef> = {
       { key: 'amount', money: true, label: 'Сумма', type: 'number', groupable: false },
       { key: 'category', label: 'Статья', type: 'uuid', groupable: true, optionsKind: 'txCategories' },
       { key: 'participant', label: 'Плательщик', type: 'uuid', groupable: true, optionsKind: 'participants' },
-      { key: 'project', label: 'Проект', type: 'uuid', groupable: true, optionsKind: 'projects' },
+      { key: 'project', label: 'Проект', type: 'uuid', groupable: true, optionsKind: 'projects', link: 'project' },
       CLIENT_FIELD(),
       { key: 'project_status', label: 'Статус проекта', type: 'uuid', groupable: true, optionsKind: 'projectStatuses' },
       { key: 'comment', label: 'Комментарий', type: 'text', groupable: false },
     ],
-    measures: [
-      { key: 'sum_amount', label: 'Сумма', format: 'money', additive: true },
-      { key: 'avg_amount', label: 'Средний платёж', format: 'money', additive: false },
-      { key: 'count', label: 'Кол-во', format: 'number', additive: true },
-    ],
     detailDefault: ['date', 'type', 'amount', 'category', 'project', 'participant', 'comment'],
     defaultConfig: {
-      mode: 'summary',
       groupBy: [{ field: 'type' }, { field: 'date', granularity: 'month' }],
-      measures: ['sum_amount', 'count'],
+      columns: [
+        { key: 'type' },
+        { key: 'date' },
+        { key: 'project', agg: 'count' },
+        { key: 'amount', agg: 'sum' },
+      ],
+      showRecords: true,
     },
   },
 
@@ -110,7 +129,7 @@ export const REPORT_DATASETS: Record<ReportDatasetKey, ReportDatasetDef> = {
     periodField: 'created',
     fields: [
       { key: 'service', label: 'Услуга', type: 'uuid', groupable: true, optionsKind: 'financeServices' },
-      { key: 'project', label: 'Проект', type: 'uuid', groupable: true, optionsKind: 'projects' },
+      { key: 'project', label: 'Проект', type: 'uuid', groupable: true, optionsKind: 'projects', link: 'project' },
       CLIENT_FIELD(),
       { key: 'project_status', label: 'Статус проекта', type: 'uuid', groupable: true, optionsKind: 'projectStatuses' },
       { key: 'quantity', label: 'Кол-во', type: 'number', groupable: false },
@@ -118,16 +137,17 @@ export const REPORT_DATASETS: Record<ReportDatasetKey, ReportDatasetDef> = {
       { key: 'total', money: true, label: 'Сумма', type: 'number', groupable: false },
       { key: 'created', label: 'Дата добавления', type: 'date', groupable: true },
     ],
-    measures: [
-      { key: 'sum_total', label: 'Сумма', format: 'money', additive: true },
-      { key: 'sum_quantity', label: 'Кол-во единиц', format: 'number', additive: true },
-      { key: 'count', label: 'Строк', format: 'number', additive: true },
-    ],
     detailDefault: ['service', 'project', 'client', 'quantity', 'price', 'total'],
     defaultConfig: {
-      mode: 'summary',
       groupBy: [{ field: 'service' }],
-      measures: ['sum_total', 'count'],
+      columns: [
+        { key: 'service' },
+        { key: 'project', agg: 'count' },
+        { key: 'client' },
+        { key: 'quantity', agg: 'sum' },
+        { key: 'total', agg: 'sum' },
+      ],
+      showRecords: true,
     },
   },
 
@@ -137,7 +157,7 @@ export const REPORT_DATASETS: Record<ReportDatasetKey, ReportDatasetDef> = {
     description: 'По каждому проекту: выставлено услуг − оплачено = долг.',
     fields: [
       CLIENT_FIELD(),
-      { key: 'project', label: 'Проект', type: 'uuid', groupable: true, optionsKind: 'projects' },
+      { key: 'project', label: 'Проект', type: 'uuid', groupable: true, optionsKind: 'projects', link: 'project' },
       { key: 'project_status', label: 'Статус проекта', type: 'uuid', groupable: true, optionsKind: 'projectStatuses' },
       { key: 'template', label: 'Шаблон', type: 'uuid', groupable: true, optionsKind: 'templates' },
       { key: 'created', label: 'Дата создания проекта', type: 'date', groupable: true },
@@ -146,43 +166,49 @@ export const REPORT_DATASETS: Record<ReportDatasetKey, ReportDatasetDef> = {
       { key: 'expenses', money: true, label: 'Расходы', type: 'number', groupable: false },
       { key: 'balance', money: true, label: 'Долг', type: 'number', groupable: false },
     ],
-    measures: [
-      { key: 'sum_billed', label: 'Выставлено', format: 'money', additive: true },
-      { key: 'sum_paid', label: 'Оплачено', format: 'money', additive: true },
-      { key: 'sum_balance', label: 'Долг', format: 'money', additive: true },
-      { key: 'sum_expenses', label: 'Расходы', format: 'money', additive: true },
-      { key: 'count', label: 'Проектов', format: 'number', additive: true },
-    ],
     detailDefault: ['client', 'project', 'project_status', 'billed', 'paid', 'balance'],
     defaultConfig: {
-      mode: 'summary',
       groupBy: [{ field: 'client' }],
-      measures: ['sum_billed', 'sum_paid', 'sum_balance'],
-      sort: { by: 'a2', dir: 'desc' },
+      columns: [
+        { key: 'client' },
+        { key: 'project' },
+        { key: 'billed', agg: 'sum' },
+        { key: 'paid', agg: 'sum' },
+        { key: 'balance', agg: 'sum' },
+      ],
+      showRecords: true,
+      sort: { by: 'c4', dir: 'desc' },
     },
   },
 
   projects: {
     key: 'projects',
     label: 'Проекты',
-    description: 'Количество проектов в разрезе статусов, шаблонов, периодов.',
+    description: 'Проекты в разрезе статусов, шаблонов и периодов + финансы: услуги, доходы, расходы, долг.',
     periodField: 'created',
     fields: [
-      { key: 'project', label: 'Проект', type: 'uuid', groupable: false, optionsKind: 'projects' },
+      { key: 'project', label: 'Проект', type: 'uuid', groupable: false, optionsKind: 'projects', link: 'project' },
       { key: 'status', label: 'Статус', type: 'uuid', groupable: true, optionsKind: 'projectStatuses' },
       { key: 'template', label: 'Шаблон', type: 'uuid', groupable: true, optionsKind: 'templates' },
       CLIENT_FIELD(),
       { key: 'created', label: 'Дата создания', type: 'date', groupable: true },
       { key: 'deadline', label: 'Дедлайн', type: 'date', groupable: true },
-    ],
-    measures: [
-      { key: 'count', label: 'Проектов', format: 'number', additive: true },
+      // Финансы проекта: считаются по его услугам и платежам (LATERAL в реестре БД).
+      { key: 'billed', money: true, label: 'Сумма услуг', type: 'number', groupable: false },
+      { key: 'paid', money: true, label: 'Доходы', type: 'number', groupable: false },
+      { key: 'expenses', money: true, label: 'Расходы', type: 'number', groupable: false },
+      { key: 'balance', money: true, label: 'Долг', type: 'number', groupable: false },
     ],
     detailDefault: ['project', 'status', 'template', 'client', 'created'],
     defaultConfig: {
-      mode: 'summary',
       groupBy: [{ field: 'status' }],
-      measures: ['count'],
+      columns: [
+        { key: 'status' },
+        { key: 'project', agg: 'count' },
+        { key: 'template' },
+        { key: 'created' },
+      ],
+      showRecords: true,
     },
   },
 
@@ -192,7 +218,7 @@ export const REPORT_DATASETS: Record<ReportDatasetKey, ReportDatasetDef> = {
     description: 'Треды (задачи/чаты/письма) в разрезе статусов и проектов.',
     periodField: 'created',
     fields: [
-      { key: 'thread', label: 'Название', type: 'uuid', groupable: false },
+      { key: 'thread', label: 'Название', type: 'uuid', groupable: false, link: 'thread' },
       {
         key: 'thread_type', label: 'Тип', type: 'text', groupable: true,
         staticOptions: [
@@ -202,18 +228,20 @@ export const REPORT_DATASETS: Record<ReportDatasetKey, ReportDatasetDef> = {
         ],
       },
       { key: 'status', label: 'Статус', type: 'uuid', groupable: true, optionsKind: 'threadStatuses' },
-      { key: 'project', label: 'Проект', type: 'uuid', groupable: true, optionsKind: 'projects' },
+      { key: 'project', label: 'Проект', type: 'uuid', groupable: true, optionsKind: 'projects', link: 'project' },
       { key: 'created', label: 'Дата создания', type: 'date', groupable: true },
       { key: 'deadline', label: 'Срок', type: 'date', groupable: true },
     ],
-    measures: [
-      { key: 'count', label: 'Тредов', format: 'number', additive: true },
-    ],
     detailDefault: ['thread', 'thread_type', 'status', 'project', 'created', 'deadline'],
     defaultConfig: {
-      mode: 'summary',
       groupBy: [{ field: 'thread_type' }, { field: 'status' }],
-      measures: ['count'],
+      columns: [
+        { key: 'thread_type' },
+        { key: 'status' },
+        { key: 'thread', agg: 'count' },
+        { key: 'created' },
+      ],
+      showRecords: true,
     },
   },
 }
@@ -276,6 +304,3 @@ export function getFieldDef(dataset: ReportDatasetDef, key: string): ReportField
   return dataset.fields.find((f) => f.key === key) ?? null
 }
 
-export function getMeasureDef(dataset: ReportDatasetDef, key: string): ReportMeasureDef | null {
-  return dataset.measures.find((m) => m.key === key) ?? null
-}

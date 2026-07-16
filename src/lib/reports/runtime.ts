@@ -1,20 +1,44 @@
 /**
  * Чистые helpers исполнения отчёта на клиенте:
+ * - нормализация конфига (дефолтные колонки);
  * - резолв быстрого периода в конкретные даты (пресет считается на каждый
  *   запуск — «последние 30 дней» в сохранённом отчёте всегда скользящие);
  * - вклейка периода в config перед вызовом run_report;
- * - секционирование сгруппированных строк (2+ уровня) с подытогами;
+ * - сборка дерева строк из плоских строк с уровнями;
  * - сборка CSV.
  */
 
 import type {
+  ReportColumn,
   ReportConfig,
   ReportPeriod,
   ReportRow,
+  ReportTreeNode,
 } from '@/types/reports'
 import type { FilterGroup } from '@/lib/filters/types'
 import { formatDateToString as iso } from '@/utils/format/dateFormat'
-import { getDatasetDef, getMeasureDef } from './registry'
+import { getDatasetDef } from './registry'
+
+// ── Нормализация конфига ──────────────────────────────────
+
+/**
+ * Конфиг из БД → готовый к исполнению: подставляет колонки по умолчанию,
+ * если они не заданы, и режет группировки до 3 уровней.
+ */
+export function normalizeReportConfig(config: ReportConfig): ReportConfig {
+  const dataset = getDatasetDef(config.dataset)
+  const groupBy = (config.groupBy ?? []).slice(0, 3)
+  const columns: ReportColumn[] =
+    config.columns && config.columns.length > 0
+      ? config.columns
+      : (dataset?.detailDefault ?? []).map((key) => ({ key }))
+  return { ...config, groupBy, columns, showRecords: config.showRecords ?? false }
+}
+
+/** Показываем плоский список записей (без групп) — крайний случай единой модели. */
+export function isFlatRecordsConfig(config: ReportConfig): boolean {
+  return config.groupBy.length === 0 && config.showRecords === true
+}
 
 // ── Период ────────────────────────────────────────────────
 
@@ -94,69 +118,108 @@ export function applyPeriodToConfig(
   return { ...config, filter: merged }
 }
 
-// ── Секционирование (2+ уровня группировки) ───────────────
+// ── Дерево строк ──────────────────────────────────────────
 
-export type ReportSection = {
-  /** Значение первой группы (g0). */
-  label: string
-  rows: ReportRow[]
-  /** Подытоги по алиасам показателей (a0..): число или null (не суммируем avg). */
-  subtotals: Record<string, number | null>
+/** Ключ узла по пути значений групп (JSON — устойчив к любым значениям). */
+function pathKey(path: (string | null)[]): string {
+  return JSON.stringify(path)
+}
+
+function groupValue(row: ReportRow, index: number): string | null {
+  const v = row[`g${index}`]
+  return v === null || v === undefined ? null : String(v)
+}
+
+/** Сколько уровней групп заполнено: с сервера (level) либо по не-null g0..gN. */
+function levelOf(row: ReportRow, depth: number): number {
+  const raw = Number(row.level)
+  if (Number.isInteger(raw) && raw >= 1 && raw <= depth) return raw
+  let n = 0
+  for (let i = 0; i < depth; i++) {
+    if (groupValue(row, i) !== null) n = i + 1
+  }
+  return n
 }
 
 /**
- * Разложить плоские строки run_report (ключи g0/g1/aN) на секции по g0
- * с клиентскими подытогами. additiveByAlias: какие показатели суммируемы
- * (avg — нет, для них подытог null → «—»).
+ * Плоские строки run_report (level + g0..gN + c0..cM) → дерево.
+ *
+ * Подытоги НЕ считаются на клиенте: сервер отдаёт агрегаты для каждого
+ * уровня по всем данным группы (GROUPING SETS), поэтому sum/avg/count честные
+ * даже когда записи внутри догружены не все.
  */
-export function sectionizeRows(
-  rows: ReportRow[],
-  measureAliases: string[],
-  additiveByAlias: Record<string, boolean>,
-): ReportSection[] {
-  const sections: ReportSection[] = []
-  let current: ReportSection | null = null
+export function buildReportTree(rows: ReportRow[], config: ReportConfig): ReportTreeNode[] {
+  const depth = config.groupBy.length
+  if (depth === 0) return []
 
-  for (const row of rows) {
-    const label = String(row.g0 ?? '—')
-    if (!current || current.label !== label) {
-      current = {
-        label,
-        rows: [],
-        subtotals: Object.fromEntries(measureAliases.map((a) => [a, additiveByAlias[a] ? 0 : null])),
-      }
-      sections.push(current)
+  const roots: ReportTreeNode[] = []
+  const byKey = new Map<string, ReportTreeNode>()
+  // Родитель должен появиться раньше ребёнка — идём от верхних уровней.
+  const ordered = [...rows].sort((a, b) => levelOf(a, depth) - levelOf(b, depth))
+
+  for (const row of ordered) {
+    const level = levelOf(row, depth)
+    if (level < 1) continue
+    const path: (string | null)[] = []
+    for (let i = 0; i < level; i++) path.push(groupValue(row, i))
+
+    const cells: ReportRow = {}
+    for (const [k, v] of Object.entries(row)) {
+      if (/^c\d+$/.test(k)) cells[k] = v
     }
-    current.rows.push(row)
-    for (const alias of measureAliases) {
-      if (!additiveByAlias[alias]) continue
-      const v = row[alias]
-      const n = typeof v === 'number' ? v : Number(v)
-      if (Number.isFinite(n)) {
-        current.subtotals[alias] = (current.subtotals[alias] ?? 0) + n
-      }
+
+    const node: ReportTreeNode = {
+      level,
+      path,
+      label: path[level - 1] ?? '—',
+      cells,
+      children: [],
     }
+    byKey.set(pathKey(path), node)
+
+    if (level === 1) {
+      roots.push(node)
+      continue
+    }
+    const parent = byKey.get(pathKey(path.slice(0, level - 1)))
+    // Сироты (родительский уровень не пришёл) не теряем — поднимаем в корень.
+    if (parent) parent.children.push(node)
+    else roots.push(node)
   }
-  // Округление накопленных сумм (плавающая точка).
-  for (const s of sections) {
-    for (const alias of measureAliases) {
-      const v = s.subtotals[alias]
-      if (typeof v === 'number') s.subtotals[alias] = Math.round(v * 100) / 100
-    }
-  }
-  return sections
+
+  sortNodes(roots, config)
+  return roots
 }
 
-/** Карта additive по алиасам a0.. для выбранных показателей конфига. */
-export function additiveMapForConfig(config: ReportConfig): Record<string, boolean> {
-  const ds = getDatasetDef(config.dataset)
-  const out: Record<string, boolean> = {}
-  config.measures.forEach((key, i) => {
-    const def = ds ? getMeasureDef(ds, key) : null
-    out[`a${i}`] = def ? def.additive : true
+/** Рекурсивная сортировка узлов по config.sort (gN → по названию, cN → по агрегату колонки). */
+function sortNodes(nodes: ReportTreeNode[], config: ReportConfig): void {
+  const by = config.sort?.by
+  const dir = config.sort?.dir === 'desc' ? -1 : 1
+  const idx = by && /^c\d+$/.test(by) ? Number(by.slice(1)) : null
+  const sortCol = idx !== null ? config.columns[idx] : null
+  // По агрегату колонки — если он у неё есть; иначе (в т.ч. колонка
+  // группировки) сортируем по названию группы: агрегата там нет.
+  const byCell = sortCol && (sortCol.agg ?? 'none') !== 'none' ? `c${idx}` : null
+
+  nodes.sort((x, y) => {
+    if (byCell) {
+      const nx = Number(x.cells[byCell])
+      const ny = Number(y.cells[byCell])
+      const vx = Number.isFinite(nx) ? nx : -Infinity
+      const vy = Number.isFinite(ny) ? ny : -Infinity
+      if (vx !== vy) return (vx - vy) * dir
+      return x.label.localeCompare(y.label, 'ru')
+    }
+    return x.label.localeCompare(y.label, 'ru') * dir
   })
-  if (config.measures.length === 0) out.a0 = true
-  return out
+  for (const n of nodes) sortNodes(n.children, config)
+}
+
+/** Листовые строки (все уровни групп заполнены) — для выгрузки в CSV. */
+export function leafRows(rows: ReportRow[], config: ReportConfig): ReportRow[] {
+  const depth = config.groupBy.length
+  if (depth === 0) return rows
+  return rows.filter((r) => levelOf(r, depth) === depth)
 }
 
 // ── Форматирование значений ───────────────────────────────

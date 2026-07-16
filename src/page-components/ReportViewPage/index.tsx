@@ -2,11 +2,11 @@
 
 /**
  * Страница одного отчёта: быстрый период → запуск run_report → таблица
- * с группировками/итогами; настройки (группировки/показатели/фильтр/режим),
- * экспорт CSV.
+ * (дерево групп с подытогами / список записей); настройки, экспорт CSV.
  *
- * Период НЕ сохраняется в отчёте — вклеивается в конфиг на каждый запуск
- * (applyPeriodToConfig), поэтому пресеты «последние 30 дней» скользящие.
+ * Конфиг из БД сначала нормализуется (legacy-режимы «сводка/список» → единая
+ * модель), затем в него вклеивается период — он НЕ сохраняется в отчёте,
+ * поэтому пресеты «последние 30 дней» скользящие.
  */
 
 import { useMemo, useState } from 'react'
@@ -27,14 +27,15 @@ import { usePageTitle } from '@/hooks/usePageTitle'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useReport, useRunReport, useUpdateReport } from '@/hooks/useReports'
-import { getDatasetDef, getFieldDef } from '@/lib/reports/registry'
-import { applyPeriodToConfig, buildReportCsv } from '@/lib/reports/runtime'
-import type { ReportPeriod, ReportPeriodPreset } from '@/types/reports'
+import { getDatasetDef } from '@/lib/reports/registry'
 import {
-  ReportResultTable,
-  groupColumns,
-  measureColumns,
-} from '@/components/reports/ReportResultTable'
+  applyPeriodToConfig,
+  buildReportCsv,
+  leafRows,
+  normalizeReportConfig,
+} from '@/lib/reports/runtime'
+import type { ReportPeriod, ReportPeriodPreset } from '@/types/reports'
+import { ReportResultTable, resolveColumns } from '@/components/reports/ReportResultTable'
 import { ReportSettingsDialog } from '@/components/reports/ReportSettingsDialog'
 
 const PERIOD_OPTIONS: { value: ReportPeriodPreset; label: string }[] = [
@@ -69,32 +70,28 @@ export default function ReportViewPage() {
   const dataset = getDatasetDef(report?.config.dataset)
   const hasPeriod = !!dataset?.periodField
 
+  // Конфиг из БД может быть legacy (с mode) — нормализуем перед всем остальным.
   const runtimeConfig = useMemo(() => {
     if (!report) return null
-    return applyPeriodToConfig(report.config, period)
+    return applyPeriodToConfig(normalizeReportConfig(report.config), period)
   }, [report, period])
 
   const { data: result, isLoading: running, error } = useRunReport(workspaceId, runtimeConfig)
   const updateReport = useUpdateReport(workspaceId)
 
+  /**
+   * CSV: колонки те же, что в таблице. У дерева выгружаем листовой уровень —
+   * записи внутри групп догружаются лениво, целиком их на клиенте нет.
+   */
   const handleExportCsv = () => {
-    if (!report || !result || !dataset) return
-    let columns: { key: string; label: string }[]
-    if (report.config.mode === 'summary') {
-      columns = [
-        ...groupColumns(report.config, dataset),
-        ...measureColumns(report.config, dataset),
-      ].map((c) => ({ key: c.alias, label: c.label }))
-    } else {
-      const keys = report.config.columns && report.config.columns.length > 0
-        ? report.config.columns
-        : dataset.detailDefault
-      columns = keys.map((key) => ({
-        key,
-        label: getFieldDef(dataset, key)?.label ?? key,
-      }))
-    }
-    const csv = buildReportCsv(columns, result.rows)
+    if (!report || !result || !dataset || !runtimeConfig) return
+    const columns = resolveColumns(runtimeConfig, dataset).map((c) => ({
+      key: c.alias,
+      label: c.label,
+    }))
+    const rows =
+      runtimeConfig.groupBy.length > 0 ? leafRows(result.rows, runtimeConfig) : result.rows
+    const csv = buildReportCsv(columns, rows)
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -215,7 +212,13 @@ export default function ReportViewPage() {
                 Показаны первые {result.rowCount} строк — сузь период или добавь фильтр.
               </div>
             )}
-            <ReportResultTable config={report.config} result={result} />
+            {runtimeConfig && workspaceId && (
+              <ReportResultTable
+                config={runtimeConfig}
+                result={result}
+                workspaceId={workspaceId}
+              />
+            )}
           </>
         )}
       </div>

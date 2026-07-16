@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest'
 import {
   resolvePeriodRange,
   applyPeriodToConfig,
-  sectionizeRows,
-  additiveMapForConfig,
+  buildReportTree,
+  leafRows,
+  normalizeReportConfig,
+  isFlatRecordsConfig,
   buildReportCsv,
   formatReportValue,
 } from './runtime'
@@ -58,9 +60,8 @@ describe('resolvePeriodRange', () => {
 describe('applyPeriodToConfig', () => {
   const base: ReportConfig = {
     dataset: 'transactions',
-    mode: 'summary',
     groupBy: [{ field: 'category' }],
-    measures: ['sum_amount'],
+    columns: [{ key: 'category' }, { key: 'amount', agg: 'sum' }],
   }
 
   it('вклеивает between по periodField датасета', () => {
@@ -105,37 +106,174 @@ describe('applyPeriodToConfig', () => {
   })
 })
 
-describe('sectionizeRows', () => {
-  const rows = [
-    { g0: 'Доход', g1: '2026-05', a0: 100.5, a1: 2 },
-    { g0: 'Доход', g1: '2026-06', a0: 50, a1: 1 },
-    { g0: 'Расход', g1: '2026-05', a0: 30, a1: 1 },
-  ]
-
-  it('секции по g0 с подытогами additive-показателей', () => {
-    const sections = sectionizeRows(rows, ['a0', 'a1'], { a0: true, a1: true })
-    expect(sections).toHaveLength(2)
-    expect(sections[0].label).toBe('Доход')
-    expect(sections[0].rows).toHaveLength(2)
-    expect(sections[0].subtotals).toEqual({ a0: 150.5, a1: 3 })
-    expect(sections[1].subtotals).toEqual({ a0: 30, a1: 1 })
+describe('normalizeReportConfig', () => {
+  it('без колонок подставляет набор датасета по умолчанию', () => {
+    const out = normalizeReportConfig({
+      dataset: 'projects',
+      groupBy: [{ field: 'template' }],
+      columns: [],
+    })
+    expect(out.columns.length).toBeGreaterThan(0)
+    expect(out.columns.every((c) => typeof c.key === 'string')).toBe(true)
+    expect(out.showRecords).toBe(false)
   })
 
-  it('не-additive показатель → подытог null', () => {
-    const sections = sectionizeRows(rows, ['a0'], { a0: false })
-    expect(sections[0].subtotals.a0).toBeNull()
+  it('заданные колонки не трогает', () => {
+    const columns = [{ key: 'template' }, { key: 'project', agg: 'count' as const }]
+    const out = normalizeReportConfig({
+      dataset: 'projects',
+      groupBy: [{ field: 'template' }],
+      columns,
+      showRecords: true,
+    })
+    expect(out.columns).toEqual(columns)
+    expect(out.showRecords).toBe(true)
+  })
+
+  it('больше 3 уровней группировки отсекается', () => {
+    const out = normalizeReportConfig({
+      dataset: 'threads',
+      groupBy: [
+        { field: 'thread_type' },
+        { field: 'status' },
+        { field: 'project' },
+        { field: 'created' },
+      ],
+      columns: [{ key: 'thread' }],
+    })
+    expect(out.groupBy).toHaveLength(3)
+  })
+
+  it('isFlatRecordsConfig — только без групп и с записями', () => {
+    const flat: ReportConfig = {
+      dataset: 'projects', groupBy: [], columns: [{ key: 'project' }], showRecords: true,
+    }
+    const totalsOnly: ReportConfig = {
+      dataset: 'projects', groupBy: [], columns: [{ key: 'project', agg: 'count' }],
+    }
+    expect(isFlatRecordsConfig(flat)).toBe(true)
+    expect(isFlatRecordsConfig(totalsOnly)).toBe(false)
   })
 })
 
-describe('additiveMapForConfig', () => {
-  it('avg — не additive, sum/count — additive', () => {
-    const cfg: ReportConfig = {
+describe('buildReportTree', () => {
+  const config: ReportConfig = {
+    dataset: 'transactions',
+    groupBy: [{ field: 'type' }, { field: 'date', granularity: 'month' }],
+    columns: [
+      { key: 'type' },
+      { key: 'date' },
+      { key: 'amount', agg: 'sum' },
+      { key: 'project', agg: 'count' },
+    ],
+  }
+
+  // Как отдаёт сервер (GROUPING SETS): строки уровня 1 и уровня 2 вперемешку.
+  const rows = [
+    { level: 2, g0: 'Доход', g1: '2026-05', c2: 100.5, c3: 2 },
+    { level: 1, g0: 'Доход', g1: null, c2: 150.5, c3: 3 },
+    { level: 2, g0: 'Доход', g1: '2026-06', c2: 50, c3: 1 },
+    { level: 1, g0: 'Расход', g1: null, c2: 30, c3: 1 },
+    { level: 2, g0: 'Расход', g1: '2026-05', c2: 30, c3: 1 },
+  ]
+
+  it('строит уровни и вкладывает детей в родителя', () => {
+    const tree = buildReportTree(rows, config)
+    expect(tree).toHaveLength(2)
+    expect(tree.map((n) => n.label)).toEqual(['Доход', 'Расход'])
+    expect(tree[0].children.map((n) => n.label)).toEqual(['2026-05', '2026-06'])
+    expect(tree[1].children).toHaveLength(1)
+  })
+
+  it('агрегаты узла берутся с сервера, а не суммируются на клиенте', () => {
+    const tree = buildReportTree(rows, config)
+    expect(tree[0].cells).toEqual({ c2: 150.5, c3: 3 })
+    expect(tree[0].children[0].cells).toEqual({ c2: 100.5, c3: 2 })
+  })
+
+  it('path узла — путь значений групп (по нему догружаются записи)', () => {
+    const tree = buildReportTree(rows, config)
+    expect(tree[0].path).toEqual(['Доход'])
+    expect(tree[0].children[1].path).toEqual(['Доход', '2026-06'])
+  })
+
+  it('сортировка по колонке группировки — по названию, в обратную сторону', () => {
+    // c0 — колонка «Тип», по ней группируем: агрегата нет → сортируем по названию.
+    const tree = buildReportTree(rows, { ...config, sort: { by: 'c0', dir: 'desc' } })
+    expect(tree.map((n) => n.label)).toEqual(['Расход', 'Доход'])
+  })
+
+  it('сортировка по агрегату: убывание ставит большую группу первой', () => {
+    const tree = buildReportTree(rows, { ...config, sort: { by: 'c2', dir: 'desc' } })
+    expect(tree.map((n) => n.label)).toEqual(['Доход', 'Расход'])
+    // Внутри «Доход»: 100.5 > 50
+    expect(tree[0].children.map((n) => n.label)).toEqual(['2026-05', '2026-06'])
+  })
+
+  it('сортировка по агрегату: возрастание переворачивает порядок', () => {
+    const tree = buildReportTree(rows, { ...config, sort: { by: 'c2', dir: 'asc' } })
+    expect(tree.map((n) => n.label)).toEqual(['Расход', 'Доход'])
+    expect(tree[0].children.map((n) => n.label)).toEqual(['2026-05'])
+    expect(tree[1].children.map((n) => n.label)).toEqual(['2026-06', '2026-05'])
+  })
+
+  it('без группировок дерева нет', () => {
+    expect(buildReportTree(rows, { ...config, groupBy: [] })).toEqual([])
+  })
+
+  it('уровень выводится из g-значений, если сервер не прислал level', () => {
+    const tree = buildReportTree(
+      [
+        { g0: 'Доход', g1: null, c2: 10 },
+        { g0: 'Доход', g1: '2026-05', c2: 10 },
+      ],
+      config,
+    )
+    expect(tree).toHaveLength(1)
+    expect(tree[0].children).toHaveLength(1)
+  })
+
+  it('группа со значением «пусто» не схлопывается с подытогом уровня', () => {
+    // g1=null на уровне 2 — это реальное пустое значение (например, нет срока).
+    const tree = buildReportTree(
+      [
+        { level: 1, g0: 'Задача', g1: null, c2: 5 },
+        { level: 2, g0: 'Задача', g1: null, c2: 5 },
+      ],
+      config,
+    )
+    expect(tree).toHaveLength(1)
+    expect(tree[0].cells.c2).toBe(5)
+    expect(tree[0].children).toHaveLength(1)
+    expect(tree[0].children[0].label).toBe('—')
+  })
+})
+
+describe('leafRows', () => {
+  it('оставляет только строки самого глубокого уровня', () => {
+    const config: ReportConfig = {
       dataset: 'transactions',
-      mode: 'summary',
-      groupBy: [],
-      measures: ['sum_amount', 'avg_amount', 'count'],
+      groupBy: [{ field: 'type' }, { field: 'date' }],
+      columns: [{ key: 'type' }, { key: 'date' }, { key: 'project', agg: 'count' }],
     }
-    expect(additiveMapForConfig(cfg)).toEqual({ a0: true, a1: false, a2: true })
+    const out = leafRows(
+      [
+        { level: 1, g0: 'Доход', g1: null, c2: 3 },
+        { level: 2, g0: 'Доход', g1: '2026-05', c2: 2 },
+        { level: 2, g0: 'Доход', g1: '2026-06', c2: 1 },
+      ],
+      config,
+    )
+    expect(out).toHaveLength(2)
+    expect(out.every((r) => r.level === 2)).toBe(true)
+  })
+
+  it('без группировок возвращает строки как есть', () => {
+    const config: ReportConfig = {
+      dataset: 'projects', groupBy: [], columns: [{ key: 'project' }], showRecords: true,
+    }
+    const rows = [{ c0: 'А' }, { c0: 'Б' }]
+    expect(leafRows(rows, config)).toEqual(rows)
   })
 })
 

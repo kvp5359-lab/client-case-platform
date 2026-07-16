@@ -27,6 +27,7 @@ import {
 import { useDebounce } from '@/hooks/shared/useDebounce'
 import { supabase } from '@/lib/supabase'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
+import { knowledgeArticleHref, projectHref, threadHref } from '@/lib/entityLinks'
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   SearchInputInline,
@@ -69,28 +70,18 @@ type DisplayRow = {
   project_status_id: string | null
 }
 
-/**
- * URL для open-in-new-tab. Возвращает null, если для типа нет осмысленной ссылки.
- * Для тредов/сообщений ведёт на страницу проекта с ?panelTab=thread:<id>;
- * для тредов без project_id — на /inbox (там panelTab резолвится через useThreadFromPanelTab).
- */
+/** URL для open-in-new-tab. Возвращает null, если для типа нет осмысленной ссылки. */
 function hrefForRow(row: DisplayRow, workspaceId: string): string | null {
-  const ws = `/workspaces/${workspaceId}`
   switch (row.entity_type) {
     case 'thread':
-    case 'message': {
-      const threadId = row.thread_id ?? row.entity_id
-      const panel = `panelTab=thread:${encodeURIComponent(threadId)}`
-      return row.project_id
-        ? `${ws}/projects/${row.project_id}?${panel}`
-        : `${ws}/inbox?${panel}`
-    }
+    case 'message':
+      return threadHref(workspaceId, row.thread_id ?? row.entity_id, row.project_id)
     case 'project':
-      return `${ws}/projects/${row.entity_id}`
+      return projectHref(workspaceId, row.entity_id)
     case 'knowledge_article':
-      return `${ws}/knowledge-base/${row.entity_id}`
+      return knowledgeArticleHref(workspaceId, row.entity_id)
     case 'participant':
-      return `${ws}/settings/participants`
+      return `/workspaces/${workspaceId}/settings/participants`
   }
 }
 
