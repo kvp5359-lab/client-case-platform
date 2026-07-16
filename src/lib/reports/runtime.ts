@@ -17,7 +17,7 @@ import type {
 } from '@/types/reports'
 import type { FilterGroup } from '@/lib/filters/types'
 import { formatDateToString as iso } from '@/utils/format/dateFormat'
-import { getDatasetDef } from './registry'
+import { aggFormat, getDatasetDef, getFieldDef, type ReportDatasetDef } from './registry'
 
 // ── Нормализация конфига ──────────────────────────────────
 
@@ -38,6 +38,74 @@ export function normalizeReportConfig(config: ReportConfig): ReportConfig {
 /** Показываем плоский список записей (без групп) — крайний случай единой модели. */
 export function isFlatRecordsConfig(config: ReportConfig): boolean {
   return config.groupBy.length === 0 && config.showRecords === true
+}
+
+// ── Колонки для рендера/выгрузки ──────────────────────────
+
+/** Готовая к показу колонка: заголовок, выравнивание, роль в отчёте. */
+export type ResolvedColumn = {
+  /** Ключ значения в строке результата (c0..cN — индекс колонки). */
+  alias: string
+  label: string
+  align: 'left' | 'right'
+  format: 'money' | 'number' | 'raw'
+  /** Индекс уровня группировки, если по полю этой колонки группируем. */
+  groupLevel: number | null
+  /** Показывает ли колонка агрегат в строках групп. */
+  hasAgg: boolean
+  /** Ссылочное поле: значение записи ведёт на проект/тред. */
+  link?: 'project' | 'thread'
+}
+
+export function resolveColumns(
+  config: ReportConfig,
+  dataset: ReportDatasetDef | null,
+): ResolvedColumn[] {
+  return config.columns.map((col, i) => {
+    const field = dataset ? getFieldDef(dataset, col.key) : null
+    const agg = col.agg ?? 'none'
+    // Уровень группировки, к которому привязана колонка (первое совпадение —
+    // одно поле не может быть двумя уровнями).
+    const levelIdx = config.groupBy.findIndex((g) => g.field === col.key)
+    return {
+      alias: `c${i}`,
+      label: col.label || field?.label || col.key,
+      align: col.align ?? (field?.type === 'number' ? 'right' : 'left'),
+      format:
+        agg !== 'none'
+          ? aggFormat(field, agg)
+          : field?.type === 'number'
+            ? field.money
+              ? 'money'
+              : 'number'
+            : 'raw',
+      groupLevel: levelIdx >= 0 ? levelIdx : null,
+      hasAgg: agg !== 'none',
+      link: field?.link,
+    }
+  })
+}
+
+/**
+ * Колонки CSV-выгрузки. С группировками выгружается листовой уровень дерева,
+ * а его строки несут значения групп в ключах g0..gN (cN там — только
+ * агрегаты). Поэтому колонка уровня читается из gN, колонки без агрегата
+ * пропускаются — значений для них в строках уровней нет.
+ */
+export function csvColumns(
+  config: ReportConfig,
+  dataset: ReportDatasetDef | null,
+): { key: string; label: string }[] {
+  const resolved = resolveColumns(config, dataset)
+  if (config.groupBy.length === 0) {
+    return resolved.map((c) => ({ key: c.alias, label: c.label }))
+  }
+  return resolved
+    .filter((c) => c.groupLevel !== null || c.hasAgg)
+    .map((c) => ({
+      key: c.groupLevel !== null ? `g${c.groupLevel}` : c.alias,
+      label: c.label,
+    }))
 }
 
 // ── Период ────────────────────────────────────────────────

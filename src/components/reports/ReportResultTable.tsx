@@ -29,29 +29,14 @@ import {
 } from '@/components/ui/table'
 import { useRunReport } from '@/hooks/useReports'
 import type { ReportConfig, ReportRow, ReportRunResult, ReportTreeNode } from '@/types/reports'
+import { getDatasetDef } from '@/lib/reports/registry'
 import {
-  aggFormat,
-  getDatasetDef,
-  getFieldDef,
-  type ReportDatasetDef,
-} from '@/lib/reports/registry'
-import { buildReportTree, formatReportValue } from '@/lib/reports/runtime'
+  buildReportTree,
+  formatReportValue,
+  resolveColumns,
+  type ResolvedColumn,
+} from '@/lib/reports/runtime'
 import { projectHref, threadHref } from '@/lib/entityLinks'
-
-/** Готовая к рендеру колонка: заголовок, выравнивание, роль в отчёте. */
-export type ResolvedColumn = {
-  /** Ключ значения в строке результата (c0..cN — индекс колонки). */
-  alias: string
-  label: string
-  align: 'left' | 'right'
-  format: 'money' | 'number' | 'raw'
-  /** Индекс уровня группировки, если по полю этой колонки группируем. */
-  groupLevel: number | null
-  /** Показывает ли колонка агрегат в строках групп. */
-  hasAgg: boolean
-  /** Ссылочное поле: значение записи ведёт на проект/тред. */
-  link?: 'project' | 'thread'
-}
 
 /** Ячейка записи: для ссылочных полей — настоящая ссылка (работает средняя кнопка). */
 function RecordCell({
@@ -83,30 +68,6 @@ function RecordCell({
       {text}
     </Link>
   )
-}
-
-export function resolveColumns(config: ReportConfig, dataset: ReportDatasetDef | null): ResolvedColumn[] {
-  return config.columns.map((col, i) => {
-    const field = dataset ? getFieldDef(dataset, col.key) : null
-    const agg = col.agg ?? 'none'
-    // Уровень группировки, к которому привязана колонка (первое совпадение —
-    // одно поле не может быть двумя уровнями).
-    const levelIdx = config.groupBy.findIndex((g) => g.field === col.key)
-    return {
-      alias: `c${i}`,
-      label: col.label || field?.label || col.key,
-      align: col.align ?? (field?.type === 'number' ? 'right' : 'left'),
-      format:
-        agg !== 'none'
-          ? aggFormat(field, agg)
-          : field?.type === 'number'
-            ? (field.money ? 'money' : 'number')
-            : 'raw',
-      groupLevel: levelIdx >= 0 ? levelIdx : null,
-      hasAgg: agg !== 'none',
-      link: field?.link,
-    }
-  })
 }
 
 function cellText(value: unknown, format: 'money' | 'number' | 'raw'): string {

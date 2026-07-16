@@ -31,11 +31,12 @@ import { getDatasetDef } from '@/lib/reports/registry'
 import {
   applyPeriodToConfig,
   buildReportCsv,
+  csvColumns,
   leafRows,
   normalizeReportConfig,
 } from '@/lib/reports/runtime'
 import type { ReportPeriod, ReportPeriodPreset } from '@/types/reports'
-import { ReportResultTable, resolveColumns } from '@/components/reports/ReportResultTable'
+import { ReportResultTable } from '@/components/reports/ReportResultTable'
 import { ReportSettingsDialog } from '@/components/reports/ReportSettingsDialog'
 
 const PERIOD_OPTIONS: { value: ReportPeriodPreset; label: string }[] = [
@@ -80,15 +81,13 @@ export default function ReportViewPage() {
   const updateReport = useUpdateReport(workspaceId)
 
   /**
-   * CSV: колонки те же, что в таблице. У дерева выгружаем листовой уровень —
-   * записи внутри групп догружаются лениво, целиком их на клиенте нет.
+   * CSV: у дерева выгружаем листовой уровень (группы + агрегаты) — записи
+   * внутри групп догружаются лениво, целиком их на клиенте нет. Ключи колонок
+   * для этих строк отличаются от табличных — их знает csvColumns.
    */
   const handleExportCsv = () => {
     if (!report || !result || !dataset || !runtimeConfig) return
-    const columns = resolveColumns(runtimeConfig, dataset).map((c) => ({
-      key: c.alias,
-      label: c.label,
-    }))
+    const columns = csvColumns(runtimeConfig, dataset)
     const rows =
       runtimeConfig.groupBy.length > 0 ? leafRows(result.rows, runtimeConfig) : result.rows
     const csv = buildReportCsv(columns, rows)

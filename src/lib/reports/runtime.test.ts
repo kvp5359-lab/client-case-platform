@@ -7,8 +7,10 @@ import {
   normalizeReportConfig,
   isFlatRecordsConfig,
   buildReportCsv,
+  csvColumns,
   formatReportValue,
 } from './runtime'
+import { getDatasetDef } from './registry'
 import type { ReportConfig } from '@/types/reports'
 
 const NOW = new Date(2026, 6, 4) // 4 июля 2026 (месяцы с 0)
@@ -274,6 +276,46 @@ describe('leafRows', () => {
     }
     const rows = [{ c0: 'А' }, { c0: 'Б' }]
     expect(leafRows(rows, config)).toEqual(rows)
+  })
+})
+
+describe('csvColumns — выгрузка сводки', () => {
+  // Конфиг «Количество заказов»: группировка по шаблону, счётчик на «Проект».
+  const config: ReportConfig = {
+    dataset: 'projects',
+    groupBy: [{ field: 'template' }],
+    showRecords: true,
+    columns: [
+      { key: 'template' },
+      { key: 'project', agg: 'count' },
+      { key: 'status' },
+      { key: 'created' },
+    ],
+  }
+  const dataset = getDatasetDef('projects')
+
+  it('колонка группировки читается из gN, колонки без агрегата пропускаются', () => {
+    expect(csvColumns(config, dataset)).toEqual([
+      { key: 'g0', label: 'Шаблон' },
+      { key: 'c1', label: 'Проект' },
+    ])
+  })
+
+  it('связка с leafRows и buildReportCsv: название группы попадает в CSV', () => {
+    // Как отдаёт сервер: подытог-строки уровней с g0 и агрегатом c1.
+    const serverRows = [
+      { level: 1, g0: 'Бизнес-план', c1: 7 },
+      { level: 1, g0: 'ВНЖ', c1: 1 },
+    ]
+    const csv = buildReportCsv(csvColumns(config, dataset), leafRows(serverRows, config))
+    const lines = csv.split('\r\n')
+    expect(lines[1]).toBe('Бизнес-план;7')
+    expect(lines[2]).toBe('ВНЖ;1')
+  })
+
+  it('без группировок — все колонки по своим алиасам', () => {
+    const flat: ReportConfig = { ...config, groupBy: [] }
+    expect(csvColumns(flat, dataset).map((c) => c.key)).toEqual(['c0', 'c1', 'c2', 'c3'])
   })
 })
 
