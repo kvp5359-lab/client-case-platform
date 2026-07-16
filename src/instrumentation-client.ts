@@ -4,9 +4,12 @@ import * as Sentry from '@sentry/nextjs'
 
 // Транзиентный сетевой/загрузочный шум: моргнула сеть, отменённый запрос при
 // уходе со страницы, оборванный upload/download, not-found гонки. Пользователь
-// видит дружелюбную ошибку и повторяет — данные целы. Такие события НЕ дропаем
-// совсем (пусть остаются видимыми в Sentry для статистики), а понижаем до
-// `warning` → перестают слать high-priority алерты и топить реальные баги.
+// видит дружелюбную ошибку и повторяет — данные целы.
+//
+// Такие события ДРОПАЕМ (не шлём в Sentry вовсе), а не просто понижаем уровень:
+// на плане Developer квота 5k событий/месяц считается по ФАКТУ отправки, уровень
+// на неё не влияет. Если шум съест квоту — Sentry начнёт дропать всё подряд,
+// включая реальные краши. Плюс шум растёт линейно с числом воркспейсов/юзеров.
 // См. docs/bugs/open/2026-07-08-sentry-load-fail-noise.md.
 const TRANSIENT_NOISE = [
   /^Не удалось загрузить/i,
@@ -46,11 +49,7 @@ Sentry.init({
   ],
   beforeSend(event) {
     const text = collectEventText(event)
-    if (text && TRANSIENT_NOISE.some((re) => re.test(text))) {
-      event.level = 'warning'
-      event.fingerprint = ['transient-load-noise']
-      event.tags = { ...event.tags, transient_noise: 'true' }
-    }
+    if (text && TRANSIENT_NOISE.some((re) => re.test(text))) return null
     return event
   },
 })
