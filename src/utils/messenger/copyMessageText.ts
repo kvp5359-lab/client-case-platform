@@ -1,5 +1,6 @@
 import { toast } from 'sonner'
 import { stripHtml, isHtmlContent, sanitizeMessengerHtml } from '@/utils/format/messengerHtml'
+import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 
 /**
@@ -13,7 +14,8 @@ export function copyMessageText(message: ProjectMessage) {
   const raw = message.content
   const plain = stripHtml(raw)
   if (isHtmlContent(raw) && typeof ClipboardItem !== 'undefined') {
-    const html = sanitizeMessengerHtml(raw)
+    // Тот же режим, что при рендере бабла: копия = то, что видишь.
+    const html = sanitizeMessengerHtml(raw, { email: isEmailSource(message.source) })
     const item = new ClipboardItem({
       'text/html': new Blob([html], { type: 'text/html' }),
       'text/plain': new Blob([plain], { type: 'text/plain' }),

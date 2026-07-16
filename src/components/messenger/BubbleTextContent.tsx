@@ -9,6 +9,7 @@ import {
   linkifyHtml,
 } from '@/utils/format/messengerHtml'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
+import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 import type { MessengerAccent } from './utils/messageStyles'
 import type { DeliveryStatus } from './bubbleUtils'
 import { BubbleTimestamp } from './BubbleTimestamp'
@@ -135,7 +136,11 @@ export function BubbleTextContent({
                 ref={contentContainerRef}
                 className="text-sm break-words min-w-0 messenger-content messenger-links"
                 dangerouslySetInnerHTML={{
-                  __html: linkifyHtml(sanitizeMessengerHtml(message.content)),
+                  // email → полный пайплайн чисток письма; обычное сообщение →
+                  // пустые строки 1:1 как в редакторе (не схлопываем).
+                  __html: linkifyHtml(
+                    sanitizeMessengerHtml(message.content, { email: isEmailSource(message.source) }),
+                  ),
                 }}
               />
             ) : (
@@ -147,7 +152,10 @@ export function BubbleTextContent({
                   // символам \n. Иначе при копировании из бабла браузер кладёт в
                   // text/html плоский текст без разрывов (CSS-перенос не даёт <br>)
                   // → форматирование слетает при вставке в Tiptap/Google Docs.
-                  __html: sanitizeMessengerHtml(linkifyText(message.content).replace(/\n/g, '<br>')),
+                  __html: sanitizeMessengerHtml(
+                    linkifyText(message.content).replace(/\n/g, '<br>'),
+                    { email: isEmailSource(message.source) },
+                  ),
                 }}
               />
             )}

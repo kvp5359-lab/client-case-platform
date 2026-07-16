@@ -1,32 +1,35 @@
 import { describe, it, expect } from 'vitest'
 import { sanitizeMessengerHtml } from './messengerHtml'
 
+/** Пайплайн письма (email: true) — полные чистки почтового мусора. */
+const sanitizeEmail = (html: string) => sanitizeMessengerHtml(html, { email: true })
+
+// Считаем «видимые пустые строки» по количеству <br> подряд.
+// 1 <br> между блоками = нет пустой строки, 2 = 1 пустая, 3 = 2 пустые и т.д.
+const maxConsecutiveBr = (html: string): number => {
+  let max = 0
+  const re = /(?:<br\s*\/?>\s*)+/gi
+  let m: RegExpExecArray | null
+  while ((m = re.exec(html)) !== null) {
+    const count = (m[0].match(/<br/gi) ?? []).length
+    if (count > max) max = count
+  }
+  return max
+}
+
 /**
  * Проверка схлопывания пустых строк в email-HTML.
  * Маркетинговые письма часто валят пачки `<p>&nbsp;</p>` / `<div><br></div>`
  * между блоками — после санитизации они не должны давать более одной
- * пустой строки подряд.
+ * пустой строки подряд. Применяется ТОЛЬКО к письмам (opts.email).
  */
-describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
-  // Считаем «видимые пустые строки» по количеству <br> подряд.
-  // 1 <br> между блоками = нет пустой строки, 2 = 1 пустая, 3 = 2 пустые и т.д.
-  const maxConsecutiveBr = (html: string): number => {
-    let max = 0
-    const re = /(?:<br\s*\/?>\s*)+/gi
-    let m: RegExpExecArray | null
-    while ((m = re.exec(html)) !== null) {
-      const count = (m[0].match(/<br/gi) ?? []).length
-      if (count > max) max = count
-    }
-    return max
-  }
-
+describe('sanitizeMessengerHtml — email: collapseEmptyLines', () => {
   it('схлопывает <p>&nbsp;</p> подряд до одной пустой строки', () => {
     const dirty =
       '<p>Hello</p>' +
       '<p>&nbsp;</p>'.repeat(10) +
       '<p>World</p>'
-    const out = sanitizeMessengerHtml(dirty)
+    const out = sanitizeEmail(dirty)
     expect(maxConsecutiveBr(out)).toBeLessThanOrEqual(2)
     expect(out).toContain('Hello')
     expect(out).toContain('World')
@@ -37,14 +40,14 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
       '<div>A</div>' +
       '<div></div>'.repeat(8) +
       '<div>B</div>'
-    const out = sanitizeMessengerHtml(dirty)
+    const out = sanitizeEmail(dirty)
     expect(maxConsecutiveBr(out)).toBeLessThanOrEqual(2)
   })
 
   it('схлопывает <div><br></div> и <p><br></p>', () => {
     const dirty =
       '<p>A</p><p><br></p><p><br></p><p><br></p><p><br></p><p>B</p>'
-    const out = sanitizeMessengerHtml(dirty)
+    const out = sanitizeEmail(dirty)
     expect(maxConsecutiveBr(out)).toBeLessThanOrEqual(2)
   })
 
@@ -53,19 +56,19 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
       '<p>A</p>' +
       '<div><span>&nbsp;</span></div>'.repeat(6) +
       '<p>B</p>'
-    const out = sanitizeMessengerHtml(dirty)
+    const out = sanitizeEmail(dirty)
     expect(maxConsecutiveBr(out)).toBeLessThanOrEqual(2)
   })
 
   it('схлопывает <br><br><br>... подряд', () => {
     const dirty = 'A' + '<br>'.repeat(20) + 'B'
-    const out = sanitizeMessengerHtml(dirty)
+    const out = sanitizeEmail(dirty)
     expect(maxConsecutiveBr(out)).toBeLessThanOrEqual(2)
   })
 
   it('не трогает блок с реальным текстом', () => {
     const dirty = '<p>Hello world</p>'
-    const out = sanitizeMessengerHtml(dirty)
+    const out = sanitizeEmail(dirty)
     expect(out).toContain('Hello world')
     expect(out).toContain('<p>')
   })
@@ -75,13 +78,13 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
     // Поэтому реальная проверка — что блок с осмысленным текстом
     // (включая ссылку) не схлопывается.
     const dirty = '<p><a href="https://x.com">link</a></p>'
-    const out = sanitizeMessengerHtml(dirty)
+    const out = sanitizeEmail(dirty)
     expect(out).toContain('href="https://x.com"')
   })
 
   it('сохраняет 1 пустую строку между абзацами (не схлопывает в 0)', () => {
     const dirty = '<p>A</p><p>&nbsp;</p><p>B</p>'
-    const out = sanitizeMessengerHtml(dirty)
+    const out = sanitizeEmail(dirty)
     // Должен остаться хотя бы один <br> или пустой блок-разделитель.
     expect(out).toMatch(/<br|<p[^>]*><\/p>|<div[^>]*><\/div>/)
   })
@@ -90,13 +93,13 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
     // Так заканчивается тело входящего email (Gmail): текст + <br><br><br> +
     // &nbsp; + пустой mail-quote-collapse div (класс вычищает DOMPurify).
     const dirty = 'Текст.<br><br><br>&nbsp;<div class="mail-quote-collapse"></div>'
-    const out = sanitizeMessengerHtml(dirty)
+    const out = sanitizeEmail(dirty)
     expect(out).toBe('Текст.')
   })
 
   it('обрезает начальную пустоту', () => {
     const dirty = '<br>&nbsp;<br>Текст'
-    const out = sanitizeMessengerHtml(dirty)
+    const out = sanitizeEmail(dirty)
     expect(out).toBe('Текст')
   })
 
@@ -107,7 +110,7 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
       '<table><tbody><tr><td><table><tbody><tr><td>' +
       '<span>Строка</span>' +
       '</td></tr></tbody></table></td></tr></tbody></table>'
-    const out = sanitizeMessengerHtml(dirty)
+    const out = sanitizeEmail(dirty)
     expect(out).not.toContain('<table')
     expect(out).toContain('Строка')
   })
@@ -115,7 +118,7 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
   it('сохраняет реальную таблицу данных (2+ ячейки в строке)', () => {
     const dirty =
       '<table><tbody><tr><td>Итого</td><td>$12.14</td></tr></tbody></table>'
-    const out = sanitizeMessengerHtml(dirty)
+    const out = sanitizeEmail(dirty)
     expect(out).toContain('<table')
     expect(out).toContain('Итого')
     expect(out).toContain('$12.14')
@@ -130,7 +133,7 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
       '<tr><td colspan="4" style="font-size: 0; line-height: 0; color: #FFFFFF; padding-top: 12px;">.</td></tr>' +
       '<tr><td>Cable Baseus</td></tr>' +
       '</tbody></table>'
-    const out = sanitizeMessengerHtml(dirty)
+    const out = sanitizeEmail(dirty)
     expect(out).not.toContain('>.<')
     expect(out).toContain('Cable Baseus')
   })
@@ -143,7 +146,7 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
       '<table><tbody><tr>' +
       '<td height="50" style="height:50px;font-size:0px"><a href="#"><img height="50" src="https://x/y.png" style="height:50px"></a></td>' +
       '</tr></tbody></table>'
-    const out = sanitizeMessengerHtml(dirty)
+    const out = sanitizeEmail(dirty)
     expect(out).not.toMatch(/height=/i)
   })
 
@@ -152,17 +155,86 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
     // делает из него <br>. Такие «висячие» <br> в начале ячейки давали гэп перед
     // товаром (реально измерено на письме AliExpress). Чистим края блока.
     const dirty = '<table><tbody><tr><td><div><br><br><a href="#">Товар</a></div></td></tr></tbody></table>'
-    const out = sanitizeMessengerHtml(dirty)
+    const out = sanitizeEmail(dirty)
     expect(out).toContain('Товар')
     expect(out).not.toMatch(/<div>\s*<br/i)
   })
 
   it('сохраняет <br> между строками текста (не край блока)', () => {
     const dirty = '<div>Первая<br><br>Вторая</div>'
-    const out = sanitizeMessengerHtml(dirty)
+    const out = sanitizeEmail(dirty)
     expect(out).toContain('Первая')
     expect(out).toContain('Вторая')
     expect(out).toMatch(/<br/i)
+  })
+
+  it('не трогает реальный текст в блоке без font-size:0', () => {
+    const dirty = '<div style="color: #333">Обычный . текст</div>'
+    const out = sanitizeEmail(dirty)
+    expect(out).toContain('Обычный . текст')
+  })
+
+  it('вычищает preheader-распорки (soft hyphen / zero-width) и сворачивает блок', () => {
+    // preheader письма: невидимые символы между пробелами создают высокий
+    // пустой бокс + артефакт «-» (soft hyphen). После чистки блок пуст.
+    const dirty =
+      '<div>­ ­ ͏ ​ ­ ‍</div><div>Текст</div>'
+    const out = sanitizeEmail(dirty)
+    expect(out).not.toContain('­')
+    expect(out).not.toContain('͏')
+    expect(out).not.toContain('​')
+    expect(out).toContain('Текст')
+  })
+  it('конвертирует пробелы фиксированной ширины (figure space U+2007) в обычные', () => {
+    // Stripe-письма набивают preheader figure-space (U+2007) — он НЕ схлопывается
+    // под white-space:normal, сотня штук даёт высокий пустой бокс.
+    const figureSpaces = ' '.repeat(50)
+    const dirty = `<span>Тема${figureSpaces}конец</span>`
+    const out = sanitizeEmail(dirty)
+    expect(out).not.toContain(' ')
+    expect(out).toContain('Тема')
+    expect(out).toContain('конец')
+  })
+
+  it('конвертирует braille-blank U+2800 (preheader-распорка Госуслуг) в пробел', () => {
+    // Госуслуги набивают preheader символом U+2800 (печатный «пустой» braille,
+    // ширина пробела, НЕ схлопывается) + color:transparent → пустой бокс.
+    const braille = '⠀'.repeat(80)
+    const dirty = `<div style="color: transparent">${braille}</div><div>Текст</div>`
+    const out = sanitizeEmail(dirty)
+    expect(out).not.toContain('⠀')
+    expect(out).toContain('Текст')
+  })
+})
+
+/**
+ * Обычные (не-email) сообщения: пустые строки НЕ схлопываются — бабл показывает
+ * ровно то, что набрано в редакторе (2026-07-16: раньше email-схлопывание
+ * применялось ко всем сообщениям, из-за чего пересылка «оригиналом» выглядела
+ * иначе, чем бабл).
+ */
+describe('sanitizeMessengerHtml — обычные сообщения (без схлопывания)', () => {
+  it('пустой <p></p> → видимая пустая строка <p><br></p>', () => {
+    // В бабле у абзацев margin:0 → пустой <p> имеет нулевую высоту, а в
+    // редакторе это одна пустая строка. Делаем видимой.
+    const out = sanitizeMessengerHtml('<p>A</p><p></p><p>B</p>')
+    expect(out).toBe('<p>A</p><p><br></p><p>B</p>')
+  })
+
+  it('ДВЕ пустые строки подряд сохраняются (не схлопываются в одну)', () => {
+    // Ровно кейс «БРИФ»: автор оставил двойные пустые абзацы между секциями.
+    const out = sanitizeMessengerHtml('<p>A</p><p></p><p></p><p>B</p>')
+    expect(out).toBe('<p>A</p><p><br></p><p><br></p><p>B</p>')
+  })
+
+  it('сохранённый <p><br></p> остаётся ОДНОЙ пустой строкой (не двоится)', () => {
+    const out = sanitizeMessengerHtml('<p>A</p><p><br></p><p>B</p>')
+    expect(out).toBe('<p>A</p><p><br></p><p>B</p>')
+  })
+
+  it('два хвостовых <br> в абзаце → две пустые строки (количество 1:1)', () => {
+    const out = sanitizeMessengerHtml('<p>Текст.<br><br></p><p>Дальше</p>')
+    expect(out).toBe('<p>Текст.</p><p><br></p><p><br></p><p>Дальше</p>')
   })
 
   it('выносит хвостовой <br> из <p> наружу (пустая строка из редактора видна)', () => {
@@ -172,21 +244,8 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
     // рисуется как пустая строка (gap ≈17), совпадает с Telegram.
     const dirty = '<p>Первый абзац.<br></p><p>Второй абзац.</p>'
     const out = sanitizeMessengerHtml(dirty)
-    expect(out).toContain('Первый абзац.')
-    expect(out).toContain('Второй абзац.')
-    // <br> вынесен из <p> — текст стоит прямо перед </p>, а пустая строка между
-    // абзацами = <p><br></p> (чисто копируется/вставляется, не двоится в редакторе)
     expect(out).toContain('Первый абзац.</p>')
     expect(out).toMatch(/<\/p>\s*<p><br\s*\/?><\/p>\s*<p>Второй/i)
-  })
-
-  it('пустую строку между абзацами кодирует как <p><br></p>, а не bare <br> (не двоится при вставке)', () => {
-    // Regression: bare <br> между блоками грязно копируется из бабла → при
-    // вставке в tiptap-композер пустая строка двоилась. <p><br></p> round-trip'ится
-    // ровно в одну пустую строку.
-    const out = sanitizeMessengerHtml('<p>A</p><p></p><p>B</p>')
-    expect(out).toContain('<p><br></p>')
-    expect(out).not.toMatch(/<\/p>\s*<br\s*\/?>\s*<p>/i) // нет bare <br> между <p>
   })
 
   it('одиночный <br> в плоском тексте (plain-text из TG) — перенос строки, НЕ пустая строка', () => {
@@ -199,11 +258,16 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
     expect(out).toMatch(/Привет!\s*<br\s*\/?>\s*Подготовил/i)
   })
 
-  it('двойной <br> в плоском тексте — одна пустая строка (не блок-разделитель)', () => {
+  it('двойной <br> в плоском тексте сохраняется как есть', () => {
     const out = sanitizeMessengerHtml('Строка1<br><br>Строка2')
     expect(out).toContain('Строка1')
     expect(out).toContain('Строка2')
     expect(out).not.toContain('<p><br></p>') // остаётся <br><br>, не оборачивается
+  })
+
+  it('ТРИ переноса в плоском тексте НЕ схлопываются (email-потолок не применяется)', () => {
+    const out = sanitizeMessengerHtml('Строка1<br><br><br>Строка2')
+    expect(maxConsecutiveBr(out)).toBe(3)
   })
 
   it('хвостовой <br> в самом конце сообщения не даёт лишней пустой строки', () => {
@@ -212,42 +276,9 @@ describe('sanitizeMessengerHtml — collapseEmptyLines', () => {
     expect(out).not.toMatch(/<br/i) // край сообщения обрезается
   })
 
-  it('не трогает реальный текст в блоке без font-size:0', () => {
-    const dirty = '<div style="color: #333">Обычный . текст</div>'
-    const out = sanitizeMessengerHtml(dirty)
-    expect(out).toContain('Обычный . текст')
+  it('inline-стили режутся белым списком и для обычных сообщений', () => {
+    const out = sanitizeMessengerHtml('<p style="width:600px;color:#333">Текст</p>')
+    expect(out).not.toContain('width')
+    expect(out).toContain('color: #333')
   })
-
-  it('вычищает preheader-распорки (soft hyphen / zero-width) и сворачивает блок', () => {
-    // preheader письма: невидимые символы между пробелами создают высокий
-    // пустой бокс + артефакт «-» (soft hyphen). После чистки блок пуст.
-    const dirty =
-      '<div>­ ­ ͏ ​ ­ ‍</div><div>Текст</div>'
-    const out = sanitizeMessengerHtml(dirty)
-    expect(out).not.toContain('­')
-    expect(out).not.toContain('͏')
-    expect(out).not.toContain('​')
-    expect(out).toContain('Текст')
-  })
-  it('конвертирует пробелы фиксированной ширины (figure space U+2007) в обычные', () => {
-    // Stripe-письма набивают preheader figure-space (U+2007) — он НЕ схлопывается
-    // под white-space:normal, сотня штук даёт высокий пустой бокс.
-    const figureSpaces = '\u2007'.repeat(50)
-    const dirty = `<span>Тема${figureSpaces}конец</span>`
-    const out = sanitizeMessengerHtml(dirty)
-    expect(out).not.toContain('\u2007')
-    expect(out).toContain('Тема')
-    expect(out).toContain('конец')
-  })
-
-  it('конвертирует braille-blank U+2800 (preheader-распорка Госуслуг) в пробел', () => {
-    // Госуслуги набивают preheader символом U+2800 (печатный «пустой» braille,
-    // ширина пробела, НЕ схлопывается) + color:transparent → пустой бокс.
-    const braille = '\u2800'.repeat(80)
-    const dirty = `<div style="color: transparent">${braille}</div><div>Текст</div>`
-    const out = sanitizeMessengerHtml(dirty)
-    expect(out).not.toContain('\u2800')
-    expect(out).toContain('Текст')
-  })
-
 })

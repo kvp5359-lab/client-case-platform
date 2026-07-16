@@ -311,6 +311,15 @@ function trimInnerEdgeBreaks(root: Element): void {
  */
 function moveTrailingParaBreaks(root: Element): void {
   root.querySelectorAll('p').forEach((el) => {
+    // Абзац из ОДНИХ <br> (пустые строки) не трогаем: он и так рисуется пустыми
+    // строками, а вынос всех <br> оставил бы невидимый огрызок <p></p>, который
+    // при копировании в редактор дал бы лишнюю пустую строку.
+    const hasContent = Array.from(el.childNodes).some(
+      (n) =>
+        !(n.nodeType === 1 && (n as Element).tagName === 'BR') &&
+        !(n.nodeType === 3 && (n.textContent ?? '').trim() === ''),
+    )
+    if (!hasContent) return
     while (el.lastChild && el.lastChild.nodeType === 1 &&
            (el.lastChild as Element).tagName === 'BR') {
       const br = el.lastChild
@@ -329,9 +338,13 @@ function moveTrailingParaBreaks(root: Element): void {
  * пустая строка (замер настоящей вставки). Внутриабзацные `<br>` (перенос строки
  * внутри `<p>`) и вложенный email-контент (в `div`/`td`) — НЕ прямые дети root,
  * не трогаются. Ведущие/замыкающие разделители снимаются (нет пустых строк по
- * краям бабла). Группа подряд идущих `<br>` → одна пустая строка.
+ * краям бабла).
+ *
+ * `collapseRuns`: true (email) — группа подряд идущих `<br>` → одна пустая
+ * строка; false (обычные сообщения) — каждая `<br>` группы → своя `<p><br></p>`
+ * (количество пустых строк сохраняется 1:1, ничего не схлопываем).
  */
-function normalizeRootBlankLines(root: Element): void {
+function normalizeRootBlankLines(root: Element, collapseRuns: boolean): void {
   const BLOCK = new Set([
     'P', 'DIV', 'BLOCKQUOTE', 'OL', 'UL', 'LI',
     'TABLE', 'THEAD', 'TBODY', 'TFOOT', 'TR', 'TD', 'TH',
@@ -369,9 +382,15 @@ function normalizeRootBlankLines(root: Element): void {
       // строка (баг 2026-07-08).
       const isSeparator = isBlockEl(meaningfulPrev(node)) || isBlockEl(cur)
       if (isSeparator) {
-        const p = document.createElement('p')
-        p.appendChild(document.createElement('br'))
-        node.replaceWith(p)
+        const brCount = run.filter((n) => isBr(n)).length
+        const lines = collapseRuns ? 1 : brCount
+        const frag = document.createDocumentFragment()
+        for (let i = 0; i < lines; i++) {
+          const p = document.createElement('p')
+          p.appendChild(document.createElement('br'))
+          frag.appendChild(p)
+        }
+        node.replaceWith(frag)
         for (let i = 1; i < run.length; i++) run[i].remove()
       }
       node = cur
@@ -429,12 +448,64 @@ function collapseEmptyLines(html: string): string {
   unwrapLayoutTables(root)
   trimInnerEdgeBreaks(root)
   moveTrailingParaBreaks(root)
-  normalizeRootBlankLines(root)
+  normalizeRootBlankLines(root, true)
 
   let result = root.innerHTML
   // 3+ подряд <br> → 2 (= одна пустая строка).
   result = result.replace(/(<br\s*\/?>\s*){3,}/gi, '<br><br>')
   return trimEdgeWhitespaceHtml(result)
+}
+
+/**
+ * Пайплайн ОБЫЧНЫХ (не-email) сообщений: пустые строки НЕ схлопываются —
+ * сколько автор набрал в редакторе, столько и видно в бабле (1:1 с полем
+ * ввода/пересылкой). Email-чистки (preheader'ы, layout-таблицы, потолок
+ * «максимум одна пустая подряд») сюда не применяются — они писались под
+ * мусор почтовых рассылок и прятали осознанные пустые строки автора.
+ *
+ * Что делаем:
+ * 1. Пустой абзац `<p></p>` → `<p><br></p>`: в бабле у абзацев margin:0,
+ *    пустой `<p>` имеет НУЛЕВУЮ высоту (в редакторе это одна пустая строка) —
+ *    без этого пустые строки автора просто исчезали бы.
+ * 2. Хвостовой `<br>` из `<p>` наружу (фикс 2026-07-08: браузер его не рисует,
+ *    а Telegram рисует).
+ * 3. Root-level `<br>`-разделители → `<p><br></p>` ПОШТУЧНО (без схлопывания
+ *    группы) — чисто копируется в редактор, количество сохраняется.
+ * 4. Крайняя пустота (bare `<br>`/пробелы по краям) обрезается, как и раньше.
+ */
+function normalizeMessageBlankLines(html: string): string {
+  if (typeof document === 'undefined') return normalizeMessageBlankLinesRegex(html)
+
+  const root = document.createElement('div')
+  root.innerHTML = html
+
+  // Защита вёрстки бабла от inline-стилей вставленного контента — не чистка
+  // пустых строк, оставляем для обоих типов сообщений.
+  restrictInlineStyles(root)
+
+  // Пустой <p></p> (без <br> и текста) → видимая пустая строка. Абзацы, уже
+  // содержащие <br>, не трогаем — они рисуются сами.
+  root.querySelectorAll('p').forEach((p) => {
+    const empty = Array.from(p.childNodes).every(
+      (n) => n.nodeType === 3 && (n.textContent ?? '').trim() === '',
+    )
+    if (empty) {
+      p.textContent = ''
+      p.appendChild(document.createElement('br'))
+    }
+  })
+
+  moveTrailingParaBreaks(root)
+  normalizeRootBlankLines(root, false)
+
+  return trimEdgeWhitespaceHtml(root.innerHTML)
+}
+
+/** SSR-fallback для normalizeMessageBlankLines: только `<p></p>` → `<p><br></p>`
+ *  и обрезка краёв, без обхода DOM. */
+function normalizeMessageBlankLinesRegex(html: string): string {
+  const curr = html.replace(/<p(\s[^>]*)?>\s*<\/p>/gi, '<p$1><br></p>')
+  return trimEdgeWhitespaceHtml(curr)
 }
 
 /** SSR-fallback. Покрывает базовые случаи `<div></div>` / `<p><br></p>` /
@@ -458,8 +529,14 @@ function collapseEmptyLinesRegex(html: string): string {
  * div/span включены, потому что email-клиенты (Gmail в первую очередь)
  * рендерят абзацы как `<div>...</div><div><br></div><div>...</div>`. Без
  * div'ов после санитизации абзацы слипались в одну строку. Атрибуты
- * (style, class) всё равно вычищаются — рендерим только семантику. */
-export function sanitizeMessengerHtml(dirty: string): string {
+ * (style, class) всё равно вычищаются — рендерим только семантику.
+ *
+ * `opts.email` — контент письма: применяется полный пайплайн email-чисток
+ * (схлопывание пустых строк, preheader'ы, layout-таблицы). Для обычных
+ * сообщений (дефолт) пустые строки НЕ схлопываются — бабл показывает ровно
+ * то, что набрано в редакторе (иначе пересылка «оригиналом» выглядела бы
+ * иначе, чем бабл). Определять флаг по `isEmailSource(message.source)`. */
+export function sanitizeMessengerHtml(dirty: string, opts?: { email?: boolean }): string {
   if (!dirty) return ''
   const clean = DOMPurify.sanitize(dirty, {
     ALLOWED_TAGS: [
@@ -497,7 +574,7 @@ export function sanitizeMessengerHtml(dirty: string): string {
     FORBID_ATTR: [],
     ALLOW_UNKNOWN_PROTOCOLS: false,
   })
-  return collapseEmptyLines(clean)
+  return opts?.email ? collapseEmptyLines(clean) : normalizeMessageBlankLines(clean)
 }
 
 /** Регулярка для URL в тексте */
