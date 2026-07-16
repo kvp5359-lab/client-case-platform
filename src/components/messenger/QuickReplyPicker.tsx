@@ -196,7 +196,7 @@ export function QuickReplyPicker({
           ['replies', 'Быстрые ответы'],
           ['qa', 'Q&A'],
           ['articles', 'Статьи'],
-          ['descriptions', 'Описания документов'],
+          ['descriptions', 'Документы'],
           ['external', 'Внешние'],
         ] as const)
       : ([

@@ -1,32 +1,41 @@
 "use client"
 
 /**
- * Вкладка «Ссылки» внутри пикера быстрых ответов (QuickReplyPicker).
- * Собирает публичные ссылки на статьи проекта + внешние ссылки, мультивыбор,
- * и ВСТАВЛЯЕТ выбранное прямо в редактор сообщения (editor.insertContent).
- * Поиск управляется извне (единое поле пикера).
+ * Вкладки «Статьи» / «Документы» / «Внешние» внутри пикера быстрых ответов
+ * (QuickReplyPicker). Оркестратор: грузит ресурсы проекта, держит выбор, номера
+ * и порядок, ВСТАВЛЯЕТ выбранное в редактор сообщения. Сами списки рисуют
+ * ArticleGroupsView / DocTreeView / ExternalLinksView, сборку вставки делает
+ * чистый lib/share/docTreeInsert (там же правила порядка и нумерации).
+ *
+ * Вкладка «Документы» показывает ВСЁ дерево одноимённой вкладки проекта
+ * (набор → папки → слоты), а не только позиции со статьёй: где статья есть —
+ * вставляется ссылка, где нет — просто название.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
-import {
-  Copy,
-  RefreshCw,
-  FileText,
-  Link2,
-  Loader2,
-  FolderOpen,
-  Table2,
-  ChevronRight,
-} from 'lucide-react'
+import { Copy, Loader2 } from 'lucide-react'
 import type { Editor } from '@tiptap/react'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Switch } from '@/components/ui/switch'
-import { cn } from '@/lib/utils'
-import { escapeHtml } from '@/lib/html'
+import {
+  planDocInsert,
+  docInsertNumbers,
+  applyDocOrder,
+  buildDocTreeHtml,
+  buildDocTreePlain,
+  type DocPlanNode,
+  type DocInsertNode,
+  type DocOrder,
+} from '@/lib/share/docTreeInsert'
+import { DocTreeView } from '@/components/share/DocTreeView'
+import { ArticleGroupsView } from '@/components/share/ArticleGroupsView'
+import { ExternalLinksView } from '@/components/share/ExternalLinksView'
+import { ShareRowActions } from '@/components/share/shareRowParts'
+import { useSharePrefs } from '@/components/share/useSharePrefs'
+import { useShareExpansion } from '@/components/share/useShareExpansion'
 import {
   getProjectShareableResources,
   ensureArticleShareLink,
@@ -34,7 +43,8 @@ import {
   buildShareUrl,
   type ProjectShareables,
   type ShareableArticle,
-  type ShareableExternal,
+  type ShareableDocKit,
+  type ShareableDocFolder,
 } from '@/services/api/shareLinks'
 
 type Props = {
@@ -50,62 +60,13 @@ type Props = {
   onInserted: () => void
 }
 
-/** Группа статей-описаний папок/слотов (см. get_project_shareable_resources). */
+/**
+ * Группа статей-описаний папок/слотов в секции articles (см.
+ * get_project_shareable_resources). Вкладка «Документы» их больше не рендерит —
+ * она работает на doc_tree, — но и во вкладке «Статьи» они не нужны, поэтому
+ * группа отсекается. Убрать fold-ветку из articles можно после выката фронта.
+ */
 const DESCRIPTION_GROUP = 'Описания разделов документов'
-
-/** Настройки формата (прятать ссылку / нумеровать) — на уровне пользователя. */
-type SharePrefs = { hideUnderText: boolean; numbered: boolean }
-const SHARE_PREFS_KEY = 'cc_share_link_prefs'
-
-function readSharePrefs(userId: string | undefined): SharePrefs {
-  const fallback: SharePrefs = { hideUnderText: false, numbered: false }
-  if (typeof window === 'undefined') return fallback
-  try {
-    const raw = window.localStorage.getItem(`${SHARE_PREFS_KEY}:${userId ?? 'anon'}`)
-    if (!raw) return fallback
-    const p = JSON.parse(raw)
-    return { hideUnderText: !!p.hideUnderText, numbered: !!p.numbered }
-  } catch {
-    return fallback
-  }
-}
-
-function writeSharePrefs(userId: string | undefined, prefs: SharePrefs) {
-  if (typeof window === 'undefined') return
-  try {
-    window.localStorage.setItem(`${SHARE_PREFS_KEY}:${userId ?? 'anon'}`, JSON.stringify(prefs))
-  } catch {
-    /* localStorage недоступен — игнорируем */
-  }
-}
-
-const EXTERNAL_ICON: Record<string, typeof Link2> = {
-  drive_folder: FolderOpen,
-  kit_folder: FolderOpen,
-  doc_folder: FolderOpen,
-  form: Table2,
-  brief: Table2,
-  source_doc: FileText,
-}
-
-/** Квадрат-чекбокс: пустой, когда не выбран; с НОМЕРОМ по порядку отметки, когда выбран. */
-function SelectBadge({ n, onClick }: { n: number | null; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={n ? 'Убрать из выбора' : 'Добавить в выбор'}
-      className={cn(
-        'flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border text-[10px] font-semibold leading-none tabular-nums transition-colors',
-        n
-          ? 'border-primary bg-primary text-primary-foreground'
-          : 'border-input hover:border-primary/60',
-      )}
-    >
-      {n ?? ''}
-    </button>
-  )
-}
 
 export function ShareLinksTab({ editor, projectId, search, enabled, view, onInserted }: Props) {
   const qc = useQueryClient()
@@ -122,14 +83,11 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
   const [tokenOverride, setTokenOverride] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<Record<string, boolean>>({})
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
-  // Формат вставки — на уровне пользователя (localStorage, не по проектам).
-  const [hideUnderText, setHideUnderText] = useState(() => readSharePrefs(userId).hideUnderText)
-  // Нумеровать вставляемый список (1. …, 2. …) — только для «Вставить выбранное».
-  const [numbered, setNumbered] = useState(() => readSharePrefs(userId).numbered)
-  useEffect(() => {
-    writeSharePrefs(userId, { hideUnderText, numbered })
-  }, [userId, hideUnderText, numbered])
+  // Перестановки (перетаскивание) и ручные номера — настройка ТЕКУЩЕЙ вставки:
+  // попап закрывается вместе с выбором, документы проекта не трогаются.
+  const [order, setOrder] = useState<DocOrder>({})
+  const [numberOverrides, setNumberOverrides] = useState<Record<string, number>>({})
+  const { hideUnderText, setHideUnderText, numbered, setNumbered } = useSharePrefs(userId)
 
   const tokenFor = (articleId: string, base: string | null): string | null =>
     tokenOverride[articleId] ?? base
@@ -152,9 +110,11 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
       return next
     })
 
-  const ensureToken = async (articleId: string): Promise<string> => {
+  const ensureToken = async (articleId: string, knownToken?: string | null): Promise<string> => {
     const existing =
-      tokenOverride[articleId] ?? data?.articles.find((a) => a.article_id === articleId)?.token
+      tokenOverride[articleId] ??
+      knownToken ??
+      data?.articles.find((a) => a.article_id === articleId)?.token
     if (existing) return existing
     setBusy((b) => ({ ...b, [articleId]: true }))
     try {
@@ -180,38 +140,48 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
     }
   }
 
-  // numberedFlag — префикс «1. », «2. » (только для «Вставить/Скопировать выбранное»).
-  const buildHtml = (items: { label: string; url: string }[], numberedFlag = false): string =>
-    items
-      .map((i, idx) => {
-        const num = numberedFlag ? `${idx + 1}. ` : ''
-        return hideUnderText
-          ? `${num}<a href="${escapeHtml(i.url)}">${escapeHtml(i.label)}</a>`
-          : `${num}${escapeHtml(i.label)}<br><a href="${escapeHtml(i.url)}">${escapeHtml(i.url)}</a>`
-      })
-      .join(hideUnderText ? '<br>' : '<br><br>')
+  /** План → готовые узлы: дотягиваем токены статей (сеть), адреса и номера. */
+  const resolvePlan = async (
+    plan: DocPlanNode[],
+    numbers: Map<string, string>,
+  ): Promise<DocInsertNode[]> => {
+    const resolveNode = async (n: DocPlanNode): Promise<DocInsertNode> => ({
+      label: n.label,
+      url: n.url ?? (n.articleId ? buildShareUrl(await ensureToken(n.articleId, n.token)) : null),
+      number: numbers.get(n.key) ?? null,
+      isFolder: n.isFolder,
+      children: await Promise.all(n.children.map(resolveNode)),
+    })
+    return Promise.all(plan.map(resolveNode))
+  }
 
-  const insertItems = (items: { label: string; url: string }[], numberedFlag = false) => {
-    if (items.length === 0) return
-    editor.chain().focus().insertContent(buildHtml(items, numberedFlag)).run()
+  // numberedFlag — префикс «1. » / «1.1. » (только для «Вставить/Скопировать выбранное»).
+  const insertNodes = (nodes: DocInsertNode[], numberedFlag = false) => {
+    if (nodes.length === 0) return
+    editor
+      .chain()
+      .focus()
+      .insertContent(buildDocTreeHtml(nodes, { hideUnderText, numbered: numberedFlag }))
+      .run()
     onInserted()
   }
 
-  const copyItems = async (items: { label: string; url: string }[], numberedFlag = false) => {
-    if (items.length === 0) return
-    const numPrefix = (idx: number) => (numberedFlag ? `${idx + 1}. ` : '')
+  const copyNodes = async (nodes: DocInsertNode[], numberedFlag = false) => {
+    if (nodes.length === 0) return
+    const format = { hideUnderText, numbered: numberedFlag }
     try {
       if (hideUnderText && typeof ClipboardItem !== 'undefined') {
-        const plain = items.map((i, idx) => `${numPrefix(idx)}${i.label}`).join('\n')
         await navigator.clipboard.write([
           new ClipboardItem({
-            'text/html': new Blob([buildHtml(items, numberedFlag)], { type: 'text/html' }),
-            'text/plain': new Blob([plain], { type: 'text/plain' }),
+            'text/html': new Blob([buildDocTreeHtml(nodes, format)], { type: 'text/html' }),
+            'text/plain': new Blob([buildDocTreePlain(nodes, format)], { type: 'text/plain' }),
           }),
         ])
       } else {
+        // Спрятать ссылку под названием тут негде (кладём чистый текст), поэтому
+        // hideUnderText игнорируем — иначе адрес потерялся бы молча.
         await navigator.clipboard.writeText(
-          items.map((i, idx) => `${numPrefix(idx)}${i.label}\n${i.url}`).join('\n\n'),
+          buildDocTreePlain(nodes, { ...format, hideUnderText: false }),
         )
       }
       toast.success('Скопировано')
@@ -220,28 +190,94 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
     }
   }
 
-  // Собираем В ПОРЯДКЕ ОТМЕТКИ (Set хранит порядок вставки ключей).
-  const gatherSelected = async (): Promise<{ label: string; url: string }[]> => {
-    if (!data) return []
-    const items: { label: string; url: string }[] = []
-    for (const key of selected) {
-      if (key.startsWith('art:')) {
-        const id = key.slice(4)
-        const a = data.articles.find((x) => x.article_id === id)
-        if (!a) continue
-        const token = await ensureToken(id)
-        items.push({ label: a.title, url: buildShareUrl(token) })
-      } else if (key.startsWith('ext:')) {
-        const e = data.external[Number(key.slice(4))]
-        if (e) items.push({ label: e.label, url: e.url })
-      }
+  /** Одиночная строка (клик по названию): статья, внешняя ссылка или узел дерева. */
+  const insertOne = async (
+    label: string,
+    articleId: string | null,
+    token: string | null,
+    url?: string,
+  ) => {
+    try {
+      const resolved = url ?? (articleId ? buildShareUrl(await ensureToken(articleId, token)) : null)
+      insertNodes([{ label, url: resolved, number: null, children: [] }])
+    } catch {
+      toast.error('Не удалось получить ссылку')
     }
-    return items
   }
+
+  const copyOne = async (
+    label: string,
+    articleId: string | null,
+    token: string | null,
+    url?: string,
+  ) => {
+    try {
+      const resolved = url ?? (articleId ? buildShareUrl(await ensureToken(articleId, token)) : null)
+      await copyNodes([{ label, url: resolved, number: null, children: [] }])
+    } catch {
+      toast.error('Не удалось получить ссылку')
+    }
+  }
+
+  const articles = useMemo(() => data?.articles ?? [], [data])
+  const external = useMemo(() => data?.external ?? [], [data])
+  const docTree = useMemo(() => data?.doc_tree ?? [], [data])
+  const selectedCount = selected.size
+  // Порядок отметки — Set сохраняет порядок вставки ключей.
+  const orderList = useMemo(() => Array.from(selected), [selected])
+
+  /** Дерево с учётом перетаскивания — им же рисуется список (единый порядок). */
+  const orderedTree = useMemo(() => applyDocOrder(docTree, order), [docTree, order])
+
+  /**
+   * План вставки по ВСЕМ отмеченным ключам сразу (все вкладки): дерево идёт в
+   * своём порядке, статьи и внешние ссылки — следом, в порядке отметки.
+   *
+   * Он же — источник номеров в квадратиках: список и сообщение считают номера
+   * одним кодом и разойтись не могут.
+   */
+  const selectionPlan = useMemo(
+    () =>
+      planDocInsert(orderedTree, orderList, {
+        resolveExtra: (key) => {
+          if (key.startsWith('art:')) {
+            const a = articles.find((x) => x.article_id === key.slice(4))
+            return a ? { label: a.title, articleId: a.article_id, token: a.token } : null
+          }
+          if (key.startsWith('ext:')) {
+            const e = external[Number(key.slice(4))]
+            return e ? { label: e.label, articleId: null, token: null, url: e.url } : null
+          }
+          return null
+        },
+      }),
+    [orderedTree, orderList, articles, external],
+  )
+
+  const numberByKey = useMemo(
+    () => docInsertNumbers(selectionPlan, numberOverrides),
+    [selectionPlan, numberOverrides],
+  )
+  const numberOf = (key: string): string | null => numberByKey.get(key) ?? null
+
+  const setNumberOverride = (key: string, value: number | null) =>
+    setNumberOverrides((prev) => {
+      if (value === null) {
+        const { [key]: _drop, ...rest } = prev
+        return rest
+      }
+      return { ...prev, [key]: value }
+    })
+
+  const reorderFolders = (kitId: string, folderIds: string[]) =>
+    setOrder((prev) => ({ ...prev, folders: { ...prev.folders, [kitId]: folderIds } }))
+
+  const reorderSlots = (folderId: string, slotIds: string[]) =>
+    setOrder((prev) => ({ ...prev, slots: { ...prev.slots, [folderId]: slotIds } }))
 
   const insertSelected = async () => {
     try {
-      insertItems(await gatherSelected(), numbered)
+      insertNodes(await resolvePlan(selectionPlan, numberByKey), numbered)
     } catch {
       toast.error('Не удалось получить ссылки')
     }
@@ -249,29 +285,10 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
 
   const copySelected = async () => {
     try {
-      await copyItems(await gatherSelected(), numbered)
+      await copyNodes(await resolvePlan(selectionPlan, numberByKey), numbered)
     } catch {
       toast.error('Не удалось скопировать')
     }
-  }
-
-  const insertArticle = async (a: ShareableArticle) => {
-    try {
-      const token = await ensureToken(a.article_id)
-      insertItems([{ label: a.title, url: buildShareUrl(token) }])
-    } catch {
-      toast.error('Не удалось получить ссылку')
-    }
-  }
-
-  const articles = useMemo(() => data?.articles ?? [], [data])
-  const external = data?.external ?? []
-  const selectedCount = selected.size
-  // Порядок отметки (Set сохраняет порядок вставки) → номер в квадратике.
-  const orderList = useMemo(() => Array.from(selected), [selected])
-  const orderOf = (key: string): number | null => {
-    const i = orderList.indexOf(key)
-    return i < 0 ? null : i + 1
   }
 
   const q = search.trim().toLowerCase()
@@ -288,9 +305,11 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
     return Array.from(map, ([group, items]) => ({ group, items }))
   }, [articles])
 
-  const filteredGroups = useMemo(
+  // Реальные группы БЗ (статьи-описания живут во вкладке «Документы» на doc_tree).
+  const realGroups = useMemo(
     () =>
       articleGroups
+        .filter((g) => g.group !== DESCRIPTION_GROUP)
         .map(({ group, items }) => ({
           group,
           items: q
@@ -305,131 +324,58 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
 
   const filteredExternal = q ? external.filter((e) => e.label.toLowerCase().includes(q)) : external
 
-  // Иерархия внешних: папки наборов (kit_folder) + их подпапки (doc_folder по kit_id).
-  const externalKitFolders = filteredExternal.filter((e) => e.kind === 'kit_folder')
-  const kitIdsShown = new Set(externalKitFolders.map((k) => k.kit_id))
-  const externalSubByKit = new Map<string, ShareableExternal[]>()
-  const externalTop: ShareableExternal[] = []
-  for (const e of filteredExternal) {
-    if (e.kind === 'kit_folder') continue
-    if (e.kind === 'doc_folder' && e.kit_id && kitIdsShown.has(e.kit_id)) {
-      const arr = externalSubByKit.get(e.kit_id)
-      if (arr) arr.push(e)
-      else externalSubByKit.set(e.kit_id, [e])
-    } else {
-      externalTop.push(e)
+  // Дерево документов под поиск: совпало имя набора/папки → показываем её целиком,
+  // иначе оставляем только подходящие слоты.
+  const filteredTree = useMemo<ShareableDocKit[]>(() => {
+    if (!q) return orderedTree
+    const out: ShareableDocKit[] = []
+    for (const kit of orderedTree) {
+      const kitMatch = kit.name.toLowerCase().includes(q)
+      const folders: ShareableDocFolder[] = []
+      for (const f of kit.folders) {
+        const folderMatch = kitMatch || f.name.toLowerCase().includes(q)
+        const slots = folderMatch ? f.slots : f.slots.filter((s) => s.name.toLowerCase().includes(q))
+        if (folderMatch || slots.length > 0) folders.push({ ...f, slots })
+      }
+      if (folders.length > 0) out.push({ ...kit, folders })
     }
-  }
+    return out
+  }, [orderedTree, q])
 
-  // Реальные группы БЗ vs статьи-описания разделов (отдельная вкладка).
-  const realGroups = filteredGroups.filter((g) => g.group !== DESCRIPTION_GROUP)
-  const descriptionItems = filteredGroups.find((g) => g.group === DESCRIPTION_GROUP)?.items ?? []
-  const descriptionKeys = descriptionItems.map((a) => `art:${a.article_id}`)
-  const descriptionAllSelected =
-    descriptionKeys.length > 0 && descriptionKeys.every((k) => selected.has(k))
-
-  const allGroupNames = realGroups.map((g) => g.group)
-  const allGroupsExpanded =
-    allGroupNames.length > 0 && allGroupNames.every((g) => forceExpand || expandedGroups.has(g))
-
-  const toggleGroupCollapse = (group: string) =>
-    setExpandedGroups((prev) => {
-      const next = new Set(prev)
-      if (next.has(group)) next.delete(group)
-      else next.add(group)
-      return next
-    })
-
-  const toggleAllGroups = () =>
-    setExpandedGroups(allGroupsExpanded ? new Set() : new Set(allGroupNames))
+  const {
+    expandedGroups,
+    toggleGroup,
+    allGroupsExpanded,
+    toggleAllGroups,
+    expandedFolders,
+    collapsedKits,
+    toggleFolder,
+    toggleKit,
+    allFoldersExpanded,
+    toggleAllFolders,
+  } = useShareExpansion({
+    allGroupNames: realGroups.map((g) => g.group),
+    allFolderIds: filteredTree.flatMap((k) => k.folders.map((f) => f.folder_id)),
+    forceExpand,
+  })
 
   const viewEmpty =
     view === 'articles'
       ? realGroups.length === 0
       : view === 'descriptions'
-        ? descriptionItems.length === 0
+        ? filteredTree.length === 0
         : filteredExternal.length === 0
 
-  const renderArticleRow = (a: ShareableArticle, indent = true) => {
-    const token = tokenFor(a.article_id, a.token)
-    const key = `art:${a.article_id}`
-    const isBusy = busy[a.article_id]
-    return (
-      <div
-        key={key}
-        className={cn(
-          'group/row flex items-center gap-2.5 rounded-md pr-2 py-0.5 hover:bg-accent',
-          indent ? 'pl-9' : 'pl-2',
-        )}
-      >
-        <SelectBadge n={orderOf(key)} onClick={() => toggle(key)} />
-        <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
-        <button
-          type="button"
-          onClick={() => insertArticle(a)}
-          className="flex-1 min-w-0 truncate text-left text-sm"
-          title="Вставить ссылку в сообщение"
-        >
-          {a.title}
-        </button>
-        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
-          {token && (
-            <button
-              type="button"
-              onClick={() => regenerate(a.article_id)}
-              disabled={isBusy}
-              title="Пересоздать ссылку (старая перестанет работать)"
-              className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-50"
-            >
-              <RefreshCw className={cn('h-3.5 w-3.5', isBusy && 'animate-spin')} />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => ensureToken(a.article_id).then((t) => copyItems([{ label: a.title, url: buildShareUrl(t) }]))}
-            disabled={isBusy}
-            title="Скопировать ссылку"
-            className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-50"
-          >
-            {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  const renderExternalRow = (e: ShareableExternal, indent = false) => {
-    const key = `ext:${external.indexOf(e)}`
-    const Icon = EXTERNAL_ICON[e.kind] ?? Link2
-    return (
-      <div
-        key={key}
-        className={cn(
-          'group/row flex items-center gap-2.5 rounded-md pr-2 py-0.5 hover:bg-accent',
-          indent ? 'pl-9' : 'pl-2',
-        )}
-      >
-        <SelectBadge n={orderOf(key)} onClick={() => toggle(key)} />
-        <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
-        <button
-          type="button"
-          onClick={() => insertItems([{ label: e.label, url: e.url }])}
-          className="flex-1 min-w-0 truncate text-left text-sm"
-          title="Вставить ссылку в сообщение"
-        >
-          {e.label}
-        </button>
-        <button
-          type="button"
-          onClick={() => copyItems([{ label: e.label, url: e.url }])}
-          title="Скопировать ссылку"
-          className="p-1.5 rounded text-muted-foreground opacity-0 transition-opacity hover:text-foreground hover:bg-muted group-hover/row:opacity-100 focus-within:opacity-100"
-        >
-          <Copy className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    )
-  }
+  const renderActions = (label: string, articleId: string | null, token: string | null) => (
+    <ShareRowActions
+      label={label}
+      articleId={articleId}
+      token={articleId ? tokenFor(articleId, token) : null}
+      busy={articleId ? !!busy[articleId] : false}
+      onRegenerate={regenerate}
+      onCopy={(l, aId, t) => copyOne(l, aId, t)}
+    />
+  )
 
   return (
     <div className="flex h-[400px] flex-col">
@@ -451,13 +397,29 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
               : view === 'articles'
                 ? 'Нет статей.'
                 : view === 'descriptions'
-                  ? 'Нет описаний разделов.'
+                  ? 'В проекте нет папок с документами.'
                   : 'Нет внешних ссылок.'}
           </div>
         )}
 
-        {/* Статьи базы знаний (по группам) */}
         {view === 'articles' && realGroups.length > 0 && (
+          <ArticleGroupsView
+            groups={realGroups}
+            selected={selected}
+            numberOf={numberOf}
+            onToggle={toggle}
+            onSetSelected={setGroupSelected}
+            expandedGroups={expandedGroups}
+            onToggleGroup={toggleGroup}
+            forceExpand={forceExpand}
+            allExpanded={allGroupsExpanded}
+            onToggleAll={toggleAllGroups}
+            onInsertOne={insertOne}
+            renderActions={renderActions}
+          />
+        )}
+
+        {view === 'descriptions' && filteredTree.length > 0 && (
           <div className="mb-1">
             <div className="flex items-center gap-2 px-2 py-1">
               <span className="text-[11px] text-muted-foreground/70">
@@ -466,87 +428,43 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
               {!forceExpand && (
                 <button
                   type="button"
-                  onClick={toggleAllGroups}
+                  onClick={toggleAllFolders}
                   className="ml-auto text-xs text-muted-foreground hover:text-foreground"
                 >
-                  {allGroupsExpanded ? 'Свернуть всё' : 'Развернуть всё'}
+                  {allFoldersExpanded ? 'Свернуть всё' : 'Развернуть всё'}
                 </button>
               )}
             </div>
-            <div className="space-y-0">
-              {realGroups.map(({ group, items }) => {
-                const expanded = forceExpand || expandedGroups.has(group)
-                const groupKeys = items.map((a) => `art:${a.article_id}`)
-                const selCount = groupKeys.filter((k) => selected.has(k)).length
-                const groupState: boolean | 'indeterminate' =
-                  selCount === 0 ? false : selCount === groupKeys.length ? true : 'indeterminate'
-                return (
-                  <div key={group}>
-                    <div className="group/gh flex items-center gap-2.5 rounded-md px-2 py-1 hover:bg-accent/60">
-                      <Checkbox
-                        checked={groupState}
-                        onCheckedChange={() => setGroupSelected(groupKeys, selCount !== groupKeys.length)}
-                        aria-label="Выбрать все статьи группы"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => toggleGroupCollapse(group)}
-                        className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
-                      >
-                        <ChevronRight
-                          className={cn(
-                            'h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform',
-                            expanded && 'rotate-90',
-                          )}
-                        />
-                        <span className="truncate text-[15px] font-medium">{group}</span>
-                        <span className="shrink-0 text-xs tabular-nums text-muted-foreground/60">
-                          {items.length}
-                        </span>
-                      </button>
-                    </div>
-                    {expanded && (
-                      <div className="space-y-0">{items.map((a) => renderArticleRow(a))}</div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+            <DocTreeView
+              tree={filteredTree}
+              selected={selected}
+              numberOf={numberOf}
+              onToggle={toggle}
+              onSetSelected={setGroupSelected}
+              onSetNumber={setNumberOverride}
+              onReorderFolders={reorderFolders}
+              onReorderSlots={reorderSlots}
+              expandedFolders={expandedFolders}
+              collapsedKits={collapsedKits}
+              onToggleFolder={toggleFolder}
+              onToggleKit={toggleKit}
+              forceExpand={forceExpand}
+              numbered={numbered}
+              onInsertOne={insertOne}
+              renderActions={renderActions}
+            />
           </div>
         )}
 
-        {/* Описания разделов документов (плоский список) */}
-        {view === 'descriptions' && descriptionItems.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 px-2 py-1">
-              <span className="text-[11px] text-muted-foreground/70">
-                закроются при завершении проекта
-              </span>
-              <button
-                type="button"
-                onClick={() => setGroupSelected(descriptionKeys, !descriptionAllSelected)}
-                className="ml-auto text-xs text-muted-foreground hover:text-foreground"
-              >
-                {descriptionAllSelected ? 'Снять всё' : 'Выбрать всё'}
-              </button>
-            </div>
-            <div className="space-y-0">{descriptionItems.map((a) => renderArticleRow(a, false))}</div>
-          </div>
-        )}
-
-        {/* Внешние ссылки (папки наборов — с вложенными подпапками) */}
         {view === 'external' && filteredExternal.length > 0 && (
-          <div className="space-y-0">
-            {externalTop.map((e) => renderExternalRow(e))}
-            {externalKitFolders.map((kit) => (
-              <div key={`kit:${kit.kit_id}`}>
-                {renderExternalRow(kit)}
-                {(externalSubByKit.get(kit.kit_id ?? '') ?? []).map((sub) =>
-                  renderExternalRow(sub, true),
-                )}
-              </div>
-            ))}
-          </div>
+          <ExternalLinksView
+            items={filteredExternal}
+            all={external}
+            numberOf={numberOf}
+            onToggle={toggle}
+            onInsertOne={(label, url) => insertOne(label, null, null, url)}
+            onCopyOne={(label, url) => copyOne(label, null, null, url)}
+          />
         )}
       </div>
 

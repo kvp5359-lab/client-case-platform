@@ -27,9 +27,39 @@ export type ShareableExternal = {
   kit_id?: string | null
 }
 
+/**
+ * Узел дерева документов проекта (вкладка «Описания документов»).
+ * Папки и слоты приходят ВСЕ, включая те, к которым не привязана статья:
+ * article_id/token у них null — такой узел вставляется в сообщение просто
+ * названием, без ссылки.
+ */
+export type ShareableDocSlot = {
+  slot_id: string
+  name: string
+  article_id: string | null
+  /** Активный токен статьи, если ссылка уже создавалась; иначе null. */
+  token: string | null
+}
+
+export type ShareableDocFolder = {
+  folder_id: string
+  name: string
+  article_id: string | null
+  token: string | null
+  slots: ShareableDocSlot[]
+}
+
+export type ShareableDocKit = {
+  kit_id: string
+  name: string
+  folders: ShareableDocFolder[]
+}
+
 export type ProjectShareables = {
   articles: ShareableArticle[]
   external: ShareableExternal[]
+  /** Дерево вкладки «Документы»: набор → папки → слоты. */
+  doc_tree: ShareableDocKit[]
 }
 
 export async function getProjectShareableResources(projectId: string): Promise<ProjectShareables> {
@@ -37,10 +67,15 @@ export async function getProjectShareableResources(projectId: string): Promise<P
     p_project_id: projectId,
   })
   if (error) throw error
-  const obj = (data ?? {}) as { articles?: ShareableArticle[]; external?: ShareableExternal[] }
+  const obj = (data ?? {}) as {
+    articles?: ShareableArticle[]
+    external?: ShareableExternal[]
+    doc_tree?: ShareableDocKit[]
+  }
   return {
     articles: obj.articles ?? [],
     external: obj.external ?? [],
+    doc_tree: obj.doc_tree ?? [],
   }
 }
 
