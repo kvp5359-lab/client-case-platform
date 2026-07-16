@@ -78,6 +78,36 @@ export function useSlotsEditorMutations(config: SlotTableConfig, slots: Slot[]) 
     },
   })
 
+  const createManyMutation = useMutation({
+    mutationFn: async (inputs: CreateSlotInput[]) => {
+      if (inputs.length === 0) return
+      const maxOrder = slots.length > 0 ? Math.max(...slots.map((s) => s.sort_order || 0)) : -1
+
+      // Одной вставкой и со сквозным инкрементом порядка: если добавлять по
+      // одному через createMutation, каждый вызов посчитает maxOrder от того же
+      // (ещё не обновлённого) списка и все слоты получат один sort_order.
+      const { error } = await supabase.from(config.table).insert(
+        inputs.map((data, i) => ({
+          [config.foreignKey]: config.foreignKeyValue,
+          ...config.extraInsertFields,
+          name: data.name,
+          description: data.description ?? null,
+          knowledge_article_id: data.knowledge_article_id ?? null,
+          ai_naming_prompt: data.ai_naming_prompt ?? null,
+          ai_check_prompt: data.ai_check_prompt ?? null,
+          sort_order: maxOrder + 1 + i,
+        })) as never,
+      )
+
+      if (error) throw error
+    },
+    onSuccess: invalidateSlots,
+    onError: (error) => {
+      logger.error('Ошибка добавления слотов:', error)
+      toast.error('Не удалось добавить слоты')
+    },
+  })
+
   const renameMutation = useMutation({
     mutationFn: async ({ id, name }: { id: string; name: string }) => {
       const { error } = await supabase.from(config.table).update({ name }).eq('id', id)
@@ -145,6 +175,7 @@ export function useSlotsEditorMutations(config: SlotTableConfig, slots: Slot[]) 
 
   return {
     createMutation,
+    createManyMutation,
     renameMutation,
     updateMutation,
     deleteMutation,

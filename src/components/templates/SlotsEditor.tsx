@@ -112,6 +112,7 @@ export function SlotsEditor({ config, description, workspaceId }: SlotsEditorPro
 
   const {
     createMutation,
+    createManyMutation,
     updateMutation,
     deleteMutation,
     reorderMutation,
@@ -131,14 +132,8 @@ export function SlotsEditor({ config, description, workspaceId }: SlotsEditorPro
     })
   }
 
-  const handlePickFromTemplate = (picked: PickedSlotTemplate) => {
-    createMutation.mutate({
-      name: picked.name,
-      description: picked.description,
-      knowledge_article_id: picked.knowledge_article_id,
-      ai_naming_prompt: picked.ai_naming_prompt,
-      ai_check_prompt: picked.ai_check_prompt,
-    })
+  const handlePickFromTemplate = (picked: PickedSlotTemplate[]) => {
+    createManyMutation.mutate(picked)
   }
 
   const handleSaveSlot = (data: SlotDialogValue) => {
@@ -421,6 +416,10 @@ export function SlotsEditor({ config, description, workspaceId }: SlotsEditorPro
           open={isPickerOpen}
           onOpenChange={setIsPickerOpen}
           workspaceId={workspaceId}
+          existingNames={slots.map((s) => s.name)}
+          articles={articles}
+          groups={groups}
+          articleGroups={articleGroups}
           onPick={handlePickFromTemplate}
         />
       )}

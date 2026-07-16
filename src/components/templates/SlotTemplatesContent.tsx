@@ -12,21 +12,23 @@ import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { Database } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Search, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
-import { knowledgeBaseKeys, knowledgeListKeys } from '@/hooks/queryKeys'
+import { knowledgeBaseKeys, knowledgeListKeys, slotTemplatesKeys } from '@/hooks/queryKeys'
 import { getArticlesByWorkspace } from '@/services/api/knowledge/knowledgeBaseService'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useConfirmDialog } from '@/hooks/dialogs/useConfirmDialog'
 import { EditSlotDialog, type SlotDialogValue } from './EditSlotDialog'
 import { SlotTemplatesTable } from './SlotTemplatesTable'
-import { fetchNextOrderIndex } from './nextOrderIndex'
-
-type SlotTemplate = Database['public']['Tables']['slot_templates']['Row']
+import {
+  useSlotTemplates,
+  insertSlotTemplate,
+  slotTemplateFields,
+  type SlotTemplate,
+} from './useSlotTemplates'
 
 export function SlotTemplatesContent() {
   const { workspaceId } = useParams<{ workspaceId: string }>()
@@ -37,55 +39,22 @@ export function SlotTemplatesContent() {
   const [editingTemplate, setEditingTemplate] = useState<SlotTemplate | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-  const queryKey = ['slot-templates', workspaceId]
+  const queryKey = slotTemplatesKeys.byWorkspace(workspaceId ?? '')
 
-  const { data: templates = [], isLoading } = useQuery<SlotTemplate[]>({
-    queryKey,
-    queryFn: async () => {
-      if (!workspaceId) return []
-      const { data, error } = await supabase
-        .from('slot_templates')
-        .select('*')
-        .eq('workspace_id', workspaceId)
-        .order('sort_order', { ascending: true })
-      if (error) throw error
-      return data ?? []
-    },
-    enabled: !!workspaceId,
-  })
+  const { data: templates = [], isLoading } = useSlotTemplates(workspaceId)
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey })
-
-  const nextSortOrder = () =>
-    fetchNextOrderIndex({ table: 'slot_templates', workspaceId, column: 'sort_order' })
 
   const saveMutation = useMutation({
     mutationFn: async (data: SlotDialogValue) => {
       if (editingTemplate) {
         const { error } = await supabase
           .from('slot_templates')
-          .update({
-            name: data.name,
-            comment: data.comment ?? null,
-            description: data.description,
-            knowledge_article_id: data.knowledge_article_id,
-            ai_naming_prompt: data.ai_naming_prompt,
-            ai_check_prompt: data.ai_check_prompt,
-          })
+          .update(slotTemplateFields(data))
           .eq('id', editingTemplate.id)
         if (error) throw error
       } else {
-        const { error } = await supabase.from('slot_templates').insert({
-          workspace_id: workspaceId ?? '',
-          name: data.name,
-          comment: data.comment ?? null,
-          description: data.description,
-          knowledge_article_id: data.knowledge_article_id,
-          ai_naming_prompt: data.ai_naming_prompt,
-          ai_check_prompt: data.ai_check_prompt,
-          sort_order: await nextSortOrder(),
-        })
-        if (error) throw error
+        await insertSlotTemplate(workspaceId, data)
       }
     },
     onSuccess: () => {
@@ -101,17 +70,10 @@ export function SlotTemplatesContent() {
 
   const copyMutation = useMutation({
     mutationFn: async (template: SlotTemplate) => {
-      const { error } = await supabase.from('slot_templates').insert({
-        workspace_id: workspaceId ?? '',
+      await insertSlotTemplate(workspaceId, {
+        ...template,
         name: `${template.name} (копия)`,
-        comment: template.comment,
-        description: template.description,
-        knowledge_article_id: template.knowledge_article_id,
-        ai_naming_prompt: template.ai_naming_prompt,
-        ai_check_prompt: template.ai_check_prompt,
-        sort_order: await nextSortOrder(),
       })
-      if (error) throw error
     },
     onSuccess: invalidate,
     onError: (error) => {
