@@ -21,7 +21,7 @@ import { trackReactionUsage } from '@/utils/messenger/recentReactions'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import { isEmailSource } from '@/services/api/messenger/messengerService.types'
 import { isReactionSupportedForSource } from '@/services/api/messenger/reactionStrategies'
-import { stripHtmlKeepNewlines } from '@/utils/format/messengerHtml'
+import { htmlToQuoteText } from '@/utils/format/messengerHtml'
 import { copyMessageText } from '@/utils/messenger/copyMessageText'
 import { fetchAttachmentBlob } from '@/services/api/messenger/messengerService'
 
@@ -250,7 +250,7 @@ export function renderMessageMenuBody(comps: MenuComponents, props: MessageMenuB
       </Item>
 
       {onQuote && (
-        <Item onClick={() => onQuote(stripHtmlKeepNewlines(message.content))}>
+        <Item onClick={() => onQuote(htmlToQuoteText(message.content))}>
           <Quote className="h-4 w-4 mr-2" />
           Цитировать
         </Item>

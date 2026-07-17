@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sanitizeMessengerHtml } from './messengerHtml'
+import { sanitizeMessengerHtml, htmlToQuoteText } from './messengerHtml'
 
 /** Пайплайн письма (email: true) — полные чистки почтового мусора. */
 const sanitizeEmail = (html: string) => sanitizeMessengerHtml(html, { email: true })
@@ -280,5 +280,36 @@ describe('sanitizeMessengerHtml — обычные сообщения (без с
     const out = sanitizeMessengerHtml('<p style="width:600px;color:#333">Текст</p>')
     expect(out).not.toContain('width')
     expect(out).toContain('color: #333')
+  })
+})
+
+describe('htmlToQuoteText — номера/буллеты списков в цитате', () => {
+  it('нумерует пункты <ol>', () => {
+    const out = htmlToQuoteText('<ol><li>Имена</li><li>Место</li><li>Договор</li></ol>')
+    expect(out).toBe('1. Имена\n2. Место\n3. Договор')
+  })
+
+  it('уважает атрибут start', () => {
+    const out = htmlToQuoteText('<ol start="8"><li>Восемь</li><li>Девять</li></ol>')
+    expect(out).toBe('8. Восемь\n9. Девять')
+  })
+
+  it('маркирует пункты <ul> буллетом', () => {
+    const out = htmlToQuoteText('<ul><li>раз</li><li>два</li></ul>')
+    expect(out).toBe('• раз\n• два')
+  })
+
+  it('каждый список нумеруется независимо', () => {
+    const out = htmlToQuoteText('<ol><li>a</li><li>b</li></ol><ol><li>c</li></ol>')
+    expect(out).toBe('1. a\n2. b\n1. c')
+  })
+
+  it('обычный текст без списков не меняется', () => {
+    expect(htmlToQuoteText('<p>Привет</p><p>мир</p>')).toBe('Привет\nмир')
+  })
+
+  it('текст перед списком сохраняется', () => {
+    const out = htmlToQuoteText('<p>Список:</p><ol><li>один</li><li>два</li></ol>')
+    expect(out).toBe('Список:\n1. один\n2. два')
   })
 })

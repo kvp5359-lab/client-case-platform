@@ -72,6 +72,84 @@ export function stripHtmlKeepNewlines(html: string): string {
 }
 
 /**
+ * Проставляет `data-qn` на прямые `<li>` каждого `<ol>`/`<ul>` внутри root:
+ * номер (с учётом `start`, каждый список нумеруется независимо) для `<ol>`,
+ * «•» для `<ul>`. Работает и на живом DOM (для цитаты выделения — до
+ * клонирования диапазона: тогда номера верны даже при частичном выделении).
+ */
+export function markListNumbers(root: ParentNode): void {
+  root.querySelectorAll('ol').forEach((ol) => {
+    const parsed = parseInt(ol.getAttribute('start') || '1', 10)
+    let n = Number.isFinite(parsed) ? parsed : 1
+    for (const li of Array.from(ol.children)) {
+      if (li.tagName === 'LI') {
+        li.setAttribute('data-qn', String(n))
+        n += 1
+      }
+    }
+  })
+  root.querySelectorAll('ul').forEach((ul) => {
+    for (const li of Array.from(ul.children)) {
+      if (li.tagName === 'LI') li.setAttribute('data-qn', '•')
+    }
+  })
+}
+
+/** Превращает проставленный `data-qn` в текстовый префикс внутри `<li>`
+ *  («1. » / «• ») и снимает атрибут — чтобы маркер попал в текст после strip. */
+function applyMarkedNumbers(root: ParentNode): void {
+  root.querySelectorAll('li[data-qn]').forEach((li) => {
+    const qn = li.getAttribute('data-qn') || ''
+    li.removeAttribute('data-qn')
+    const marker = qn === '•' ? '• ' : `${qn}. `
+    li.insertBefore(document.createTextNode(marker), li.firstChild)
+  })
+}
+
+/**
+ * HTML сообщения → текст цитаты С видимыми маркерами списков. Номера `<ol>` и
+ * буллеты `<ul>` в HTML — это CSS-маркеры, а не текст, поэтому обычный strip их
+ * теряет. Здесь мы восстанавливаем их как текст (клиент их видел — в цитате они
+ * тоже должны быть). SSR / ошибка парсинга → фолбэк на `stripHtmlKeepNewlines`.
+ */
+export function htmlToQuoteText(html: string): string {
+  if (!html) return ''
+  if (typeof document === 'undefined') return stripHtmlKeepNewlines(html)
+  try {
+    const div = document.createElement('div')
+    div.innerHTML = html
+    markListNumbers(div)
+    applyMarkedNumbers(div)
+    return stripHtmlKeepNewlines(div.innerHTML)
+  } catch {
+    return stripHtmlKeepNewlines(html)
+  }
+}
+
+/**
+ * Текст цитаты из выделения в баббле С маркерами списков. Нумерует списки по
+ * ЖИВОМУ DOM `container` (номера верны даже при частичном выделении), клонирует
+ * диапазон (клон уносит `data-qn`), снимает стамп с живого DOM, проставляет
+ * маркеры в клоне. Фолбэк — обычный текст выделения.
+ */
+export function quoteTextFromRange(range: Range, container: HTMLElement): string {
+  const plain = range.toString().trim()
+  if (typeof document === 'undefined') return plain
+  try {
+    markListNumbers(container)
+    const frag = range.cloneContents()
+    container.querySelectorAll('li[data-qn]').forEach((li) => li.removeAttribute('data-qn'))
+    const div = document.createElement('div')
+    div.appendChild(frag)
+    applyMarkedNumbers(div)
+    return stripHtmlKeepNewlines(div.innerHTML) || plain
+  } catch {
+    container.querySelectorAll('li[data-qn]').forEach((li) => li.removeAttribute('data-qn'))
+    return plain
+  }
+}
+
+/**
  * Схлопывает «пустые строки» в email-HTML: пустые блоки `<div></div>`,
  * `<p><br></p>`, `<p>&nbsp;</p>`, `<div><span>&nbsp;</span></div>` и так далее
  * (Gmail / Outlook / маркетинговые рассылки щедро ставят их между абзацами).

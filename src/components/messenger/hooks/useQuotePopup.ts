@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react'
+import { quoteTextFromRange } from '@/utils/format/messengerHtml'
 
 /**
  * Popup «Цитировать» по выделению текста внутри баббла, вынесен из MessageBubble.
@@ -11,12 +12,16 @@ export function useQuotePopup(onQuote: ((text: string) => void) | undefined) {
   const contentRef = useRef<HTMLDivElement>(null)
   const quotePopupRef = useRef<HTMLDivElement | null>(null)
   const quoteTextRef = useRef<string>('')
+  // Копирование — точный текст выделения; цитата — с восстановленными
+  // номерами/буллетами списков (см. quoteTextFromRange).
+  const copyTextRef = useRef<string>('')
 
   const destroyQuotePopup = useCallback(() => {
     if (quotePopupRef.current) {
       quotePopupRef.current.remove()
       quotePopupRef.current = null
       quoteTextRef.current = ''
+      copyTextRef.current = ''
     }
   }, [])
 
@@ -43,8 +48,10 @@ export function useQuotePopup(onQuote: ((text: string) => void) | undefined) {
         destroyQuotePopup()
         return
       }
-      const text = selection.toString().trim()
-      quoteTextRef.current = text
+      copyTextRef.current = selection.toString().trim()
+      // Цитата — с номерами <ol> и буллетами <ul> (клиент их видит, значит и в
+      // цитате должны быть). Нумеруем по живому DOM бабла для верных номеров.
+      quoteTextRef.current = quoteTextFromRange(range, container)
       const rect = range.getBoundingClientRect()
       const containerRect = container.getBoundingClientRect()
       const x = rect.left + rect.width / 2 - containerRect.left
@@ -81,7 +88,7 @@ export function useQuotePopup(onQuote: ((text: string) => void) | undefined) {
         destroyQuotePopup()
       })
       popup.querySelector('[data-act="copy"]')!.addEventListener('click', () => {
-        navigator.clipboard?.writeText(quoteTextRef.current).catch(() => {})
+        navigator.clipboard?.writeText(copyTextRef.current).catch(() => {})
         window.getSelection()?.removeAllRanges()
         destroyQuotePopup()
       })
