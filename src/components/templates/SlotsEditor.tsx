@@ -49,9 +49,20 @@ type SlotsEditorProps = {
   description?: string
   /** ID воркспейса — нужен для picker-а из справочника и загрузки статей БЗ. */
   workspaceId?: string
+  /**
+   * Раскладка слотов: 'wrap' (чипы в строку с переносом, по умолчанию) или
+   * 'list' (слоты списком, один под другим).
+   */
+  layout?: 'wrap' | 'list'
 }
 
-export function SlotsEditor({ config, description, workspaceId }: SlotsEditorProps) {
+export function SlotsEditor({
+  config,
+  description,
+  workspaceId,
+  layout = 'wrap',
+}: SlotsEditorProps) {
+  const isList = layout === 'list'
   const [newSlotName, setNewSlotName] = useState('')
   const [isAddingInline, setIsAddingInline] = useState(false)
   const [isPickerOpen, setIsPickerOpen] = useState(false)
@@ -156,8 +167,13 @@ export function SlotsEditor({ config, description, workspaceId }: SlotsEditorPro
     if (draggedSlotId && draggedSlotId !== slotId) {
       setDragOverSlotId(slotId)
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-      const x = e.clientX - rect.left
-      setDragOverPosition(x < rect.width / 2 ? 'before' : 'after')
+      if (isList) {
+        const y = e.clientY - rect.top
+        setDragOverPosition(y < rect.height / 2 ? 'before' : 'after')
+      } else {
+        const x = e.clientX - rect.left
+        setDragOverPosition(x < rect.width / 2 ? 'before' : 'after')
+      }
     }
   }
 
@@ -207,7 +223,7 @@ export function SlotsEditor({ config, description, workspaceId }: SlotsEditorPro
     <div className="space-y-4">
       {description && <p className="text-sm text-muted-foreground">{description}</p>}
 
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className={isList ? 'flex flex-col items-start gap-1.5' : 'flex flex-wrap items-center gap-1.5'}>
         {[...slots]
           .sort((a, b) => a.sort_order - b.sort_order)
           .map((slot, idx) => {
@@ -215,9 +231,13 @@ export function SlotsEditor({ config, description, workspaceId }: SlotsEditorPro
             const isOver = dragOverSlotId === slot.id
             const hasPrompt = !!(slot.ai_naming_prompt || slot.ai_check_prompt)
             const indicatorClass = isOver
-              ? dragOverPosition === 'before'
-                ? 'border-l-2 border-l-blue-500'
-                : 'border-r-2 border-r-blue-500'
+              ? isList
+                ? dragOverPosition === 'before'
+                  ? 'border-t-2 border-t-blue-500'
+                  : 'border-b-2 border-b-blue-500'
+                : dragOverPosition === 'before'
+                  ? 'border-l-2 border-l-blue-500'
+                  : 'border-r-2 border-r-blue-500'
               : ''
             return (
               <div
@@ -240,7 +260,9 @@ export function SlotsEditor({ config, description, workspaceId }: SlotsEditorPro
                 className={`group/chip relative inline-flex items-center gap-1.5 border border-dashed rounded-full px-2 py-1 cursor-pointer transition-[background-color,border-color,box-shadow] ${indicatorClass} ${
                   isDragging
                     ? 'opacity-40'
-                    : 'border-amber-700/30 hover:border-amber-700/50 hover:bg-amber-50 md:hover:z-20 md:hover:-mr-10 md:hover:shadow-md'
+                    : isList
+                      ? 'border-amber-700/30 hover:border-amber-700/50 hover:bg-amber-50'
+                      : 'border-amber-700/30 hover:border-amber-700/50 hover:bg-amber-50 md:hover:z-20 md:hover:-mr-10 md:hover:shadow-md'
                 }`}
                 title="Редактировать слот"
               >
