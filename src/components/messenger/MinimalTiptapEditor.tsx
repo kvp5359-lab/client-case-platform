@@ -13,6 +13,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import Link from '@tiptap/extension-link'
 import { buildMentionExtension, type MentionItem } from './messengerMention'
+import { MessengerLinkPopup, requestLinkEditor } from './messengerLinkPopup'
 import {
   Bold,
   Italic,
@@ -21,6 +22,7 @@ import {
   Quote,
   ListOrdered,
   List,
+  Link2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ToolbarButton } from '@/components/tiptap-editor/menu-bar/toolbar-button'
@@ -107,6 +109,12 @@ export function MessengerToolbar({ editor }: { editor: Editor }) {
         isActive={editor.isActive('strike')}
         onAction={() => editor.chain().focus().toggleStrike().run()}
         title="Зачёркнутый (Ctrl+Shift+S)"
+      />
+      <ToolbarButton
+        icon={Link2}
+        isActive={editor.isActive('link')}
+        onAction={() => requestLinkEditor(editor)}
+        title="Ссылка: прикрепить к выделенному / изменить / снять"
       />
       <ToolbarButton
         icon={Quote}
@@ -393,6 +401,7 @@ export function MinimalTiptapEditor({
         editor={editor}
         className={cn('messenger-editor', disabled && 'opacity-50 pointer-events-none')}
       />
+      <MessengerLinkPopup editor={editor} />
       {numberPopover &&
         typeof document !== 'undefined' &&
         createPortal(

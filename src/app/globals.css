@@ -686,7 +686,8 @@ body[data-panel-open][data-panel-mode="push"] main {
    нехватки ширины РЯДА (container query — работает и в узкой десктоп-панели, не
    только на мобиле). Прячутся именно непоместившиеся, справа налево; все доступны
    в всплывающей панели «Aa» (`.composer-fmt-toggle`). Кнопки = прямые дети div
-   внутри `.composer-fmt-inline` (MessengerToolbar рендерит 7 Toggle-кнопок). */
+   внутри `.composer-fmt-inline` (MessengerToolbar рендерит 8 Toggle-кнопок:
+   B/I/U/S/ссылка/цитата/ol/ul — при изменении набора править пороги ниже). */
 .composer-tools-cq {
   container: composer-tools / inline-size;
 }
@@ -699,8 +700,11 @@ body[data-panel-open][data-panel-mode="push"] main {
 @container composer-tools (max-width: 480px) {
   .composer-status-hide { display: none; }
 }
-@container composer-tools (max-width: 350px) {
+@container composer-tools (max-width: 376px) {
   .composer-fmt-toggle { display: flex; }
+  .composer-fmt-inline > div > button:nth-child(8) { display: none; }
+}
+@container composer-tools (max-width: 350px) {
   .composer-fmt-inline > div > button:nth-child(7) { display: none; }
 }
 @container composer-tools (max-width: 324px) {
