@@ -23,7 +23,14 @@
 
 import { escapeHtml } from '@/lib/html'
 
-type SlotLike = { slot_id: string; name: string; article_id: string | null; token: string | null }
+type SlotLike = {
+  slot_id: string
+  name: string
+  article_id: string | null
+  token: string | null
+  /** Документ уже загружен в слот (см. режимы uploadedDisplay). */
+  has_document?: boolean
+}
 type FolderLike = {
   folder_id: string
   name: string
@@ -47,6 +54,8 @@ export type DocPlanNode = {
   url?: string | null
   /** Папка: в сообщении идёт жирным заголовком и без номера. */
   isFolder?: boolean
+  /** Слот с загруженным документом (кандидат на зачёркивание). */
+  hasDocument?: boolean
   children: DocPlanNode[]
 }
 
@@ -57,6 +66,8 @@ export type DocInsertNode = {
   /** Номер из docInsertNumbers («1», «1.1»). У папки не печатается. */
   number?: string | null
   isFolder?: boolean
+  /** Зачеркнуть в сообщении (режим «Зачёркивать» для загруженных документов). */
+  struck?: boolean
   children: DocInsertNode[]
 }
 
@@ -76,6 +87,27 @@ export type DocOrder = {
 
 export type DocPlanOptions = {
   resolveExtra?: DocPlanExtra
+}
+
+/**
+ * Что делать с пунктами, где документ уже загружен:
+ * keep — как обычно, strike — зачёркивать, hide — не показывать вовсе
+ * (остаётся «что осталось прислать»).
+ */
+export type UploadedDisplay = 'keep' | 'strike' | 'hide'
+
+/**
+ * Режим hide: выкинуть из дерева слоты с загруженным документом. Применяется и
+ * к списку, и к плану вставки — список остаётся точным превью сообщения.
+ */
+export function hideUploadedSlots<K extends KitLike>(kits: K[]): K[] {
+  return kits.map((kit) => ({
+    ...kit,
+    folders: kit.folders.map((f) => ({
+      ...f,
+      slots: f.slots.filter((s) => !s.has_document),
+    })),
+  }))
 }
 
 export type DocInsertFormat = { hideUnderText: boolean; numbered: boolean }
@@ -131,7 +163,10 @@ export function planDocInsert(
   for (const kit of kits) {
     for (const folder of kit.folders) {
       const picked = folder.slots.filter((s) => selected.has(docSlotKey(s.slot_id)))
-      const slotNodes = picked.map((s) => planNode(docSlotKey(s.slot_id), s.name, s.article_id, s.token))
+      const slotNodes = picked.map((s) => ({
+        ...planNode(docSlotKey(s.slot_id), s.name, s.article_id, s.token),
+        hasDocument: !!s.has_document,
+      }))
 
       if (selected.has(docFolderKey(folder.folder_id))) {
         out.push({
@@ -192,11 +227,13 @@ export function docInsertNumbers(
 const htmlLine = (node: DocInsertNode, prefix: string, hideUnderText: boolean): string => {
   const text = escapeHtml(node.label)
   const label = node.isFolder ? `<strong>${text}</strong>` : text
-  if (!node.url) return `${prefix}${label}`
+  // Зачёркивается вся строка (вместе со ссылкой) — целиком «сделано».
+  const wrap = (s: string) => (node.struck ? `<s>${s}</s>` : s)
+  if (!node.url) return `${prefix}${wrap(label)}`
   const url = escapeHtml(node.url)
   return hideUnderText
-    ? `${prefix}<a href="${url}">${label}</a>`
-    : `${prefix}${label}<br><a href="${url}">${url}</a>`
+    ? `${prefix}${wrap(`<a href="${url}">${label}</a>`)}`
+    : `${prefix}${wrap(label)}<br>${wrap(`<a href="${url}">${url}</a>`)}`
 }
 
 const plainLine = (node: DocInsertNode, prefix: string, hideUnderText: boolean): string => {

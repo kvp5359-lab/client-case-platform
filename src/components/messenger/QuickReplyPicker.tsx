@@ -71,6 +71,10 @@ export function QuickReplyPicker({
   useEffect(() => {
     if (!open) return
     const handleClickOutside = (e: MouseEvent) => {
+      // Radix-порталы (выпадающие списки из вкладок пикера) рендерятся ВНЕ DOM
+      // попапа — клик по ним не «мимо», не закрываем.
+      const target = e.target as Element | null
+      if (target?.closest('[data-radix-popper-content-wrapper]')) return
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false)
       }

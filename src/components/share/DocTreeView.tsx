@@ -60,7 +60,15 @@ type Props = {
   forceExpand: boolean
   /** Тумблер «Нумеровать»: выключен — номеров в сообщении нет, в списке тоже. */
   numbered: boolean
-  onInsertOne: (label: string, articleId: string | null, token: string | null) => void
+  /** Режим «Зачёркивать»: загруженные слоты зачёркнуты и в списке (превью). */
+  strikeUploaded: boolean
+  /** struck — вставить зачёркнутым (одиночная вставка обязана совпадать со списком). */
+  onInsertOne: (
+    label: string,
+    articleId: string | null,
+    token: string | null,
+    struck?: boolean,
+  ) => void
   renderActions: RowActions
 }
 
@@ -161,6 +169,7 @@ function SortableSlotRow({
   selected,
   number,
   numbered,
+  struck,
   disabled,
   onToggle,
   onSetNumber,
@@ -171,6 +180,8 @@ function SortableSlotRow({
   selected: boolean
   number: string | null
   numbered: boolean
+  /** Зачеркнуть в списке — так же уйдёт и в сообщение. */
+  struck: boolean
   disabled: boolean
   onToggle: () => void
   onSetNumber: (value: number | null) => void
@@ -203,7 +214,10 @@ function SortableSlotRow({
       <button
         type="button"
         onClick={onInsertOne}
-        className="min-w-0 flex-1 truncate text-left text-sm"
+        className={cn(
+          'min-w-0 flex-1 truncate text-left text-sm',
+          struck && 'text-muted-foreground line-through',
+        )}
         title={hasArticle ? 'Вставить ссылку в сообщение' : 'Нет статьи — вставится названием'}
       >
         {slot.name}
@@ -220,6 +234,7 @@ function SortableFolder({
   selected,
   numberOf,
   numbered,
+  strikeUploaded,
   onToggle,
   onSetSelected,
   onSetNumber,
@@ -233,11 +248,17 @@ function SortableFolder({
   selected: Set<string>
   numberOf: (key: string) => string | null
   numbered: boolean
+  strikeUploaded: boolean
   onToggle: (key: string) => void
   onSetSelected: (keys: string[], select: boolean) => void
   onSetNumber: (key: string, value: number | null) => void
   onToggleExpand: () => void
-  onInsertOne: (label: string, articleId: string | null, token: string | null) => void
+  onInsertOne: (
+    label: string,
+    articleId: string | null,
+    token: string | null,
+    struck?: boolean,
+  ) => void
   renderActions: RowActions
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -303,9 +324,17 @@ function SortableFolder({
                 selected={selected.has(docSlotKey(slot.slot_id))}
                 number={numberOf(docSlotKey(slot.slot_id))}
                 numbered={numbered}
+                struck={strikeUploaded && slot.has_document}
                 onToggle={() => onToggle(docSlotKey(slot.slot_id))}
                 onSetNumber={(v) => onSetNumber(docSlotKey(slot.slot_id), v)}
-                onInsertOne={() => onInsertOne(slot.name, slot.article_id, slot.token)}
+                onInsertOne={() =>
+                  onInsertOne(
+                    slot.name,
+                    slot.article_id,
+                    slot.token,
+                    strikeUploaded && slot.has_document,
+                  )
+                }
                 renderActions={renderActions}
               />
             ))}
@@ -331,6 +360,7 @@ export function DocTreeView({
   onToggleKit,
   forceExpand,
   numbered,
+  strikeUploaded,
   onInsertOne,
   renderActions,
 }: Props) {
@@ -425,6 +455,7 @@ export function DocTreeView({
                         selected={selected}
                         numberOf={numberOf}
                         numbered={numbered}
+                        strikeUploaded={strikeUploaded}
                         onToggle={onToggle}
                         onSetSelected={onSetSelected}
                         onSetNumber={onSetNumber}

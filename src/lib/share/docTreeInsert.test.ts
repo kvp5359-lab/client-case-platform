@@ -3,6 +3,7 @@ import {
   planDocInsert,
   docInsertNumbers,
   applyDocOrder,
+  hideUploadedSlots,
   buildDocTreeHtml,
   buildDocTreePlain,
   docFolderKey,
@@ -11,11 +12,12 @@ import {
   type DocInsertNode,
 } from './docTreeInsert'
 
-const slot = (id: string, name: string, withArticle = false) => ({
+const slot = (id: string, name: string, withArticle = false, hasDocument = false) => ({
   slot_id: id,
   name,
   article_id: withArticle ? `art-${id}` : null,
   token: withArticle ? `tok-${id}` : null,
+  has_document: hasDocument,
 })
 
 const kits = [
@@ -121,6 +123,51 @@ describe('planDocInsert', () => {
   it('applyDocOrder не теряет то, чего нет в порядке — остаётся в хвосте', () => {
     const reordered = applyDocOrder(kits, { slots: { f2: ['s4'] } })
     expect(reordered[0].folders[1].slots.map((s) => s.slot_id)).toEqual(['s4', 's3'])
+  })
+
+  it('переносит признак загруженного документа в план', () => {
+    const withDoc = [
+      {
+        kit_id: 'k',
+        name: 'K',
+        folders: [
+          {
+            folder_id: 'f',
+            name: 'F',
+            article_id: null,
+            token: null,
+            slots: [slot('a', 'Загружен', false, true), slot('b', 'Пустой')],
+          },
+        ],
+      },
+    ]
+    const plan = planDocInsert(withDoc, [docSlotKey('a'), docSlotKey('b')])
+    expect(plan[0].hasDocument).toBe(true)
+    expect(plan[1].hasDocument).toBe(false)
+  })
+})
+
+describe('hideUploadedSlots', () => {
+  it('убирает слоты с загруженным документом, пустые оставляет', () => {
+    const withDoc = [
+      {
+        kit_id: 'k',
+        name: 'K',
+        folders: [
+          {
+            folder_id: 'f',
+            name: 'F',
+            article_id: null,
+            token: null,
+            slots: [slot('a', 'Загружен', false, true), slot('b', 'Пустой')],
+          },
+        ],
+      },
+    ]
+    const hidden = hideUploadedSlots(withDoc)
+    expect(hidden[0].folders[0].slots.map((s) => s.slot_id)).toEqual(['b'])
+    // Исходное дерево не мутируется (кэш React Query).
+    expect(withDoc[0].folders[0].slots).toHaveLength(2)
   })
 
   it('нумеруется только отмеченное — без дыр', () => {
@@ -244,6 +291,26 @@ describe('buildDocTreeHtml', () => {
     const flat = [node('Первый', null, '1'), node('Второй', null, '2')]
     expect(buildDocTreeHtml(flat, { hideUnderText: true, numbered: true })).toBe(
       '1. Первый<br>2. Второй',
+    )
+  })
+
+  it('зачёркивает загруженный пункт целиком — и текст, и ссылку', () => {
+    const struckLink: DocInsertNode = {
+      label: 'Загранпаспорт',
+      url: 'https://x/a/t1',
+      number: '1.1',
+      struck: true,
+      children: [],
+    }
+    expect(buildDocTreeHtml([struckLink], { hideUnderText: true, numbered: true })).toBe(
+      '1.1. <s><a href="https://x/a/t1">Загранпаспорт</a></s>',
+    )
+    expect(buildDocTreeHtml([{ ...struckLink, url: null }], { hideUnderText: true, numbered: true })).toBe(
+      '1.1. <s>Загранпаспорт</s>',
+    )
+    // Ссылка отдельной строкой — зачёркнуты обе строки.
+    expect(buildDocTreeHtml([struckLink], { hideUnderText: false, numbered: false })).toBe(
+      '<s>Загранпаспорт</s><br><s><a href="https://x/a/t1">https://x/a/t1</a></s>',
     )
   })
 

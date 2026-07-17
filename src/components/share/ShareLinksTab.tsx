@@ -16,7 +16,7 @@ import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
-import { Copy, Loader2 } from 'lucide-react'
+import { Copy, Eye, EyeOff, Loader2, Strikethrough } from 'lucide-react'
 import type { Editor } from '@tiptap/react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -24,11 +24,14 @@ import {
   planDocInsert,
   docInsertNumbers,
   applyDocOrder,
+  hideUploadedSlots,
   buildDocTreeHtml,
   buildDocTreePlain,
+  docSlotKey,
   type DocPlanNode,
   type DocInsertNode,
   type DocOrder,
+  type UploadedDisplay,
 } from '@/lib/share/docTreeInsert'
 import { DocTreeView } from '@/components/share/DocTreeView'
 import { ArticleGroupsView } from '@/components/share/ArticleGroupsView'
@@ -68,6 +71,14 @@ type Props = {
  */
 const DESCRIPTION_GROUP = 'Описания разделов документов'
 
+/** Кнопка «Загруженные»: клик циклически переключает режим keep → strike → hide. */
+const UPLOADED_CYCLE: UploadedDisplay[] = ['keep', 'strike', 'hide']
+const UPLOADED_MODE: Record<UploadedDisplay, { icon: typeof Eye; label: string }> = {
+  keep: { icon: Eye, label: 'Показывать' },
+  strike: { icon: Strikethrough, label: 'Зачёркивать' },
+  hide: { icon: EyeOff, label: 'Скрывать' },
+}
+
 export function ShareLinksTab({ editor, projectId, search, enabled, view, onInserted }: Props) {
   const qc = useQueryClient()
   const { user } = useAuth()
@@ -87,7 +98,14 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
   // попап закрывается вместе с выбором, документы проекта не трогаются.
   const [order, setOrder] = useState<DocOrder>({})
   const [numberOverrides, setNumberOverrides] = useState<Record<string, number>>({})
-  const { hideUnderText, setHideUnderText, numbered, setNumbered } = useSharePrefs(userId)
+  const {
+    hideUnderText,
+    setHideUnderText,
+    numbered,
+    setNumbered,
+    uploadedDisplay,
+    setUploadedDisplay,
+  } = useSharePrefs(userId)
 
   const tokenFor = (articleId: string, base: string | null): string | null =>
     tokenOverride[articleId] ?? base
@@ -150,6 +168,7 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
       url: n.url ?? (n.articleId ? buildShareUrl(await ensureToken(n.articleId, n.token)) : null),
       number: numbers.get(n.key) ?? null,
       isFolder: n.isFolder,
+      struck: uploadedDisplay === 'strike' && n.hasDocument,
       children: await Promise.all(n.children.map(resolveNode)),
     })
     return Promise.all(plan.map(resolveNode))
@@ -195,11 +214,12 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
     label: string,
     articleId: string | null,
     token: string | null,
-    url?: string,
+    opts?: { url?: string; struck?: boolean },
   ) => {
     try {
-      const resolved = url ?? (articleId ? buildShareUrl(await ensureToken(articleId, token)) : null)
-      insertNodes([{ label, url: resolved, number: null, children: [] }])
+      const resolved =
+        opts?.url ?? (articleId ? buildShareUrl(await ensureToken(articleId, token)) : null)
+      insertNodes([{ label, url: resolved, number: null, struck: opts?.struck, children: [] }])
     } catch {
       toast.error('Не удалось получить ссылку')
     }
@@ -226,8 +246,15 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
   // Порядок отметки — Set сохраняет порядок вставки ключей.
   const orderList = useMemo(() => Array.from(selected), [selected])
 
-  /** Дерево с учётом перетаскивания — им же рисуется список (единый порядок). */
-  const orderedTree = useMemo(() => applyDocOrder(docTree, order), [docTree, order])
+  /**
+   * Дерево с учётом перетаскивания и режима загруженных — им же рисуется список
+   * (единый порядок и состав со вставкой). Режим hide убирает загруженные слоты
+   * и из списка: список — точное превью сообщения.
+   */
+  const orderedTree = useMemo(() => {
+    const base = uploadedDisplay === 'hide' ? hideUploadedSlots(docTree) : docTree
+    return applyDocOrder(base, order)
+  }, [docTree, order, uploadedDisplay])
 
   /**
    * План вставки по ВСЕМ отмеченным ключам сразу (все вкладки): дерево идёт в
@@ -268,6 +295,23 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
       }
       return { ...prev, [key]: value }
     })
+
+  /**
+   * Смена режима загруженных. При «Скрывать» снимаем выбор с загруженных слотов:
+   * их нет ни в списке, ни в плане, и счётчик «Вставить (N)» не должен врать.
+   */
+  const changeUploadedDisplay = (mode: UploadedDisplay) => {
+    setUploadedDisplay(mode)
+    if (mode !== 'hide') return
+    const uploadedKeys = new Set(
+      docTree.flatMap((k) =>
+        k.folders.flatMap((f) =>
+          f.slots.filter((s) => s.has_document).map((s) => docSlotKey(s.slot_id)),
+        ),
+      ),
+    )
+    setSelected((prev) => new Set([...prev].filter((key) => !uploadedKeys.has(key))))
+  }
 
   const reorderFolders = (kitId: string, folderIds: string[]) =>
     setOrder((prev) => ({ ...prev, folders: { ...prev.folders, [kitId]: folderIds } }))
@@ -450,7 +494,10 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
               onToggleKit={toggleKit}
               forceExpand={forceExpand}
               numbered={numbered}
-              onInsertOne={insertOne}
+              strikeUploaded={uploadedDisplay === 'strike'}
+              onInsertOne={(label, articleId, token, struck) =>
+                insertOne(label, articleId, token, { struck })
+              }
               renderActions={renderActions}
             />
           </div>
@@ -462,35 +509,57 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
             all={external}
             numberOf={numberOf}
             onToggle={toggle}
-            onInsertOne={(label, url) => insertOne(label, null, null, url)}
+            onInsertOne={(label, url) => insertOne(label, null, null, { url })}
             onCopyOne={(label, url) => copyOne(label, null, null, url)}
           />
         )}
       </div>
 
-      <div className="flex flex-col gap-2 border-t bg-muted/20 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <label className="flex items-center gap-2 cursor-pointer select-none whitespace-nowrap">
+      {/* Настройки — одной неразрывной строкой; кнопки при нехватке места
+          переносятся вниз вправо (на вкладке документов настроек три). */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-2 border-t bg-muted/20 px-2.5 py-2">
+        <div className="flex shrink-0 items-center gap-x-2 text-xs text-muted-foreground">
+          <label className="flex items-center gap-1 cursor-pointer select-none whitespace-nowrap">
             <Switch checked={hideUnderText} onCheckedChange={setHideUnderText} />
-            Прятать под названием
+            Под названием
           </label>
-          <label className="flex items-center gap-2 cursor-pointer select-none whitespace-nowrap">
+          <label className="flex items-center gap-1 cursor-pointer select-none whitespace-nowrap">
             <Switch checked={numbered} onCheckedChange={setNumbered} />
             Нумеровать
           </label>
+          {view === 'descriptions' && (() => {
+            const { icon: ModeIcon, label } = UPLOADED_MODE[uploadedDisplay]
+            const next = UPLOADED_CYCLE[(UPLOADED_CYCLE.indexOf(uploadedDisplay) + 1) % UPLOADED_CYCLE.length]
+            return (
+              <button
+                type="button"
+                onClick={() => changeUploadedDisplay(next)}
+                title={`Загруженные документы: ${label.toLowerCase()}. Нажмите, чтобы переключить`}
+                className="flex items-center gap-1 whitespace-nowrap rounded px-0.5 py-0.5 hover:bg-muted hover:text-foreground"
+              >
+                Загруженные:
+                <ModeIcon className="h-3.5 w-3.5" />
+              </button>
+            )
+          })()}
         </div>
-        <div className="flex shrink-0 items-center justify-end gap-2">
+        <div className="ml-auto flex shrink-0 items-center justify-end gap-1">
           {selectedCount > 0 && (
             <button
               type="button"
               onClick={copySelected}
               title="Скопировать выбранное"
-              className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
+              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
             >
               <Copy className="h-3.5 w-3.5" />
             </button>
           )}
-          <Button size="sm" onClick={insertSelected} disabled={selectedCount === 0}>
+          <Button
+            size="sm"
+            className="h-7 px-2.5 text-xs"
+            onClick={insertSelected}
+            disabled={selectedCount === 0}
+          >
             Вставить{selectedCount > 0 ? ` (${selectedCount})` : ''}
           </Button>
         </div>

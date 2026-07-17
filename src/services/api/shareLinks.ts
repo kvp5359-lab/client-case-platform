@@ -39,6 +39,8 @@ export type ShareableDocSlot = {
   article_id: string | null
   /** Активный токен статьи, если ссылка уже создавалась; иначе null. */
   token: string | null
+  /** Документ загружен в слот (и не в корзине) — см. режим uploadedDisplay. */
+  has_document: boolean
 }
 
 export type ShareableDocFolder = {
