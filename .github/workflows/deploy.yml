@@ -218,30 +218,47 @@ jobs:
       # --- Скрипты: всегда синхронизируем на VPS (закрывает ночной бэкап из R2) ---
       # БЕЗ --delete: в /opt/clientcase/scripts/ есть VPS-only обёртки (напр.
       # backup-storage.sh, вне git) — их удалять нельзя. Оверлеем поверх.
+      # SSH Actions->VPS периодически даёт транзиентный i/o timeout (~5 мин, VPS
+      # исправен). rsync идемпотентен → оборачиваем в retry, как фронт-деплой,
+      # иначе весь backend-джоб падает на первом же шаге (инцидент 2026-07-17).
       - name: Sync scripts to VPS
+        uses: nick-fields/retry@v3
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
-        run: |
-          rsync -az \
-            -e "ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30" \
-            ./scripts/ "$VPS_USER@$VPS_HOST:/opt/clientcase/scripts/"
-          echo "::notice::scripts/ синхронизированы на VPS (бэкап читает из R2)"
+        with:
+          timeout_minutes: 10
+          max_attempts: 6
+          retry_wait_seconds: 45
+          # Синк только для ночного бэкапа — не критичен для деплоя приложения.
+          # Если даже с ретраями не прошёл, не валим весь backend-джоб (edge/mtproto ниже).
+          continue_on_error: true
+          command: |
+            rsync -az \
+              -e "ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=4" \
+              ./scripts/ "$VPS_USER@$VPS_HOST:/opt/clientcase/scripts/"
+            echo "::notice::scripts/ синхронизированы на VPS (бэкап читает из R2)"
 
       # --- mtproto: rsync + пересборка, только если менялся ---
       - name: Deploy mtproto-service
         if: ${{ steps.changes.outputs.mtproto == 'true' }}
+        uses: nick-fields/retry@v3
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
-        run: |
-          rsync -az --delete \
-            --exclude node_modules --exclude dist --exclude .env \
-            -e "ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30" \
-            ./mtproto-service/ "$VPS_USER@$VPS_HOST:/opt/clientcase/mtproto-service/"
-          ssh -o StrictHostKeyChecking=accept-new "$VPS_USER@$VPS_HOST" \
-            "cd /opt/clientcase && docker compose build mtproto && docker compose up -d mtproto"
-          echo "::notice::mtproto-service передеплоен"
+        with:
+          # rsync + пересборка идемпотентны → повтор при транзиентном SSH-таймауте безопасен.
+          timeout_minutes: 15
+          max_attempts: 6
+          retry_wait_seconds: 45
+          command: |
+            rsync -az --delete \
+              --exclude node_modules --exclude dist --exclude .env \
+              -e "ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=4" \
+              ./mtproto-service/ "$VPS_USER@$VPS_HOST:/opt/clientcase/mtproto-service/"
+            ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=30 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 "$VPS_USER@$VPS_HOST" \
+              "cd /opt/clientcase && docker compose build mtproto && docker compose up -d mtproto"
+            echo "::notice::mtproto-service передеплоен"
 
       # --- edge: только изменённые функции; нужен SUPABASE_ACCESS_TOKEN ---
       - name: Setup Supabase CLI
