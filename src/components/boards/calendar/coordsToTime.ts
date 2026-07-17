@@ -91,11 +91,12 @@ export function computeTimeFromCoords(
   const minHour = parseInt(firstLabel.split(':')[0] ?? '0', 10) || 0
 
   const rawMin = minHour * 60 + ratio * totalMinutes
-  // floor (а не round) → полоска всегда у верхнего края слота, в котором
-  // находится курсор. Это совпадает с тем, как RBC внутренне считает
-  // click-to-slot (Math.floor в closestSlotToPosition), и интуитивно:
-  // мышь не может «обогнать» полоску вниз.
-  const snappedMin = Math.floor(rawMin / 10) * 10
+  // round (а не floor) → полоска встаёт на БЛИЖАЙШУЮ 10-мин метку к курсору,
+  // а не на верхний край слота. Так курсор не оказывается систематически ниже
+  // полоски, а граница ведра приходится на середину между метками (13:05),
+  // далеко от той метки, куда целится юзер (13:00) — клик не «срывается» в
+  // соседний слот при микро-сдвиге. Полоска и клик используют одну формулу.
+  const snappedMin = Math.round(rawMin / 10) * 10
   const h = Math.floor(snappedMin / 60)
   const m = snappedMin % 60
 
