@@ -77,7 +77,7 @@ export function stripHtmlKeepNewlines(html: string): string {
  * «•» для `<ul>`. Работает и на живом DOM (для цитаты выделения — до
  * клонирования диапазона: тогда номера верны даже при частичном выделении).
  */
-export function markListNumbers(root: ParentNode): void {
+function markListNumbers(root: ParentNode): void {
   root.querySelectorAll('ol').forEach((ol) => {
     const parsed = parseInt(ol.getAttribute('start') || '1', 10)
     let n = Number.isFinite(parsed) ? parsed : 1

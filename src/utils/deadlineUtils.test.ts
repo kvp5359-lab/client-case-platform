@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { getDeadlineGroup } from './deadlineUtils'
+import { getDeadlineGroup, deadlineSortValue } from './deadlineUtils'
 
 describe('getDeadlineGroup', () => {
   beforeEach(() => {
@@ -53,5 +53,39 @@ describe('getDeadlineGroup', () => {
   it('возвращает later для дат за пределами этой недели', () => {
     expect(getDeadlineGroup('2026-04-20T08:00:00')).toBe('later')
     expect(getDeadlineGroup('2027-01-01T08:00:00')).toBe('later')
+  })
+})
+
+// ── Ключ сортировки по сроку ──
+
+describe('deadlineSortValue', () => {
+  const DAY_MS = 24 * 60 * 60 * 1000
+
+  it('нет срока → null', () => {
+    expect(deadlineSortValue(null)).toBeNull()
+    expect(deadlineSortValue(undefined)).toBeNull()
+    expect(deadlineSortValue('')).toBeNull()
+  })
+
+  it('невалидная строка → null', () => {
+    expect(deadlineSortValue('не-дата')).toBeNull()
+  })
+
+  it('конкретное время → как есть (getTime)', () => {
+    const iso = '2026-07-17T10:30:00+00:00'
+    expect(deadlineSortValue(iso)).toBe(new Date(iso).getTime())
+  })
+
+  it('дата без времени (полночь UTC) → конец дня (+почти сутки)', () => {
+    const midnight = new Date('2026-07-17T00:00:00Z').getTime()
+    expect(deadlineSortValue('2026-07-17T00:00:00+00:00')).toBe(midnight + DAY_MS - 1000)
+  })
+
+  it('«весь день» сортируется ПОЗЖЕ времени того же дня, но РАНЬШЕ следующего', () => {
+    const allDay = deadlineSortValue('2026-07-17T00:00:00Z')!
+    const timedSameDay = deadlineSortValue('2026-07-17T10:30:00Z')!
+    const nextDay = deadlineSortValue('2026-07-18T09:00:00Z')!
+    expect(timedSameDay).toBeLessThan(allDay)
+    expect(allDay).toBeLessThan(nextDay)
   })
 })

@@ -30,7 +30,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <ProtectedRoute>
-      <div className="max-w-[1800px] mx-auto w-full shadow-[0_0_40px_rgba(0,0,0,0.06)]">
+      <div
+        data-app-frame
+        className="max-w-[var(--app-frame-max)] mx-auto w-full shadow-[0_0_40px_rgba(0,0,0,0.06)]"
+      >
         {children}
       </div>
     </ProtectedRoute>

@@ -90,6 +90,26 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
     document.documentElement.style.setProperty('--panel-width', `${panelWidth}px`)
   }, [panelWidth])
 
+  // Точный правый инсет обёртки приложения (max-w-[--app-frame-max] mx-auto): на
+  // широких экранах приложение центрируется, и панель/handle/тосты (fixed к окну)
+  // должны прижиматься к правому краю ОБЁРТКИ, а не окна. Меряем реальную геометрию
+  // — так учитывается ширина классического скроллбара (clientWidth исключает его,
+  // как и точка отсчёта fixed right:0). CSS-фолбэк в globals.css работает до этого.
+  useEffect(() => {
+    const update = () => {
+      const frame = document.querySelector('[data-app-frame]')
+      if (!frame) return
+      const inset = Math.max(
+        0,
+        document.documentElement.clientWidth - frame.getBoundingClientRect().right,
+      )
+      document.documentElement.style.setProperty('--app-right-inset', `${inset}px`)
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+
   // pageContext.projectId — нужен для синка scope вкладок с текущей страницей.
   // Сам стор используется ещё для chatsEnabled (из ProjectPage), activeChatId
   // (диалог создания чата), pageContext.templateId (старая Ai-панель — здесь
