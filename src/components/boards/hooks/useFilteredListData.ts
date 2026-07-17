@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { applyFilters } from '@/lib/filters/filterEngine'
 import type { FilterGroup, FilterContext, SortField, SortDir } from '@/lib/filters/types'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
+import { deadlineSortValue } from '@/utils/deadlineUtils'
 
 // Статичные accessors — выносим на уровень модуля, чтобы не пересоздавать их
 // в useMemo при изменении сортировки/фильтров. Это были «горячие» аллокации:
@@ -35,7 +36,7 @@ const PROJECT_FIELD_ACCESSORS: Record<string, (item: unknown) => unknown> = {
   contact_participant_id: (item) => (item as Record<string, unknown>).contact_participant_id,
 }
 
-function compareTasks(
+export function compareTasks(
   a: WorkspaceTask,
   b: WorkspaceTask,
   sortBy: SortField,
@@ -61,8 +62,15 @@ function compareTasks(
       cmp = (a.name ?? '').localeCompare(b.name ?? '')
       break
     case 'deadline': {
-      const da = a.deadline ? new Date(a.deadline).getTime() : Infinity
-      const db = b.deadline ? new Date(b.deadline).getTime() : Infinity
+      // Задачи со сроком — вперёд по возрастанию; БЕЗ срока — всегда в конце,
+      // независимо от направления (как у проектов). Раньше при sort_dir='desc'
+      // (это дефолт!) задачи без срока получали Infinity и уезжали наверх.
+      // «На весь день» (дата без времени) считается концом дня — см. deadlineSortValue.
+      const da = deadlineSortValue(a.deadline)
+      const db = deadlineSortValue(b.deadline)
+      if (da == null && db == null) return 0
+      if (da == null) return 1
+      if (db == null) return -1
       cmp = da - db
       break
     }

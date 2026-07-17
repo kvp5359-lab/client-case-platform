@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDialog } from '@/hooks/shared/useDialog'
+import { deadlineSortValue } from '@/utils/deadlineUtils'
 import { useFilteredTasks, useFilteredProjects } from './useFilteredListData'
 import { useReorderBoardListItems } from './useBoardListItemOrders'
 import { useUpdateList } from './useListMutations'
@@ -178,7 +179,9 @@ export function useBoardListCardSetup({
     if (list.entity_type !== 'thread') return
     const withDeadline = filteredTasks
       .filter((t) => t.deadline)
-      .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime())
+      // «На весь день» (дата без времени) считается концом дня → задачи с
+      // конкретным временем того же дня идут выше (см. deadlineSortValue).
+      .sort((a, b) => (deadlineSortValue(a.deadline) ?? 0) - (deadlineSortValue(b.deadline) ?? 0))
     const withoutDeadline = filteredTasks.filter((t) => !t.deadline)
     const itemIds = [...withDeadline, ...withoutDeadline].map((t) => t.id)
     if (itemIds.length === 0) return

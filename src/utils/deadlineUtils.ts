@@ -1,5 +1,22 @@
 export type DeadlineGroup = 'overdue' | 'today' | 'tomorrow' | 'this_week' | 'later' | 'no_deadline'
 
+/**
+ * Ключ сортировки по сроку (мс). Срок «на весь день» (дата без времени хранится
+ * как полночь UTC) считается КОНЦОМ дня (+почти сутки) — тогда задачи с
+ * конкретным временем того же дня сортируются ВЫШЕ, а «на весь день» — под ними.
+ * `null` — срока нет (вызывающий кладёт такие в конец). Сам дедлайн не меняется,
+ * это только ключ сравнения.
+ */
+export function deadlineSortValue(deadline: string | null | undefined): number | null {
+  if (!deadline) return null
+  const d = new Date(deadline)
+  const t = d.getTime()
+  if (Number.isNaN(t)) return null
+  const isAllDay =
+    d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0
+  return isAllDay ? t + (24 * 60 * 60 - 1) * 1000 : t
+}
+
 /** Разница в КАЛЕНДАРНЫХ днях между сроком и сегодня (по локальной дате). */
 export function deadlineDayDiff(deadline: string | Date): number {
   const d = typeof deadline === 'string' ? new Date(deadline) : deadline
