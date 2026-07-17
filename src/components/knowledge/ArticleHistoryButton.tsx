@@ -58,7 +58,15 @@ function groupByDay(rows: RecentlyViewedRow[]): DayGroup[] {
   return groups
 }
 
-export function ArticleHistoryButton({ workspaceId }: { workspaceId: string }) {
+export function ArticleHistoryButton({
+  workspaceId,
+  triggerVariant = 'outline',
+  triggerClassName,
+}: {
+  workspaceId: string
+  triggerVariant?: 'outline' | 'ghost'
+  triggerClassName?: string
+}) {
   const [open, setOpen] = useState(false)
   const { data: items = [], isLoading } = useRecentlyViewedArticles(workspaceId)
   const layoutPanel = useLayoutTaskPanel()
@@ -80,7 +88,12 @@ export function ArticleHistoryButton({ workspaceId }: { workspaceId: string }) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button size="sm" variant="outline" className="w-8 h-8 p-0" title="История открытий">
+        <Button
+          size="sm"
+          variant={triggerVariant}
+          className={triggerClassName ?? 'w-8 h-8 p-0'}
+          title="История открытий"
+        >
           <History className="w-4 h-4" />
         </Button>
       </PopoverTrigger>

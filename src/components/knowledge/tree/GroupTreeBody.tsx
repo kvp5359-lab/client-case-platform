@@ -11,24 +11,34 @@ import { Input } from '@/components/ui/input'
 import { FolderPlus, Check, X } from 'lucide-react'
 import { GroupTreeNode } from './GroupTreeNode'
 import { useGroupTreeDnd, UNGROUPED_ID } from './useGroupTreeDnd'
+import { buildGroupDeepCountMap } from '@/lib/knowledge/groupDeepCounts'
 import type { TreeSource } from './types'
 
 export function GroupTreeBody<Item extends { id: string }>({
   source,
+  collapse,
 }: {
   source: TreeSource<Item>
+  /** Внешнее управление свёрнутостью групп (напр. с персистом в localStorage). Без него — внутренний useState. */
+  collapse?: { collapsedGroups: Set<string>; toggleCollapse: (id: string) => void }
 }) {
   const dnd = useGroupTreeDnd(source)
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const [internalCollapsed, setInternalCollapsed] = useState<Set<string>>(new Set())
 
-  const toggleCollapse = (id: string) => {
-    setCollapsedGroups((prev) => {
+  const internalToggle = (id: string) => {
+    setInternalCollapsed((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
     })
   }
+
+  const collapsedGroups = collapse?.collapsedGroups ?? internalCollapsed
+  const toggleCollapse = collapse?.toggleCollapse ?? internalToggle
+
+  // Один обход на рендер (getItemsForGroup зависит от фильтров и нестабилен для useMemo)
+  const deepCounts = buildGroupDeepCountMap(source.groups, (id) => source.getItemsForGroup(id).length)
 
   const rootGroups = source.groups.filter((g) => !g.parent_id)
 
@@ -96,6 +106,7 @@ export function GroupTreeBody<Item extends { id: string }>({
             depth={0}
             collapsedGroups={collapsedGroups}
             toggleCollapse={toggleCollapse}
+            deepCounts={deepCounts}
             overGroupId={dnd.overGroupId}
             dropIndicator={dnd.dropIndicator}
           />

@@ -9,7 +9,7 @@
  * голубая полоса показывает место вставки — как в документах.
  */
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useLayoutTaskPanel } from '@/components/tasks/TaskPanelContext'
 import { useTrackRecentView } from '@/hooks/useGlobalSearch'
 import { reindexAllArticles } from '@/services/api/knowledge/knowledgeSearchService'
@@ -21,6 +21,7 @@ import { StatusDot } from './components/ArticleStatusIndicators'
 import { KnowledgeTreeToolbar } from './components/KnowledgeTreeToolbar'
 import { KnowledgeEmptyState } from './components/KnowledgeEmptyState'
 import { GroupTreeBody } from '@/components/knowledge/tree/GroupTreeBody'
+import { useCollapsedGroups } from '@/hooks/knowledge/useCollapsedGroups'
 import type { TreeSource } from '@/components/knowledge/tree/types'
 import type { useKnowledgeBasePage, KnowledgeArticle, KnowledgeGroup } from './useKnowledgeBasePage'
 export type { DropIndicatorState } from './useKnowledgeTreeDnd'
@@ -49,6 +50,16 @@ export function KnowledgeTreeView({ page }: { page: PageReturn }) {
   )
   const isReindexingRef = useRef(false)
   const [editingGroup, setEditingGroup] = useState<KnowledgeGroup | null>(null)
+
+  // Свёрнутость групп — запоминается на пользователя (localStorage, ключ по воркспейсу)
+  const groupIds = useMemo(() => page.groups.map((g) => g.id), [page.groups])
+  const collapse = useCollapsedGroups(`kb-collapsed:${page.workspaceId ?? 'ws'}:articles`, groupIds)
+  const allCollapsed =
+    groupIds.length > 0 && groupIds.every((id) => collapse.collapsedGroups.has(id))
+  const handleToggleCollapseAll = useCallback(() => {
+    if (allCollapsed) collapse.expandAll()
+    else collapse.collapseAll(groupIds)
+  }, [allCollapsed, collapse, groupIds])
 
   const handleReindex = useCallback(async () => {
     if (!page.workspaceId || isReindexingRef.current) return
@@ -164,6 +175,8 @@ export function KnowledgeTreeView({ page }: { page: PageReturn }) {
         hasActiveFilters={hasActiveFilters}
         isReindexing={isReindexing}
         onReindex={handleReindex}
+        allCollapsed={allCollapsed}
+        onToggleCollapseAll={handleToggleCollapseAll}
       />
 
       {/* Строка фильтров (чипы статус/группа/тег + доп. поля + «+ Фильтр») */}
@@ -175,7 +188,7 @@ export function KnowledgeTreeView({ page }: { page: PageReturn }) {
       ) : page.groups.length === 0 && page.articles.length === 0 ? (
         <KnowledgeEmptyState page={page} />
       ) : (
-        <GroupTreeBody source={treeSource} />
+        <GroupTreeBody source={treeSource} collapse={collapse} />
       )}
 
       {/* Counter */}

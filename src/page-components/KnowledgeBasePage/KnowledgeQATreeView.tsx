@@ -4,14 +4,15 @@
  * редактор группы — общий EditGroupDialog.
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { FolderPlus } from 'lucide-react'
+import { ChevronsDownUp, ChevronsUpDown, FolderPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase'
 import { knowledgeBaseKeys } from '@/hooks/queryKeys'
 import { GroupTreeBody } from '@/components/knowledge/tree/GroupTreeBody'
+import { useCollapsedGroups } from '@/hooks/knowledge/useCollapsedGroups'
 import type { TreeSource } from '@/components/knowledge/tree/types'
 import type { KnowledgeQA } from '@/services/api/knowledge/knowledgeSearchService'
 import { useKnowledgeGroups } from './useKnowledgeGroups'
@@ -37,6 +38,11 @@ export function KnowledgeQATreeView({
   const queryClient = useQueryClient()
   const groupsHook = useKnowledgeGroups(workspaceId, 'qa')
   const [editingGroup, setEditingGroup] = useState<KnowledgeGroup | null>(null)
+  // Свёрнутость групп Q&A — запоминается на пользователя (localStorage)
+  const groupIds = useMemo(() => groupsHook.groups.map((g) => g.id), [groupsHook.groups])
+  const collapse = useCollapsedGroups(`kb-collapsed:${workspaceId}:qa`, groupIds)
+  const allCollapsed =
+    groupIds.length > 0 && groupIds.every((id) => collapse.collapsedGroups.has(id))
 
   const invalidateQA = () =>
     queryClient.invalidateQueries({ queryKey: knowledgeBaseKeys.qa(workspaceId) })
@@ -164,7 +170,26 @@ export function KnowledgeQATreeView({
 
   return (
     <>
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-1">
+        {groupIds.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-muted-foreground"
+            onClick={() => {
+              if (allCollapsed) collapse.expandAll()
+              else collapse.collapseAll(groupIds)
+            }}
+            title={allCollapsed ? 'Развернуть все группы' : 'Свернуть все группы'}
+          >
+            {allCollapsed ? (
+              <ChevronsUpDown className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronsDownUp className="w-3.5 h-3.5" />
+            )}
+            {allCollapsed ? 'Развернуть все' : 'Свернуть все'}
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="sm"
@@ -183,7 +208,7 @@ export function KnowledgeQATreeView({
           Нет групп. Нажмите «Добавить группу» или создайте Q&A с группой в редакторе.
         </div>
       ) : (
-        <GroupTreeBody source={source} />
+        <GroupTreeBody source={source} collapse={collapse} />
       )}
       <EditGroupDialog
         key={editingGroup?.id}

@@ -7,8 +7,7 @@
 
 import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
-import { KnowledgeSearchInput } from '@/components/knowledge/KnowledgeSearchInput'
-import { ArticleHistoryButton } from '@/components/knowledge/ArticleHistoryButton'
+import { KnowledgeSearchGroup } from '@/components/knowledge/KnowledgeSearchGroup'
 import { Card } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
 import {
@@ -27,7 +26,7 @@ import {
   NativeTableHeadCell,
 } from '@/components/ui/native-table'
 import { StatusDropdown } from '@/components/common/status-dropdown'
-import { Plus, FolderPlus, Tags, BookOpen, Trash2, Filter, ArrowUp, ArrowDown, ArrowUpDown, MoreHorizontal } from 'lucide-react'
+import { Plus, FolderPlus, Tags, BookOpen, Trash2, ArrowUp, ArrowDown, ArrowUpDown, MoreHorizontal } from 'lucide-react'
 import { formatSmartDate } from '@/utils/format/dateFormat'
 import { KnowledgeFilterBar } from './components/KnowledgeFilterBar'
 import { InlineGroupsCell, InlineTagsCell } from './components/InlineCells'
@@ -101,24 +100,16 @@ export function KnowledgeTableView({ page }: { page: PageReturn }) {
     <div className="space-y-3">
       {/* Toolbar */}
       <div className="flex items-center gap-3">
-        <KnowledgeSearchInput
+        <KnowledgeSearchGroup
           value={page.searchQuery}
           onChange={page.setSearchQuery}
           historyScope={`${page.workspaceId ?? 'ws'}:articles`}
-          placeholder="Поиск статей..."
-          className="flex-1 min-w-[200px] max-w-sm"
-          inputClassName="h-8 text-sm"
-        />
-        <Button
+          workspaceId={page.workspaceId}
+          showFilters={page.showFilters}
+          hasActiveFilters={hasActiveFilters}
+          onToggleFilters={() => page.setShowFilters((v) => !v)}
           size="sm"
-          variant={page.showFilters || hasActiveFilters ? 'secondary' : 'outline'}
-          className="w-8 h-8 p-0"
-          onClick={() => page.setShowFilters((v) => !v)}
-          title="Фильтр"
-        >
-          <Filter className="w-4 h-4" />
-        </Button>
-        {page.workspaceId && <ArticleHistoryButton workspaceId={page.workspaceId} />}
+        />
         {/* Селектор сортировки */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

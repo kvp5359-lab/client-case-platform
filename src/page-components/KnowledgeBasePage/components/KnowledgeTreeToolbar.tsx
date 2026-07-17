@@ -5,9 +5,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, FolderPlus, MoreVertical, RefreshCw, Loader2, Filter } from 'lucide-react'
-import { KnowledgeSearchInput } from '@/components/knowledge/KnowledgeSearchInput'
-import { ArticleHistoryButton } from '@/components/knowledge/ArticleHistoryButton'
+import {
+  Plus,
+  FolderPlus,
+  MoreVertical,
+  RefreshCw,
+  Loader2,
+  ChevronsDownUp,
+  ChevronsUpDown,
+} from 'lucide-react'
+import { KnowledgeSearchGroup } from '@/components/knowledge/KnowledgeSearchGroup'
 import type { useKnowledgeBasePage } from '../useKnowledgeBasePage'
 
 type PageReturn = ReturnType<typeof useKnowledgeBasePage>
@@ -19,6 +26,8 @@ type KnowledgeTreeToolbarProps = {
   hasActiveFilters: boolean
   isReindexing: boolean
   onReindex: () => void
+  allCollapsed: boolean
+  onToggleCollapseAll: () => void
 }
 
 export function KnowledgeTreeToolbar({
@@ -28,31 +37,36 @@ export function KnowledgeTreeToolbar({
   hasActiveFilters,
   isReindexing,
   onReindex,
+  allCollapsed,
+  onToggleCollapseAll,
 }: KnowledgeTreeToolbarProps) {
   return (
     <div className="flex items-center gap-3">
-      <KnowledgeSearchInput
+      <KnowledgeSearchGroup
         value={page.searchQuery}
         onChange={page.setSearchQuery}
         historyScope={`${page.workspaceId ?? 'ws'}:articles`}
-        placeholder="Поиск статей..."
-        className="flex-1 min-w-[200px] max-w-sm"
-        inputClassName={
-          page.searchQuery
-            ? 'transition-all !border-primary ring-2 ring-primary/50 shadow-[0_0_0_4px_hsl(47.9_95.8%_53.1%_/_0.2)]'
-            : 'transition-all'
-        }
+        workspaceId={page.workspaceId}
+        showFilters={showFilters}
+        hasActiveFilters={hasActiveFilters}
+        onToggleFilters={onToggleFilters}
       />
-      <Button
-        size="sm"
-        variant={showFilters || hasActiveFilters ? 'secondary' : 'outline'}
-        className="w-8 h-8 p-0"
-        onClick={onToggleFilters}
-        title="Фильтр"
-      >
-        <Filter className="w-4 h-4" />
-      </Button>
-      {page.workspaceId && <ArticleHistoryButton workspaceId={page.workspaceId} />}
+      {page.groups.length > 0 && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="min-w-[8rem]" // фикс-ширина: «Свернуть»/«Развернуть» разной длины, соседи не прыгают
+          onClick={onToggleCollapseAll}
+          title={allCollapsed ? 'Развернуть все группы' : 'Свернуть все группы'}
+        >
+          {allCollapsed ? (
+            <ChevronsUpDown className="w-4 h-4 mr-1.5" />
+          ) : (
+            <ChevronsDownUp className="w-4 h-4 mr-1.5" />
+          )}
+          {allCollapsed ? 'Развернуть' : 'Свернуть'}
+        </Button>
+      )}
       <Button
         size="sm"
         variant="outline"

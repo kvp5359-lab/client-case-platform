@@ -18,6 +18,7 @@ export function GroupTreeNode<Item extends { id: string }>({
   depth,
   collapsedGroups,
   toggleCollapse,
+  deepCounts,
   isLast = false,
   overGroupId,
   dropIndicator,
@@ -27,6 +28,8 @@ export function GroupTreeNode<Item extends { id: string }>({
   depth: number
   collapsedGroups: Set<string>
   toggleCollapse: (id: string) => void
+  /** Счётчики «элементы группы + все подгруппы», считаются один раз в GroupTreeBody */
+  deepCounts: Map<string, number>
   isLast?: boolean
   overGroupId?: string | null
   dropIndicator?: DropIndicatorState | null
@@ -37,8 +40,9 @@ export function GroupTreeNode<Item extends { id: string }>({
     : allChildren
   const items = source.getItemsForGroup(group.id)
   const hasContent = children.length > 0 || items.length > 0
-  const totalItems = items.length
-  const isCollapsed = collapsedGroups.has(group.id)
+  const totalItems = deepCounts.get(group.id) ?? items.length
+  // При активном поиске свёрнутость игнорируем — иначе найденное прячется в свёрнутых группах
+  const isCollapsed = !source.isSearchActive && collapsedGroups.has(group.id)
   const isAddingChild = source.addingGroupParentId === group.id
   const isDropTarget = overGroupId === group.id
 
@@ -149,6 +153,7 @@ export function GroupTreeNode<Item extends { id: string }>({
               depth={depth + 1}
               collapsedGroups={collapsedGroups}
               toggleCollapse={toggleCollapse}
+              deepCounts={deepCounts}
               isLast={i === children.length - 1 && items.length === 0}
               overGroupId={overGroupId}
               dropIndicator={dropIndicator}
