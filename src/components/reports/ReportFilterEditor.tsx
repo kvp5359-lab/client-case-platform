@@ -27,7 +27,13 @@ import {
   type ReportDatasetDef,
   type ReportFieldDef,
 } from '@/lib/reports/registry'
+import { PERIOD_PRESET_OPTIONS } from '@/lib/reports/runtime'
 import { useReportFieldOptions } from '@/hooks/useReports'
+
+/** Пресеты для оператора «период»: без «Всё время» (нет условия) и «Период…» (это between). */
+const DYN_PERIOD_OPTIONS = PERIOD_PRESET_OPTIONS.filter(
+  (o) => o.value !== 'all' && o.value !== 'custom',
+)
 
 type Props = {
   workspaceId: string
@@ -52,6 +58,7 @@ function defaultOperator(field: ReportFieldDef): string {
 function defaultValue(field: ReportFieldDef, operator: string): unknown {
   if (operator === 'in' || operator === 'not_in') return []
   if (operator === 'between') return ['', '']
+  if (operator === 'dyn_period') return 'this_month'
   if (field.staticOptions) return field.staticOptions[0]?.value ?? ''
   return ''
 }
@@ -75,6 +82,21 @@ function ConditionValueInput({
 
   if (condition.operator === 'is_null' || condition.operator === 'is_not_null') {
     return null
+  }
+
+  if (condition.operator === 'dyn_period') {
+    return (
+      <Select value={String(condition.value ?? 'this_month')} onValueChange={onValue}>
+        <SelectTrigger className="h-8 w-[180px]">
+          <SelectValue placeholder="Период" />
+        </SelectTrigger>
+        <SelectContent>
+          {DYN_PERIOD_OPTIONS.map((o) => (
+            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    )
   }
 
   if (field.staticOptions) {

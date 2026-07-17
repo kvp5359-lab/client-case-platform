@@ -283,6 +283,9 @@ export function operatorsForField(field: ReportFieldDef): { value: string; label
       ]
     case 'date':
       return [
+        // Динамический пресет («этот месяц»…) — разворачивается в даты на
+        // каждый запуск (см. resolveDynamicPeriods), отчёт скользящий.
+        { value: 'dyn_period', label: 'период' },
         { value: 'between', label: 'между' },
         { value: 'after_eq', label: 'с даты' },
         { value: 'before_eq', label: 'по дату' },

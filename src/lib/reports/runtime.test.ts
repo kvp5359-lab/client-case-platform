@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   resolvePeriodRange,
   applyPeriodToConfig,
+  extractPeriodFromConfig,
+  resolveDynamicPeriods,
+  stripPeriodConditions,
   buildReportTree,
   leafRows,
   normalizeReportConfig,
@@ -57,6 +60,104 @@ describe('resolvePeriodRange', () => {
   it('custom без дат → null', () => {
     expect(resolvePeriodRange({ preset: 'custom' }, NOW)).toBeNull()
   })
+
+  // NOW = суббота 04.07.2026; недели считаем с понедельника.
+  it('вчера / эта неделя / прошлая неделя', () => {
+    expect(resolvePeriodRange({ preset: 'yesterday' }, NOW)).toEqual({
+      from: '2026-07-03', to: '2026-07-03',
+    })
+    expect(resolvePeriodRange({ preset: 'this_week' }, NOW)).toEqual({
+      from: '2026-06-29', to: '2026-07-04',
+    })
+    expect(resolvePeriodRange({ preset: 'last_week' }, NOW)).toEqual({
+      from: '2026-06-22', to: '2026-06-28',
+    })
+  })
+
+  it('кварталы и прошлый год', () => {
+    expect(resolvePeriodRange({ preset: 'this_quarter' }, NOW)).toEqual({
+      from: '2026-07-01', to: '2026-07-04',
+    })
+    expect(resolvePeriodRange({ preset: 'last_quarter' }, NOW)).toEqual({
+      from: '2026-04-01', to: '2026-06-30',
+    })
+    expect(resolvePeriodRange({ preset: 'last_year' }, NOW)).toEqual({
+      from: '2025-01-01', to: '2025-12-31',
+    })
+  })
+
+  it('90 дней включительно', () => {
+    expect(resolvePeriodRange({ preset: 'last_90' }, NOW)).toEqual({
+      from: '2026-04-06', to: '2026-07-04',
+    })
+  })
+})
+
+describe('resolveDynamicPeriods', () => {
+  const base: ReportConfig = {
+    dataset: 'projects',
+    groupBy: [{ field: 'template' }],
+    columns: [{ key: 'template' }],
+  }
+
+  it('dyn_period разворачивается в between с датами пресета', () => {
+    const out = resolveDynamicPeriods(
+      {
+        ...base,
+        filter: {
+          logic: 'and',
+          rules: [
+            { type: 'condition', field: 'template', operator: 'in', value: ['x'] },
+            { type: 'condition', field: 'created', operator: 'dyn_period', value: 'this_month' },
+          ],
+        },
+      },
+      NOW,
+    )
+    expect(out.filter?.rules[1]).toEqual({
+      type: 'condition',
+      field: 'created',
+      operator: 'between',
+      value: ['2026-07-01', '2026-07-04'],
+    })
+    // Прочие условия не тронуты.
+    expect(out.filter?.rules[0]).toMatchObject({ operator: 'in' })
+  })
+
+  it('работает во вложенной группе, неизвестный пресет снимает условие', () => {
+    const out = resolveDynamicPeriods(
+      {
+        ...base,
+        filter: {
+          logic: 'and',
+          rules: [
+            {
+              type: 'group',
+              group: {
+                logic: 'or',
+                rules: [
+                  { type: 'condition', field: 'created', operator: 'dyn_period', value: 'yesterday' },
+                  { type: 'condition', field: 'created', operator: 'dyn_period', value: 'мусор' },
+                ],
+              },
+            },
+          ],
+        },
+      },
+      NOW,
+    )
+    const inner = out.filter?.rules[0]
+    if (inner?.type !== 'group') throw new Error('ожидалась группа')
+    expect(inner.group.rules).toHaveLength(1)
+    expect(inner.group.rules[0]).toMatchObject({
+      operator: 'between',
+      value: ['2026-07-03', '2026-07-03'],
+    })
+  })
+
+  it('без фильтра конфиг не меняется', () => {
+    expect(resolveDynamicPeriods(base, NOW)).toBe(base)
+  })
 })
 
 describe('applyPeriodToConfig', () => {
@@ -105,6 +206,141 @@ describe('applyPeriodToConfig', () => {
 
   it('preset=all — конфиг без изменений', () => {
     expect(applyPeriodToConfig(base, { preset: 'all' }, NOW)).toBe(base)
+  })
+})
+
+describe('extractPeriodFromConfig', () => {
+  const base: ReportConfig = {
+    dataset: 'projects', // periodField = created
+    groupBy: [{ field: 'template' }],
+    columns: [{ key: 'template' }],
+  }
+
+  it('between по periodField на верхнем уровне → пресет custom с датами', () => {
+    const out = extractPeriodFromConfig({
+      ...base,
+      filter: {
+        logic: 'and',
+        rules: [
+          { type: 'condition', field: 'template', operator: 'in', value: ['x'] },
+          { type: 'condition', field: 'created', operator: 'between', value: ['2026-07-01', '2026-07-16'] },
+        ],
+      },
+    })
+    expect(out).toEqual({ preset: 'custom', from: '2026-07-01', to: '2026-07-16' })
+  })
+
+  it('нет условия по дате / OR-группа / другой оператор → null', () => {
+    expect(extractPeriodFromConfig(base)).toBeNull()
+    expect(
+      extractPeriodFromConfig({
+        ...base,
+        filter: {
+          logic: 'or',
+          rules: [{ type: 'condition', field: 'created', operator: 'between', value: ['a', 'b'] }],
+        },
+      }),
+    ).toBeNull()
+    expect(
+      extractPeriodFromConfig({
+        ...base,
+        filter: {
+          logic: 'and',
+          rules: [{ type: 'condition', field: 'created', operator: 'after_eq', value: '2026-07-01' }],
+        },
+      }),
+    ).toBeNull()
+  })
+
+  it('dyn_period по periodField → сам пресет (селект покажет «Этот месяц»)', () => {
+    const out = extractPeriodFromConfig({
+      ...base,
+      filter: {
+        logic: 'and',
+        rules: [{ type: 'condition', field: 'created', operator: 'dyn_period', value: 'this_month' }],
+      },
+    })
+    expect(out).toEqual({ preset: 'this_month' })
+  })
+
+  it('dyn_period со значением all/custom не считается периодом (нет дат)', () => {
+    const withValue = (value: string): ReportConfig => ({
+      ...base,
+      filter: {
+        logic: 'and',
+        rules: [{ type: 'condition', field: 'created', operator: 'dyn_period', value }],
+      },
+    })
+    expect(extractPeriodFromConfig(withValue('all'))).toBeNull()
+    expect(extractPeriodFromConfig(withValue('custom'))).toBeNull()
+  })
+
+  it('датасет без periodField (client_balance) → null', () => {
+    expect(
+      extractPeriodFromConfig({
+        ...base,
+        dataset: 'client_balance',
+        filter: {
+          logic: 'and',
+          rules: [{ type: 'condition', field: 'created', operator: 'between', value: ['a', 'b'] }],
+        },
+      }),
+    ).toBeNull()
+  })
+})
+
+describe('stripPeriodConditions — выбор периода на странице заменяет фильтр', () => {
+  const base: ReportConfig = {
+    dataset: 'projects', // periodField = created
+    groupBy: [{ field: 'template' }],
+    columns: [{ key: 'template' }],
+  }
+
+  it('вырезает dyn_period и between по periodField, остальное не трогает', () => {
+    const out = stripPeriodConditions({
+      ...base,
+      filter: {
+        logic: 'and',
+        rules: [
+          { type: 'condition', field: 'template', operator: 'in', value: ['x'] },
+          { type: 'condition', field: 'created', operator: 'dyn_period', value: 'this_month' },
+          { type: 'condition', field: 'created', operator: 'between', value: ['2026-01-01', '2026-02-01'] },
+          // Дедлайн — не periodField, условие остаётся.
+          { type: 'condition', field: 'deadline', operator: 'dyn_period', value: 'this_month' },
+        ],
+      },
+    })
+    expect(out.filter?.rules).toHaveLength(2)
+    expect(out.filter?.rules[0]).toMatchObject({ field: 'template' })
+    expect(out.filter?.rules[1]).toMatchObject({ field: 'deadline' })
+  })
+
+  it('страница: период фильтра «этот месяц» + выбор «прошлый месяц» → в итоге только прошлый', () => {
+    const config: ReportConfig = {
+      ...base,
+      filter: {
+        logic: 'and',
+        rules: [{ type: 'condition', field: 'created', operator: 'dyn_period', value: 'this_month' }],
+      },
+    }
+    // Тот же конвейер, что собирает runtimeConfig на странице отчёта.
+    const runtime = applyPeriodToConfig(
+      resolveDynamicPeriods(stripPeriodConditions(normalizeReportConfig(config)), NOW),
+      { preset: 'last_month' },
+      NOW,
+    )
+    expect(runtime.filter?.rules).toEqual([
+      {
+        type: 'condition',
+        field: 'created',
+        operator: 'between',
+        value: ['2026-06-01', '2026-06-30'],
+      },
+    ])
+  })
+
+  it('нечего вырезать → конфиг не меняется', () => {
+    expect(stripPeriodConditions(base)).toBe(base)
   })
 })
 

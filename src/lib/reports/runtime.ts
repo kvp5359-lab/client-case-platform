@@ -12,10 +12,11 @@ import type {
   ReportColumn,
   ReportConfig,
   ReportPeriod,
+  ReportPeriodPreset,
   ReportRow,
   ReportTreeNode,
 } from '@/types/reports'
-import type { FilterGroup } from '@/lib/filters/types'
+import type { FilterGroup, FilterRule } from '@/lib/filters/types'
 import { formatDateToString as iso } from '@/utils/format/dateFormat'
 import { aggFormat, getDatasetDef, getFieldDef, type ReportDatasetDef } from './registry'
 
@@ -110,26 +111,68 @@ export function csvColumns(
 
 // ── Период ────────────────────────────────────────────────
 
+/**
+ * Единый набор быстрых периодов — его показывают и страница отчёта, и
+ * оператор «период» в фильтре (там без 'all' и 'custom': нет условия и
+ * конкретные даты выражаются иначе).
+ */
+export const PERIOD_PRESET_OPTIONS: { value: ReportPeriodPreset; label: string }[] = [
+  { value: 'all', label: 'Всё время' },
+  { value: 'today', label: 'Сегодня' },
+  { value: 'yesterday', label: 'Вчера' },
+  { value: 'this_week', label: 'Эта неделя' },
+  { value: 'last_week', label: 'Прошлая неделя' },
+  { value: 'this_month', label: 'Этот месяц' },
+  { value: 'last_month', label: 'Прошлый месяц' },
+  { value: 'this_quarter', label: 'Этот квартал' },
+  { value: 'last_quarter', label: 'Прошлый квартал' },
+  { value: 'this_year', label: 'Этот год' },
+  { value: 'last_year', label: 'Прошлый год' },
+  { value: 'last_7', label: '7 дней' },
+  { value: 'last_30', label: '30 дней' },
+  { value: 'last_90', label: '90 дней' },
+  { value: 'custom', label: 'Период…' },
+]
+
 /** Пресет периода → конкретные даты [from, to] (включительно) или null (всё время). */
 export function resolvePeriodRange(
   period: ReportPeriod,
-  now: Date,
+  now: Date = new Date(),
 ): { from: string; to: string } | null {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const daysBack = (n: number) => {
+    const from = new Date(today)
+    from.setDate(from.getDate() - n)
+    return { from: iso(from), to: iso(today) }
+  }
+  // Понедельник недели, в которую попадает date.
+  const mondayOf = (date: Date) => {
+    const d = new Date(date)
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+    return d
+  }
+  const quarterStart = (date: Date) =>
+    new Date(date.getFullYear(), Math.floor(date.getMonth() / 3) * 3, 1)
+
   switch (period.preset) {
     case 'all':
       return null
     case 'today':
       return { from: iso(today), to: iso(today) }
-    case 'last_7': {
-      const from = new Date(today)
-      from.setDate(from.getDate() - 6)
-      return { from: iso(from), to: iso(today) }
+    case 'yesterday': {
+      const d = new Date(today)
+      d.setDate(d.getDate() - 1)
+      return { from: iso(d), to: iso(d) }
     }
-    case 'last_30': {
-      const from = new Date(today)
-      from.setDate(from.getDate() - 29)
-      return { from: iso(from), to: iso(today) }
+    case 'this_week':
+      return { from: iso(mondayOf(today)), to: iso(today) }
+    case 'last_week': {
+      const monday = mondayOf(today)
+      const from = new Date(monday)
+      from.setDate(from.getDate() - 7)
+      const to = new Date(monday)
+      to.setDate(to.getDate() - 1)
+      return { from: iso(from), to: iso(to) }
     }
     case 'this_month': {
       const from = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -140,10 +183,30 @@ export function resolvePeriodRange(
       const to = new Date(today.getFullYear(), today.getMonth(), 0)
       return { from: iso(from), to: iso(to) }
     }
+    case 'this_quarter':
+      return { from: iso(quarterStart(today)), to: iso(today) }
+    case 'last_quarter': {
+      const start = quarterStart(today)
+      const from = new Date(start.getFullYear(), start.getMonth() - 3, 1)
+      const to = new Date(start)
+      to.setDate(to.getDate() - 1)
+      return { from: iso(from), to: iso(to) }
+    }
     case 'this_year': {
       const from = new Date(today.getFullYear(), 0, 1)
       return { from: iso(from), to: iso(today) }
     }
+    case 'last_year':
+      return {
+        from: iso(new Date(today.getFullYear() - 1, 0, 1)),
+        to: iso(new Date(today.getFullYear() - 1, 11, 31)),
+      }
+    case 'last_7':
+      return daysBack(6)
+    case 'last_30':
+      return daysBack(29)
+    case 'last_90':
+      return daysBack(89)
     case 'custom': {
       if (!period.from && !period.to) return null
       return {
@@ -184,6 +247,83 @@ export function applyPeriodToConfig(
       ? { logic: 'and', rules: [{ type: 'group', group: saved }, ...periodGroup.rules] }
       : periodGroup
   return { ...config, filter: merged }
+}
+
+/**
+ * Оператор «период» (dyn_period) — динамический: в фильтре хранится ПРЕСЕТ
+ * («этот месяц»), а в даты он превращается на каждый запуск — сохранённый
+ * отчёт всегда скользящий. Сервер о dyn_period не знает: перед run_report
+ * фильтр прогоняется через эту функцию, пресет разворачивается в between.
+ */
+export function resolveDynamicPeriods(config: ReportConfig, now: Date = new Date()): ReportConfig {
+  const mapGroup = (group: FilterGroup): FilterGroup => ({
+    ...group,
+    rules: group.rules.flatMap((rule): FilterRule[] => {
+      if (rule.type === 'group') return [{ ...rule, group: mapGroup(rule.group) }]
+      if (rule.operator !== 'dyn_period') return [rule]
+      const range = resolvePeriodRange({ preset: rule.value as ReportPeriodPreset }, now)
+      // Неизвестный/пустой пресет ничего не ограничивает — условие снимается.
+      if (!range) return []
+      return [{ ...rule, operator: 'between', value: [range.from, range.to] }]
+    }),
+  })
+  if (!config.filter) return config
+  return { ...config, filter: mapGroup(config.filter) }
+}
+
+/**
+ * Убрать из фильтра периодные условия по periodField (верхний AND-уровень,
+ * dyn_period/between — те же, что видит extractPeriodFromConfig).
+ *
+ * Период в фильтре отчёта — это только ДЕФОЛТ для быстрого выбора: страница
+ * стартует с него, но выбранный пользователем период должен ЗАМЕНЯТЬ его, а
+ * не складываться по AND (иначе «этот месяц» из фильтра ∧ «прошлый месяц» со
+ * страницы = пусто). Условия по другим полям-датам не трогаем.
+ */
+export function stripPeriodConditions(config: ReportConfig): ReportConfig {
+  const field = getDatasetDef(config.dataset)?.periodField
+  const filter = config.filter
+  if (!field || !filter || filter.logic === 'or') return config
+  const rules = filter.rules.filter(
+    (rule) =>
+      !(
+        rule.type === 'condition' &&
+        rule.field === field &&
+        (rule.operator === 'dyn_period' || rule.operator === 'between')
+      ),
+  )
+  if (rules.length === filter.rules.length) return config
+  return { ...config, filter: { ...filter, rules } }
+}
+
+/**
+ * Период, заданный в сохранённом фильтре отчёта (dyn_period или between по
+ * periodField на верхнем AND-уровне) → пресет для быстрого выбора. Страница
+ * отчёта стартует с него, чтобы селект показывал реальный период, а не
+ * «Всё время», когда период уже зашит в настройки отчёта.
+ */
+export function extractPeriodFromConfig(config: ReportConfig): ReportPeriod | null {
+  const field = getDatasetDef(config.dataset)?.periodField
+  const filter = config.filter
+  if (!field || !filter || filter.logic === 'or') return null
+  for (const rule of filter.rules) {
+    if (rule.type !== 'condition' || rule.field !== field) continue
+    if (rule.operator === 'dyn_period' && typeof rule.value === 'string') {
+      // 'all'/'custom' в dyn_period не валидны (UI их не предлагает): у них
+      // нет дат, дефолтом такого условия быть не может.
+      const known = PERIOD_PRESET_OPTIONS.some(
+        (o) => o.value === rule.value && o.value !== 'all' && o.value !== 'custom',
+      )
+      if (known) return { preset: rule.value as ReportPeriodPreset }
+      continue
+    }
+    if (rule.operator !== 'between' || !Array.isArray(rule.value)) continue
+    const [from, to] = rule.value as [unknown, unknown]
+    if (typeof from === 'string' && typeof to === 'string') {
+      return { preset: 'custom', from, to }
+    }
+  }
+  return null
 }
 
 // ── Дерево строк ──────────────────────────────────────────

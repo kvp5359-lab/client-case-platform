@@ -131,11 +131,18 @@ export type ReportRunResult = {
 export type ReportPeriodPreset =
   | 'all'
   | 'today'
-  | 'last_7'
-  | 'last_30'
+  | 'yesterday'
+  | 'this_week'
+  | 'last_week'
   | 'this_month'
   | 'last_month'
+  | 'this_quarter'
+  | 'last_quarter'
   | 'this_year'
+  | 'last_year'
+  | 'last_7'
+  | 'last_30'
+  | 'last_90'
   | 'custom'
 
 export type ReportPeriod = {
