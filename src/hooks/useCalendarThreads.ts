@@ -14,6 +14,7 @@ import {
   myTaskCountsKeys,
   projectThreadKeys,
   workspaceTaskKeys,
+  workspaceThreadKeys,
   STALE_TIME,
 } from '@/hooks/queryKeys'
 import { logAuditAction } from '@/services/auditService'
@@ -166,6 +167,10 @@ export function useUpdateThreadTime() {
       // Дедлайн/время могут влиять на «мои задачи» и счётчики.
       queryClient.invalidateQueries({ queryKey: myTaskCountsKeys.byWorkspace(params.workspaceId) })
       queryClient.invalidateQueries({ queryKey: workspaceTaskKeys.byWorkspace(params.workspaceId) })
+      // Списки и столбцы досок читают треды под ['workspace-threads', ws, ...]
+      // (boardFilteredKeys). Без этой инвалидации строка в списке остаётся со
+      // старым временем до ручного обновления, хотя в календаре оно уже видно.
+      queryClient.invalidateQueries({ queryKey: workspaceThreadKeys.workspace(params.workspaceId) })
     },
   })
 }
