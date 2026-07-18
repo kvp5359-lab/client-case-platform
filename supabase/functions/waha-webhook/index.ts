@@ -92,9 +92,23 @@ async function handleReaction(service: SupabaseClient, sessionName: string, p: W
   if (!session) return;
   const workspaceId = session.workspace_id as string;
 
-  // Наше сообщение, на которое реакция
-  const { data: msg } = await service.from("project_messages")
-    .select("id, thread_id").eq("waha_message_id", extMsgId).maybeSingle();
+  // Наше сообщение, на которое реакция. Форматы id расходятся: входящие хранят
+  // полный «false_chat_MSGID», исходящие — короткий «MSGID» (из sendText).
+  // reaction.messageId приходит полным → ищем и по полному, и по короткому.
+  let msg: { id: string; thread_id: string } | null = null;
+  {
+    const r = await service.from("project_messages")
+      .select("id, thread_id").eq("waha_message_id", extMsgId).maybeSingle();
+    msg = (r.data as { id: string; thread_id: string } | null) ?? null;
+  }
+  if (!msg) {
+    const short = extMsgId.split("_").pop();
+    if (short && short !== extMsgId) {
+      const r = await service.from("project_messages")
+        .select("id, thread_id").eq("waha_message_id", short).maybeSingle();
+      msg = (r.data as { id: string; thread_id: string } | null) ?? null;
+    }
+  }
   if (!msg) return;
 
   const { data: thread } = await service.from("project_threads")
