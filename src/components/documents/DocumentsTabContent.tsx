@@ -168,13 +168,6 @@ export function DocumentsTabContent({
     clearSelection()
   }, [filterMode, clearSelection])
 
-  // Push-режим правой панели: на странице документов панель отжимает контент
-  // влево, а не накладывается поверх. Атрибут читает CSS в globals.css.
-  useEffect(() => {
-    document.body.setAttribute('data-panel-mode', 'push')
-    return () => document.body.removeAttribute('data-panel-mode')
-  }, [])
-
   // Статусы
   const { data: statuses = [] } = useDocumentStatuses(workspaceId)
   const { data: folderStatuses = [] } = useDocumentKitStatuses(workspaceId)

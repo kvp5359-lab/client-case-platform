@@ -11,7 +11,6 @@
  * все услуги/доходы/расходы в ней. Курсов и конвертации нет.
  */
 
-import { useEffect } from 'react'
 import { toast } from 'sonner'
 import { ChevronDown, Coins } from 'lucide-react'
 import {
@@ -36,16 +35,6 @@ type Props = {
 }
 
 export function FinanceTabContent({ projectId, workspaceId }: Props) {
-  // Push-режим правой панели: на вкладке финансов открытая панель отжимает
-  // контент влево, а не накладывается поверх (тот же паттерн, что в
-  // TaskListView и DocumentsTabContent — атрибут читает CSS в globals.css).
-  // Контент сужается → container query `finance-tab` сам складывает
-  // двухколоночную сетку в одну колонку.
-  useEffect(() => {
-    document.body.setAttribute('data-panel-mode', 'push')
-    return () => document.body.removeAttribute('data-panel-mode')
-  }, [])
-
   const { currency, isExplicit, baseCurrency, enabledCurrencies } = useProjectCurrency(
     workspaceId,
     projectId,

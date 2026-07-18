@@ -102,13 +102,6 @@ export const TaskListView = memo(function TaskListView({
   // и не рендерим свой TaskPanel (панель живёт в WorkspaceLayout и не закрывается при смене вкладки).
   const layoutPanel = useLayoutTaskPanel()
 
-  // Push-режим правой панели: на странице задач панель отжимает контент
-  // влево, а не накладывается поверх. Атрибут читает CSS в globals.css.
-  useEffect(() => {
-    document.body.setAttribute('data-panel-mode', 'push')
-    return () => document.body.removeAttribute('data-panel-mode')
-  }, [])
-
   const [openTaskId, setOpenTaskId] = useState<string | null>(null)
   // Свежесозданный тред — используется пока он не появится в кеше
   const [createdThread, setCreatedThread] = useState<TaskItem | null>(null)

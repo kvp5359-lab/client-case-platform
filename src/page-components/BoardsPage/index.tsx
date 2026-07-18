@@ -110,10 +110,11 @@ export default function BoardsPage() {
   // Закрываем боковую панель при входе на страницу.
   useEffect(() => { closePanel() }, [closePanel])
 
-  // Push-режим правой панели (как на странице задач проекта): при открытой панели
-  // <main> отжимается влево, ряд вкладок сужается и overflow-бутерброд реагирует.
+  // Overlay-режим правой панели: доски — единственное исключение из push по
+  // умолчанию. Панель ложится ПОВЕРХ доски, main не сужается — доскам нужна
+  // полная ширина и горизонтальный скролл колонок. Атрибут читает CSS.
   useEffect(() => {
-    document.body.setAttribute('data-panel-mode', 'push')
+    document.body.setAttribute('data-panel-mode', 'overlay')
     return () => document.body.removeAttribute('data-panel-mode')
   }, [])
 

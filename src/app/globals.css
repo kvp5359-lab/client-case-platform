@@ -650,11 +650,19 @@
   }
 }
 
-/* Push-режим правой панели: на страницах с task-списком (data-panel-mode="push")
-   при открытой панели (data-panel-open) основной <main> отжимается влево.
-   На остальных страницах панель остаётся overlay поверх контента. */
-body[data-panel-open][data-panel-mode="push"] main {
-  margin-right: var(--panel-width, 600px);
+/* Правая панель ПО УМОЛЧАНИЮ отжимает основной <main> влево (панель занимает
+   правую половину, контент — левую). Исключение — data-panel-mode="overlay"
+   (доски): там панель ложится поверх контента, main не сужается (доскам нужна
+   полная ширина + горизонтальный скролл колонок).
+   Только десктоп (≥768px): на мобиле панель — fullscreen overlay, сужать main
+   не нужно (иначе margin-right в 600px схлопнул бы контент на узком экране). */
+@media (min-width: 768px) {
+  body[data-panel-open] main {
+    margin-right: var(--panel-width, 600px);
+  }
+  body[data-panel-open][data-panel-mode="overlay"] main {
+    margin-right: 0;
+  }
 }
 
 /* Строка документа в DocumentItem — container query на саму строку.
@@ -747,17 +755,10 @@ body[data-panel-open][data-panel-mode="push"] main {
 
 /* Вкладки модулей проекта. Все вкладки равноправны, у каждой иконка + подпись
    целиком. Ряд (TabsList, overflow-x-auto) скроллится по горизонтали, если не
-   влезает; справа — всегда видимая кнопка со списком ВСЕХ вкладок. */
-/* На вкладках-ОВЕРЛЕЯХ (панель накрывает контент, main НЕ сужается — Материалы,
-   Анкеты, Подбор ВНЖ, История, Дневник) резервируем ширину панели для ряда
-   вкладок, иначе он «видит» полную ширину и правый край уезжает под панель.
-   В push-режиме (Задачи/Документы/Финансы) main уже сужен правилом
-   body[data-panel-open][data-panel-mode="push"] main — там не трогаем. */
-@media (min-width: 768px) {
-  body[data-panel-open]:not([data-panel-mode='push']) .project-tabs-cq {
-    margin-right: var(--panel-width, 600px);
-  }
-}
+   влезает; справа — всегда видимая кнопка со списком ВСЕХ вкладок.
+   Резервировать ширину панели для ряда вкладок больше не нужно: при открытой
+   панели main отжимается влево (push по умолчанию), и ряд уже внутри
+   сужённого контента. */
 
 /* AI-ассистент: запрет горизонтального скролла в Radix ScrollArea viewport */
 .side-panel [data-radix-scroll-area-viewport] {

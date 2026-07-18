@@ -9,7 +9,7 @@
  * синхронизирует все источники воркспейса.
  */
 
-import { Fragment, useEffect, useMemo } from 'react'
+import { Fragment, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   FolderSync,
@@ -112,13 +112,6 @@ export default function SourceUpdatesPage() {
   const { data: unread = [] } = useSourceUpdatesUnread(workspaceId)
   const markRead = useMarkSourceUpdatesReadMutation()
   const markAllRead = useMarkAllSourceUpdatesReadMutation()
-
-  // Push-режим правой панели: при открытой панели <main> отжимается влево,
-  // и лента файлов помещается в свободное место, а не уезжает под панель.
-  useEffect(() => {
-    document.body.setAttribute('data-panel-mode', 'push')
-    return () => document.body.removeAttribute('data-panel-mode')
-  }, [])
 
   const executorIds = useMemo(() => new Set(executorProjectIds), [executorProjectIds])
 
