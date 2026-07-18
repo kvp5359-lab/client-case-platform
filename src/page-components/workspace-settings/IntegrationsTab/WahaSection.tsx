@@ -25,6 +25,7 @@ type WahaSessionRow = {
 }
 
 const isWorking = (s?: string | null) => s === 'WORKING'
+const onlyDigits = (s: string) => s.replace(/\D/g, '')
 
 export function WahaSection({
   workspaceId,
@@ -60,6 +61,24 @@ export function WahaSection({
   const sessionByUser = new Map<string, WahaSessionRow>()
   sessions.forEach((s) => { if (s.owner_user_id) sessionByUser.set(s.owner_user_id, s) })
   const activeCount = sessions.filter((s) => isWorking(s.status)).length
+
+  // Защита от дублей: активные Wazzup-номера — чтобы предупредить, если один
+  // номер подключают и через Wazzup, и через WAHA (получатся дубли сообщений).
+  const { data: wazzupPhones } = useQuery({
+    queryKey: ['waha-wazzup-overlap', workspaceId],
+    queryFn: async (): Promise<Set<string>> => {
+      const { data } = await supabase
+        .from('wazzup_channels')
+        .select('phone, state')
+        .eq('workspace_id', workspaceId)
+      const set = new Set<string>()
+      ;(data ?? []).forEach((c) => {
+        if (c.phone && c.state === 'active') set.add(onlyDigits(c.phone as string))
+      })
+      return set
+    },
+    enabled: !!workspaceId,
+  })
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -111,6 +130,7 @@ export function WahaSection({
               const session = sessionByUser.get(emp.user_id)
               const isMe = emp.user_id === currentUserId
               const active = isWorking(session?.status)
+              const dupWazzup = !!(session?.phone && wazzupPhones?.has(onlyDigits(session.phone)))
 
               return (
                 <div
@@ -142,6 +162,15 @@ export function WahaSection({
                     )}
                     {!session && (
                       <span className="text-xs text-muted-foreground shrink-0">не подключено</span>
+                    )}
+                    {dupWazzup && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] px-1.5 py-0 shrink-0 border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-400"
+                        title="Этот номер уже подключён через Wazzup — будут дубли сообщений. Оставь один способ."
+                      >
+                        ⚠ также в Wazzup
+                      </Badge>
                     )}
                   </div>
                   {isMe && !active && (

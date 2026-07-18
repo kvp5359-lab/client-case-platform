@@ -188,7 +188,7 @@ export function IntegrationsTab() {
     { id: 'lead_bots', label: 'Лид-боты', icon: Megaphone },
     { id: 'gmail', label: 'Gmail', icon: Mail },
     { id: 'business', label: 'Личный Telegram сотрудника', icon: Sparkles },
-    { id: 'wazzup', label: 'WhatsApp (Wazzup)', icon: MessageSquare },
+    { id: 'wazzup', label: 'WhatsApp', icon: MessageSquare },
     { id: 'email', label: 'Email (Resend)', icon: Mail },
     { id: 'google_calendar', label: 'Google Calendar', icon: CalendarIcon },
   ]
@@ -265,9 +265,25 @@ export function IntegrationsTab() {
         )}
         {section === 'wazzup' && (
           <>
+            <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+              WhatsApp можно подключить <b>одним из двух способов</b> — выбери что-то одно
+              на каждый номер (подключать один номер сразу в оба нельзя — будут дубли сообщений).
+            </div>
+
+            <div className="pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Способ 1 · Wazzup — платный шлюз (сервис берёт риск и обслуживание на себя)
+            </div>
             <IntegrationOverview {...OVERVIEW_WAZZUP} />
             <WazzupSection workspaceId={workspaceId!} employees={employees} />
+
+            <div className="pt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Способ 2 · Свой сервер (WAHA) — бесплатно, обслуживание на вашей стороне
+            </div>
             <WahaSection workspaceId={workspaceId!} employees={employees} />
+
+            <div className="pt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Общие настройки WhatsApp
+            </div>
             <LeadTemplateSetting workspaceId={workspaceId!} source="wazzup" />
             <ChannelDefaultIconColorSetting
               workspaceId={workspaceId!}
