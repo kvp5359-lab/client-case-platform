@@ -10,6 +10,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { stripHtmlBasic } from "../_shared/channelText.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -101,10 +102,15 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: "waha not configured" }), { status: 500 });
   }
 
+  const text = stripHtmlBasic(msg.content ?? "");
+  if (!text.trim()) {
+    await markSent(service, messageId, null);
+    return new Response(JSON.stringify({ ok: true, skipped: "empty" }), { status: 200 });
+  }
   const sendBody: Record<string, unknown> = {
     session: session.session_name,
     chatId: thread.waha_chat_id,
-    text: msg.content ?? "",
+    text,
   };
   if (replyTo) sendBody.reply_to = replyTo;
 
