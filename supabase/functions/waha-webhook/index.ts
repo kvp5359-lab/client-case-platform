@@ -173,10 +173,16 @@ async function downloadAndAttach(
   a: { messageId: string; workspaceId: string; mediaUrl: string; mimeType: string; fileName: string },
 ) {
   try {
-    // media.url у WAHA может быть относительным или на самом WAHA (нужен ключ)
-    const abs = a.mediaUrl.startsWith("http") ? a.mediaUrl : `${WAHA_URL}${a.mediaUrl}`;
-    const sameHost = WAHA_URL && abs.startsWith(WAHA_URL);
-    const res = await fetch(abs, sameHost ? { headers: { "X-Api-Key": WAHA_API_KEY } } : undefined);
+    // media.url у WAHA несёт ВНУТРЕННИЙ хост (http://localhost:3000) — edge до него
+    // не достучится. Берём только путь и склеиваем с публичным WAHA_URL + ключ.
+    let abs: string;
+    try {
+      const u = new URL(a.mediaUrl);
+      abs = `${WAHA_URL}${u.pathname}${u.search}`;
+    } catch {
+      abs = a.mediaUrl.startsWith("http") ? a.mediaUrl : `${WAHA_URL}${a.mediaUrl}`;
+    }
+    const res = await fetch(abs, { headers: { "X-Api-Key": WAHA_API_KEY } });
     if (!res.ok) { console.warn(`[waha-webhook] media download ${res.status}`); return; }
     const buffer = await res.arrayBuffer();
     const contentType = res.headers.get("content-type") ?? a.mimeType;
