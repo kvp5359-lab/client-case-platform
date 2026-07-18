@@ -235,6 +235,15 @@ ORDER BY id DESC LIMIT 10;
 - **Upstream-файл**: `/opt/relostart/nginx/conf.d/clientcase-upstream.conf` — единый `upstream clientcase { server clientcase-app-<color>:3000; ... }`. **Управляется деплой-скриптом, руками не править.** Скрипт переписывает при blue/green переключении.
 - **SSL**: Let's Encrypt (контейнер `relostart-certbot`).
 - **Жирные буферы прокси** — обязательны на обоих конфигах. См. [`gotchas.md`](./gotchas.md#nginx-буферы-при-добавлении-нового-домена).
+- **DNS и регистратор доменов** (`kvp-projects.com`, `relostart.com`): **Hostinger** (hpanel.hostinger.com → Домены → DNS/Nameservers → Управление DNS-записями; nameservers `ns1/ns2.dns-parking.com`). Новый поддомен на VPS = A-запись `<sub>` → `72.61.82.244` (без www, без Cloudflare-проксирования). Поддомены на VPS: `clientcase`, `mtproto`, `waha`, `kb`, `sp-propia` и др.
+- **SSL для нового поддомена** — webroot без остановки nginx (challenge ловит `server_name _` default_server:80 в `sites.conf`):
+  ```bash
+  ssh vps 'docker run --rm -v /opt/relostart/nginx/certbot/conf:/etc/letsencrypt \
+    -v /opt/relostart/nginx/certbot/www:/var/www/certbot certbot/certbot certonly \
+    --webroot -w /var/www/certbot --email admin@kvp-projects.com --agree-tos \
+    --no-eff-email --non-interactive -d <sub>.kvp-projects.com'
+  ```
+  Затем конфиг `/opt/relostart/nginx/conf.d/<sub>-kvp.conf` (образец — `mtproto-kvp.conf` / `waha-kvp.conf`, `proxy_pass http://<container>:<port>`) + `docker exec relostart-nginx nginx -s reload`. **🪤 После пересоздания контейнера-бэкенда (`docker compose up -d <svc>`) nginx держит старый IP контейнера → 502 Bad Gateway; лечится `docker exec relostart-nginx nginx -s reload` (перерезолвить DNS-имя).**
 
 ### Другие контейнеры на VPS
 
