@@ -4,8 +4,9 @@ name: Smoke Channels
 # прогоняет комбинации исходящих (текст/reply/файл/файл+текст/альбом/реакция/edit/delete)
 # и проверяет доставку (send_status='sent').
 #
-# ⚠️ Отправляет РЕАЛЬНЫЕ сообщения в тест-чаты → НЕ на каждый push.
-# Только по расписанию (раз в сутки) + вручную (workflow_dispatch).
+# ⚠️ Отправляет РЕАЛЬНЫЕ сообщения в тест-чаты. Частые прогоны могут влиять на
+# блокировку каналов (WhatsApp/WAHA), поэтому автозапуск ОТКЛЮЧЁН.
+# Запуск ТОЛЬКО вручную (workflow_dispatch) — лично владельцем по необходимости.
 #
 # Секреты: SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_ANON_KEY,
 #          NEXT_PUBLIC_SUPABASE_URL, SMOKE_BOT_PASSWORD.
@@ -13,8 +14,7 @@ name: Smoke Channels
 #          приложение); без них файловый тест ушёл бы в Supabase → ложный сбой.
 
 on:
-  schedule:
-    - cron: '0 6 * * *' # каждый день в 06:00 UTC
+  # Только ручной запуск — никакого расписания (см. коммент выше).
   workflow_dispatch: {}
 
 concurrency:

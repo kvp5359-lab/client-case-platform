@@ -278,30 +278,10 @@ jobs:
         if: ${{ steps.changes.outputs.edge != '' && steps.sec.outputs.has_sb_token != 'true' }}
         run: echo "::warning::Изменены edge-функции (${{ steps.changes.outputs.edge }}), но SUPABASE_ACCESS_TOKEN не задан — авто-деплой edge пропущен. Добавь секрет (supabase.com → Account → Access Tokens) или задеплой вручную через 'Deploy Backend'."
 
-      # --- Смок каналов: если задеплоены edge/mtproto (предохранитель карантина) ---
-      - name: Setup Node for smoke
-        if: ${{ (steps.changes.outputs.mtproto == 'true' || (steps.changes.outputs.edge != '' && steps.sec.outputs.has_sb_token == 'true')) }}
-        uses: actions/setup-node@v5
-        with:
-          node-version: '22'
-          cache: 'npm'
-      - name: Install deps for smoke
-        if: ${{ (steps.changes.outputs.mtproto == 'true' || (steps.changes.outputs.edge != '' && steps.sec.outputs.has_sb_token == 'true')) }}
-        run: npm ci --legacy-peer-deps
-      - name: Smoke channels
-        if: ${{ (steps.changes.outputs.mtproto == 'true' || (steps.changes.outputs.edge != '' && steps.sec.outputs.has_sb_token == 'true')) }}
-        env:
-          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          SMOKE_BOT_PASSWORD: ${{ secrets.SMOKE_BOT_PASSWORD }}
-          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          STORAGE_R2_BUCKETS: ${{ secrets.STORAGE_R2_BUCKETS }}
-        run: |
-          echo "Смок каналов после деплоя (allowlist smoke_test_threads)…"
-          node scripts/smoke-matrix.mjs --confirm
+      # --- Смок каналов после деплоя ОТКЛЮЧЁН ---
+      # Отправляет реальные сообщения; частые прогоны могут влиять на блокировку
+      # каналов (WhatsApp/WAHA). Запускать только вручную: workflow «Smoke Channels»
+      # (workflow_dispatch) либо локально `node scripts/smoke-matrix.mjs --confirm`.
 
       # --- Миграции: авто НЕ применяем, только предупреждаем ---
       - name: Migrations warning
