@@ -12,6 +12,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { storeAttachment } from "../_shared/storeAttachment.ts";
+import { bindThreadToWaha, findWhatsAppThreadByPhone, normalizePhone } from "../_shared/whatsappThread.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -30,6 +31,7 @@ interface WahaPayload {
   from?: string;
   to?: string;
   fromMe?: boolean;
+  source?: string; // "app" — отправлено с телефона, "api" — через WAHA (наш сервис)
   body?: string;
   hasMedia?: boolean;
   media?: WahaMedia | null;
@@ -47,7 +49,7 @@ interface WahaReactionPayload {
 interface WahaEvent {
   event?: string;
   session?: string;
-  payload?: WahaPayload & WahaReactionPayload & { name?: string; status?: string };
+  payload?: WahaPayload & WahaReactionPayload & { name?: string; status?: string; ack?: number; ackName?: string };
 }
 
 Deno.serve(async (req: Request) => {
@@ -65,8 +67,10 @@ Deno.serve(async (req: Request) => {
       await handleSessionStatus(service, evt);
     } else if (evt.event === "message.reaction" && evt.payload) {
       await handleReaction(service, evt.session ?? "", evt.payload);
-    } else if (evt.event === "message" && evt.payload) {
+    } else if ((evt.event === "message" || evt.event === "message.any") && evt.payload) {
       await handleMessage(service, evt.session ?? "", evt.payload);
+    } else if (evt.event === "message.ack" && evt.payload) {
+      await handleAck(service, evt.payload);
     }
   } catch (err) {
     console.error("[waha-webhook] handler error:", err);
@@ -83,6 +87,66 @@ async function handleSessionStatus(service: SupabaseClient, evt: WahaEvent) {
     .eq("session_name", name);
 }
 
+/**
+ * Найти НАШУ строку project_messages по WhatsApp-id из reaction/ack/reply.
+ *
+ * Форматы id расходятся: наши исходящие хранят короткий «MSGID» (из sendText),
+ * входящие — полный «false_chat_MSGID_sender». Пришедший id тоже бывает в любом
+ * формате, поэтому сводим к «ядру» (самый длинный сегмент без «@») и матчим:
+ *   1) точное совпадение полного id и осмысленных сегментов;
+ *   2) точное совпадение ядра (короткий stored ↔ полный пришедший);
+ *   3) ядро внутри полного stored (полный stored ↔ короткий пришедший).
+ * Единая точка — чтобы reaction/ack/reply не расходились в устойчивости поиска.
+ */
+async function findMessageByWahaId<T = { id: string; thread_id: string }>(
+  service: SupabaseClient, extId: string, cols = "id, thread_id",
+): Promise<T | null> {
+  const segments = extId.split("_").filter(Boolean);
+  const meaningful = segments.filter((s) => s !== "false" && s !== "true" && !s.includes("@"));
+  const core = [...meaningful].sort((a, b) => b.length - a.length)[0] ?? "";
+
+  for (const cand of new Set([extId, ...meaningful])) {
+    const { data } = await service.from("project_messages")
+      .select(cols).eq("waha_message_id", cand).limit(1).maybeSingle();
+    if (data) return data as T;
+  }
+  if (core) {
+    // Ядро внутри полного stored id. Ядро — [A-Z0-9], без «_»/«%» → безопасно для ilike.
+    const { data } = await service.from("project_messages")
+      .select(cols).ilike("waha_message_id", `%${core}%`).limit(1).maybeSingle();
+    if (data) return data as T;
+  }
+  return null;
+}
+
+/** Числовой ранг статуса доставки — чтобы ack-события не понижали статус (приходят не по порядку). */
+const ACK_RANK: Record<string, number> = { sent: 1, delivered: 2, read: 3 };
+
+/**
+ * Статус доставки исходящего (event=message.ack). Уровни WAHA/Baileys:
+ *  -1 error, 0 pending, 1 server(sent), 2 device(delivered), 3 read, 4 played.
+ * Пишем waha_status (внутреннее/дебаг-поле); при read (≥3) — recipient_read_at,
+ * по которому фронт рисует синие галочки (общее поле, правка UI не нужна).
+ */
+async function handleAck(service: SupabaseClient, p: { id?: string; ack?: number }) {
+  const extId = p.id;
+  if (!extId) return;
+  const ack = typeof p.ack === "number" ? p.ack : 0;
+  const status = ack < 0 ? "error" : ack >= 3 ? "read" : ack === 2 ? "delivered" : ack === 1 ? "sent" : null;
+  if (!status) return;
+
+  const row = await findMessageByWahaId<{ id: string; waha_status: string | null }>(
+    service, extId, "id, waha_status");
+  if (!row) return;
+
+  // Не понижать статус (delivered после read не откатывает). error пишем всегда.
+  if (status !== "error" && (ACK_RANK[row.waha_status ?? ""] ?? 0) >= ACK_RANK[status]) return;
+
+  const upd: Record<string, unknown> = { waha_status: status };
+  if (status === "read") upd.recipient_read_at = new Date().toISOString();
+  await service.from("project_messages").update(upd).eq("id", row.id);
+}
+
 async function handleReaction(service: SupabaseClient, sessionName: string, p: WahaReactionPayload) {
   const extMsgId = p.reaction?.messageId;
   if (!sessionName || !extMsgId) return;
@@ -92,29 +156,15 @@ async function handleReaction(service: SupabaseClient, sessionName: string, p: W
   if (!session) return;
   const workspaceId = session.workspace_id as string;
 
-  // Наше сообщение, на которое реакция. Форматы id расходятся: входящие хранят
-  // полный «false_chat_MSGID», исходящие — короткий «MSGID» (из sendText).
-  // reaction.messageId приходит полным → ищем и по полному, и по короткому.
-  let msg: { id: string; thread_id: string } | null = null;
-  {
-    const r = await service.from("project_messages")
-      .select("id, thread_id").eq("waha_message_id", extMsgId).maybeSingle();
-    msg = (r.data as { id: string; thread_id: string } | null) ?? null;
-  }
-  if (!msg) {
-    const short = extMsgId.split("_").pop();
-    if (short && short !== extMsgId) {
-      const r = await service.from("project_messages")
-        .select("id, thread_id").eq("waha_message_id", short).maybeSingle();
-      msg = (r.data as { id: string; thread_id: string } | null) ?? null;
-    }
-  }
-  if (!msg) return;
+  const msg = await findMessageByWahaId(service, extMsgId);
+  if (!msg) { console.warn(`[waha-webhook] reaction: message not found (${extMsgId})`); return; }
 
   const { data: thread } = await service.from("project_threads")
-    .select("contact_participant_id, owner_user_id, name").eq("id", msg.thread_id as string).maybeSingle();
+    .select("contact_participant_id, owner_user_id, name, waha_group").eq("id", msg.thread_id as string).maybeSingle();
+  const isGroup = !!thread?.waha_group;
 
-  // Кто реагирует: своя реакция (fromMe) → владелец, иначе → контакт-собеседник
+  // Кто реагирует: своя реакция (fromMe) → владелец; иначе собеседник.
+  // В группе реагирующий = p.participant (конкретный участник), НЕ p.from (jid группы).
   let participantId: string | null = null;
   if (p.fromMe) {
     const ownerUserId = (thread?.owner_user_id as string) ?? (session.owner_user_id as string);
@@ -122,6 +172,11 @@ async function handleReaction(service: SupabaseClient, sessionName: string, p: W
       .select("id").eq("user_id", ownerUserId).eq("workspace_id", workspaceId)
       .eq("is_deleted", false).maybeSingle();
     participantId = part?.id ?? null;
+  } else if (isGroup) {
+    // Группа: реагирующий участник — по его jid. Контакт треда НЕ трогаем
+    // (у группы нет единственного собеседника).
+    const reactorJid = p.participant || p.from || "";
+    participantId = await ensureWahaContact(service, workspaceId, reactorJid, null);
   } else {
     participantId = (thread?.contact_participant_id as string) ?? null;
     // @lid-чаты часто без привязанного контакта (номер скрыт) — создаём по имени
@@ -133,7 +188,7 @@ async function handleReaction(service: SupabaseClient, sessionName: string, p: W
       }
     }
   }
-  if (!participantId) return;
+  if (!participantId) { console.warn(`[waha-webhook] reaction: no participant resolved (isGroup=${isGroup})`); return; }
 
   // WhatsApp: одна реакция на сообщение от участника → заменяем.
   await service.from("message_reactions")
@@ -152,7 +207,7 @@ async function handleMessage(service: SupabaseClient, sessionName: string, p: Wa
 
   const { data: session } = await service
     .from("waha_sessions")
-    .select("id, workspace_id, owner_user_id")
+    .select("id, workspace_id, owner_user_id, phone")
     .eq("session_name", sessionName)
     .maybeSingle();
   if (!session || !session.owner_user_id) {
@@ -166,6 +221,19 @@ async function handleMessage(service: SupabaseClient, sessionName: string, p: Wa
   const senderJid = isGroup ? (p.participant ?? chatId) : chatId;
   const pushName = p._data?.notifyName ?? p._data?.pushName ?? p.notifyName ?? null;
 
+  // «Своё» сообщение (написано нами). В личке fromMe надёжен; в ГРУППЕ у своих
+  // сообщений WAHA иногда шлёт fromMe=false (баг NOWEB #1350) — доопределяем по
+  // собственному номеру сессии.
+  const ownPhone = normalizePhone(session.phone as string | null);
+  let isOwn = p.fromMe === true;
+  if (!isOwn && isGroup && ownPhone) {
+    const sp = await resolveWahaPhone(sessionName, senderJid);
+    if (sp && sp === ownPhone) isOwn = true;
+  }
+  // Наши сервисные отправки (source=api) уже лежат в БД (созданы приложением) —
+  // ловим ТОЛЬКО написанное с телефона (source=app) и входящие, иначе задвоим.
+  if (isOwn && p.source === "api") return;
+
   const threadId = await ensureWahaThread(service, {
     sessionId: session.id as string,
     sessionName, workspaceId, ownerUserId, chatId, isGroup,
@@ -174,21 +242,24 @@ async function handleMessage(service: SupabaseClient, sessionName: string, p: Wa
       : (pushName ?? jidToNumber(chatId)),
   });
 
+  // Группа = общий тред: сотрудник, чей телефон в группе, становится участником
+  // треда → видит общую переписку. Идемпотентно, по каждой сессии из группы.
+  if (isGroup) await ensureThreadMember(service, threadId, ownerUserId, workspaceId);
+
   const isMedia = !!(p.hasMedia && p.media?.url);
   const rawBody = (p.body ?? "").trim();
   const content = rawBody || (isMedia ? "📎" : "[сообщение]");
 
   let replyToDbId: string | null = null;
   if (p.replyTo?.id) {
-    const { data: r } = await service.from("project_messages")
-      .select("id").eq("waha_message_id", p.replyTo.id).maybeSingle();
-    replyToDbId = r?.id ?? null;
+    const orig = await findMessageByWahaId<{ id: string }>(service, p.replyTo.id, "id");
+    replyToDbId = orig?.id ?? null;
   }
 
   let senderParticipantId: string | null = null;
   let senderName: string;
   let senderRole: string;
-  if (p.fromMe) {
+  if (isOwn) {
     const { data: participant } = await service.from("participants")
       .select("id, name, last_name")
       .eq("user_id", ownerUserId).eq("workspace_id", workspaceId)
@@ -278,6 +349,45 @@ async function transcribeFirst(messageId: string) {
   });
 }
 
+/** Добавить владельца сессии в участники треда (доступ к общей группе). Идемпотентно. */
+async function ensureThreadMember(
+  service: SupabaseClient, threadId: string, userId: string, workspaceId: string,
+) {
+  const { data: p } = await service.from("participants")
+    .select("id").eq("user_id", userId).eq("workspace_id", workspaceId)
+    .eq("is_deleted", false).maybeSingle();
+  if (!p?.id) return;
+  await service.from("project_thread_members")
+    .upsert({ thread_id: threadId, participant_id: p.id },
+      { onConflict: "thread_id,participant_id", ignoreDuplicates: true });
+}
+
+/** Голые цифры номера из jid («34643268407@c.us»/«…:18@s.whatsapp.net» → «34643268407»). */
+function jidDigits(jid: string): string {
+  return (jid.split("@")[0] ?? "").split(":")[0].replace(/\D/g, "");
+}
+
+/**
+ * Свести waha_chat_id к телефону для склейки с Wazzup (тот ключует по телефону).
+ *  - «<phone>@c.us» → телефон напрямую;
+ *  - «<lid>@lid» (номер скрыт) → через WAHA `GET /lids/{lid}` → pn → телефон.
+ * Null, если не резолвится (store не досинкался) — тогда склейки не будет, создастся новый тред.
+ */
+async function resolveWahaPhone(sessionName: string, chatId: string): Promise<string | null> {
+  if (chatId.endsWith("@c.us")) return jidDigits(chatId) || null;
+  if (chatId.endsWith("@lid") && WAHA_URL) {
+    try {
+      const res = await fetch(`${WAHA_URL}/api/${sessionName}/lids/${encodeURIComponent(chatId)}`,
+        { headers: { "X-Api-Key": WAHA_API_KEY } });
+      if (!res.ok) return null;
+      const d = await res.json().catch(() => ({}));
+      const pn = typeof d?.pn === "string" ? d.pn : null;
+      return pn ? (jidDigits(pn) || null) : null;
+    } catch { return null; }
+  }
+  return null;
+}
+
 async function ensureWahaThread(
   service: SupabaseClient,
   a: {
@@ -285,11 +395,33 @@ async function ensureWahaThread(
     chatId: string; isGroup: boolean; fallbackName: string | null;
   },
 ): Promise<string> {
-  const { data: existing } = await service.from("project_threads")
-    .select("id")
-    .eq("waha_session_id", a.sessionId).eq("waha_chat_id", a.chatId)
-    .eq("is_deleted", false).maybeSingle();
+  // Группа = ОДИН общий тред на воркспейс (ключ по группе, не по сессии) —
+  // оба сотрудника из группы видят одну переписку. Личка — по паре сессия+чат.
+  const findThread = () => {
+    const q = service.from("project_threads").select("id");
+    return (a.isGroup
+      ? q.eq("workspace_id", a.workspaceId).eq("waha_chat_id", a.chatId).eq("waha_group", true)
+      : q.eq("waha_session_id", a.sessionId).eq("waha_chat_id", a.chatId)
+    ).eq("is_deleted", false).maybeSingle();
+  };
+
+  const { data: existing } = await findThread();
   if (existing) return existing.id as string;
+
+  // Единый WhatsApp-тред по телефону: находим тред клиента (в т.ч. заведённый
+  // через Wazzup ИЛИ через WAHA с другим форматом chat_id — @lid↔@c.us) и
+  // переключаем его на WAHA. Только личка. Общий резолвер — _shared/whatsappThread.
+  let phone: string | null = null;
+  if (!a.isGroup) {
+    phone = await resolveWahaPhone(a.sessionName, a.chatId);
+    if (phone) {
+      const wt = await findWhatsAppThreadByPhone(service, a.ownerUserId, phone);
+      if (wt) {
+        await bindThreadToWaha(service, wt.id, { sessionId: a.sessionId, chatId: a.chatId, phone });
+        return wt.id;
+      }
+    }
+  }
 
   // Имя: для группы пробуем реальное имя через WAHA, иначе fallback
   let displayName = a.fallbackName ?? (a.isGroup ? "Группа WhatsApp" : a.chatId);
@@ -311,14 +443,13 @@ async function ensureWahaThread(
     name: displayName,
     type: "chat", access_type: "all",
     waha_session_id: a.sessionId, waha_chat_id: a.chatId, waha_group: a.isGroup,
+    whatsapp_phone: phone, // канонический ключ (null для групп/непорезолвленных)
     icon: "whatsapp", accent_color: "emerald",
     created_by: a.ownerUserId,
   }).select("id").single();
 
   if (error || !created) {
-    const { data: race } = await service.from("project_threads")
-      .select("id").eq("waha_session_id", a.sessionId)
-      .eq("waha_chat_id", a.chatId).eq("is_deleted", false).maybeSingle();
+    const { data: race } = await findThread();
     if (race) return race.id as string;
     throw new Error(`Failed to create waha thread: ${error?.message}`);
   }

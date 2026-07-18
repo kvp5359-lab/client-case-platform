@@ -22,6 +22,7 @@ import {
 } from "../_shared/edge.ts";
 import { storeAttachment } from "../_shared/storeAttachment.ts";
 import { resolveChannelDefault } from "../_shared/channelDefaults.ts";
+import { bindThreadToWazzup, findWhatsAppThreadByPhone, normalizePhone } from "../_shared/whatsappThread.ts";
 
 interface WazzupMessage {
   messageId: string;
@@ -160,7 +161,7 @@ async function handleIncomingMessage(
   // 4. Сначала смотрим существующий тред (один на клиента в рамках канала).
   let projectId: string | null = null;
   let threadId: string;
-  const { data: existingThread } = await service
+  const { data: exactThread } = await service
     .from("project_threads")
     .select("id, project_id")
     .eq("wazzup_channel_id", channel.id as string)
@@ -168,9 +169,27 @@ async function handleIncomingMessage(
     .eq("is_deleted", false)
     .maybeSingle();
 
-  if (existingThread) {
-    projectId = existingThread.project_id as string;
-    threadId = existingThread.id as string;
+  // Единый WhatsApp-тред по телефону: если точного по каналу нет, но у клиента
+  // уже есть тред по телефону (напр. заведён через WAHA) — переключаем его на
+  // Wazzup (снимаем WAHA-привязку). Общий резолвер — _shared/whatsappThread.
+  let resolvedThread = exactThread as { id: string; project_id: string | null } | null;
+  if (!resolvedThread && msg.chatType !== "instagram") {
+    const phone = normalizePhone(msg.chatId);
+    if (phone) {
+      const wt = await findWhatsAppThreadByPhone(service, channel.user_id, phone);
+      if (wt) {
+        await bindThreadToWazzup(service, wt.id, {
+          channelDbId: channel.id as string, chatId: msg.chatId,
+          chatType: msg.chatType, phone,
+        });
+        resolvedThread = wt;
+      }
+    }
+  }
+
+  if (resolvedThread) {
+    projectId = resolvedThread.project_id as string;
+    threadId = resolvedThread.id as string;
   } else if (!msg.isEcho) {
     // Этап 9 CRM-фрейма: первое входящее от клиента — пробуем CRM-роутинг.
     // Echo (исходящее с телефона сотрудника) → в системный инбокс по-старому.
@@ -194,6 +213,7 @@ async function handleIncomingMessage(
         wazzup_channel_id: channel.id as string,
         wazzup_chat_id: msg.chatId,
         wazzup_chat_type: msg.chatType,
+        whatsapp_phone: msg.chatType === "instagram" ? null : (normalizePhone(msg.chatId) || null),
         name: clientName,
       }).eq("id", threadId);
       console.log(`[wazzup-webhook] CRM routed (${r.status}) → project ${projectId}, thread ${threadId}`);
@@ -515,6 +535,7 @@ async function ensureWazzupThread(
     wazzup_channel_id: args.channelDbId,
     wazzup_chat_id: args.chatId,
     wazzup_chat_type: args.chatType,
+    whatsapp_phone: phoneCandidate ? normalizePhone(phoneCandidate) : null,
     icon: def.icon, accent_color: def.accent_color,
     created_by: args.ownerUserId,
   }).select("id").single();

@@ -18,6 +18,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const INTERNAL_FUNCTION_SECRET = Deno.env.get("INTERNAL_FUNCTION_SECRET") ?? "";
 const WAHA_URL = (Deno.env.get("WAHA_URL") ?? "").replace(/\/+$/, "");
 const WAHA_API_KEY = Deno.env.get("WAHA_API_KEY") ?? "";
+const WAHA_STATUS_WORKING = "WORKING"; // статус готовой к работе сессии в WAHA
 
 function svc(): SupabaseClient {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
@@ -69,7 +70,7 @@ Deno.serve(async (req: Request) => {
   const service = svc();
 
   const { data: msg } = await service.from("project_messages")
-    .select("id, thread_id, content, reply_to_message_id, visibility, has_attachments")
+    .select("id, thread_id, content, reply_to_message_id, visibility, has_attachments, sender_participant_id")
     .eq("id", messageId).maybeSingle();
   if (!msg) return new Response(JSON.stringify({ error: "message not found" }), { status: 404 });
 
@@ -81,13 +82,33 @@ Deno.serve(async (req: Request) => {
 
   // Тред → сессия + чат
   const { data: thread } = await service.from("project_threads")
-    .select("waha_session_id, waha_chat_id").eq("id", msg.thread_id as string).maybeSingle();
+    .select("waha_session_id, waha_chat_id, waha_group, workspace_id").eq("id", msg.thread_id as string).maybeSingle();
   if (!thread?.waha_session_id || !thread?.waha_chat_id) {
     await markFailed(service, messageId, "waha thread binding missing");
     return new Response(JSON.stringify({ error: "no waha binding" }), { status: 400 });
   }
+
+  // Выбор сессии для отправки. В ГРУППЕ (общий тред) отправляем через сессию
+  // автора сообщения — его телефон тоже в группе, клиент увидит, кто написал.
+  // Фолбэк — сессия, привязанная к треду. В личке — всегда сессия треда.
+  // Ограничение: если у автора несколько подключённых номеров, берём самый
+  // ранний рабочий; предполагаем, что он в этой группе (автор — участник).
+  let sendSessionId = thread.waha_session_id as string;
+  if (thread.waha_group && msg.sender_participant_id) {
+    const { data: sp } = await service.from("participants")
+      .select("user_id").eq("id", msg.sender_participant_id as string).maybeSingle();
+    if (sp?.user_id) {
+      const { data: ownSess } = await service.from("waha_sessions")
+        .select("id").eq("owner_user_id", sp.user_id as string)
+        .eq("workspace_id", thread.workspace_id as string)
+        .eq("status", WAHA_STATUS_WORKING)
+        .order("created_at", { ascending: true }).limit(1).maybeSingle();
+      if (ownSess?.id) sendSessionId = ownSess.id as string;
+    }
+  }
+
   const { data: session } = await service.from("waha_sessions")
-    .select("session_name").eq("id", thread.waha_session_id as string).maybeSingle();
+    .select("session_name").eq("id", sendSessionId).maybeSingle();
   if (!session?.session_name) {
     await markFailed(service, messageId, "waha session missing");
     return new Response(JSON.stringify({ error: "no session" }), { status: 400 });
