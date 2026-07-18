@@ -160,3 +160,52 @@ export function htmlToTelegramHtml(html: string): string {
 
   return result;
 }
+
+/**
+ * Конвертирует Tiptap HTML → текст с разметкой WhatsApp.
+ * WhatsApp понимает: *жирный*, _курсив_, ~зачёркнутый~, `моно`, ```блок```.
+ * Списки → текст с нумерацией (иерархической, уважает start — как в Telegram).
+ */
+export function htmlToWhatsApp(html: string): string {
+  let result = html;
+
+  // Блочный код <pre> → ```…``` (до inline, чтобы не сломать)
+  result = result.replace(/<pre[^>]*>([\s\S]*?)<\/pre>/gi, (_m, i: string) =>
+    "```\n" + i.replace(/<[^>]+>/g, "") + "\n```\n",
+  );
+  // Inline-форматирование → символы WhatsApp
+  result = result.replace(/<\/?(strong|b)\b[^>]*>/gi, "*");
+  result = result.replace(/<\/?(em|i)\b[^>]*>/gi, "_");
+  result = result.replace(/<\/?(s|del|strike)\b[^>]*>/gi, "~");
+  result = result.replace(/<\/?code\b[^>]*>/gi, "`");
+
+  // Заголовки → *жирный* с отбивкой
+  result = result.replace(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi, (_m, i: string) =>
+    `\n\n*${i.replace(/<[^>]+>/g, "").trim()}*\n\n`,
+  );
+
+  // Списки → текст с нумерацией (переиспользуем логику Telegram)
+  result = listsToText(result);
+
+  // Цитаты: WhatsApp не имеет разметки цитат — префиксуем строки «> »
+  result = result.replace(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi, (_m, i: string) => {
+    const t = i.replace(/<\/?p\b[^>]*>/gi, "\n").replace(/<[^>]+>/g, "").trim();
+    return t.split("\n").map((l) => (l.trim() ? `> ${l.trim()}` : "")).join("\n") + "\n";
+  });
+
+  // Абзацы/переносы → \n
+  result = result.replace(/<p><br\s*\/?><\/p>/gi, "\n").replace(/<p><\/p>/gi, "\n");
+  result = result.replace(/<\/p>/gi, "\n").replace(/<p\b[^>]*>/gi, "");
+  result = result.replace(/<br\s*\/?>/gi, "\n");
+
+  // Срезаем остальные теги
+  result = result.replace(/<[^>]+>/g, "");
+
+  // HTML-сущности
+  result = result
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+
+  // Схлопываем лишние переносы
+  return result.replace(/\n{3,}/g, "\n\n").replace(/\n+$/, "").trim();
+}
