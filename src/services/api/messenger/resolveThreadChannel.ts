@@ -21,6 +21,7 @@ export type OutgoingChannelKind =
   | 'mtproto'
   | 'business'
   | 'wazzup'
+  | 'waha'
   | 'telegram_group'
   | 'internal'
 
@@ -39,6 +40,9 @@ export type ThreadChannelSignals = {
   business_connection_id?: string | null
   wazzup_channel_id?: string | null
   wazzup_chat_id?: string | null
+  /** WhatsApp через self-hosted WAHA. */
+  waha_session_id?: string | null
+  waha_chat_id?: string | null
   /** Есть активная привязка project_telegram_chats (групповой бот). */
   hasTelegramGroupChat?: boolean
 }
@@ -50,6 +54,7 @@ export function resolveThreadChannel(s: ThreadChannelSignals): OutgoingChannelKi
   if (s.mtproto_session_user_id && s.mtproto_client_tg_user_id) return 'mtproto'
   if (s.business_connection_id) return 'business'
   if (s.wazzup_channel_id && s.wazzup_chat_id) return 'wazzup'
+  if (s.waha_session_id && s.waha_chat_id) return 'waha'
   if (s.hasTelegramGroupChat === true) return 'telegram_group'
   return 'internal'
 }

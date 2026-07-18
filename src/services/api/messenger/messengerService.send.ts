@@ -240,7 +240,7 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
     // файлы → письмо уходило с неполным набором вложений (или с одним).
     const { data: extThread } = await supabase
       .from('project_threads')
-      .select('type, wazzup_channel_id, wazzup_chat_id, mtproto_session_user_id, mtproto_client_tg_user_id, business_connection_id, email_send_account_id')
+      .select('type, wazzup_channel_id, wazzup_chat_id, waha_session_id, waha_chat_id, mtproto_session_user_id, mtproto_client_tg_user_id, business_connection_id, email_send_account_id')
       .eq('id', params.threadId)
       .maybeSingle()
 
@@ -293,6 +293,13 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
         .invoke('telegram-mtproto-send', { body: { message_id: message.id } })
         .catch((err) => {
           logger.error('Failed to send attachments via MTProto:', err)
+        })
+    } else if (channelKind === 'waha') {
+      await supabase.auth.getSession()
+      supabase.functions
+        .invoke('waha-send', { body: { message_id: message.id, attachments_only: true } })
+        .catch((err) => {
+          logger.error('Failed to send attachments to WAHA:', err)
         })
     }
   }
