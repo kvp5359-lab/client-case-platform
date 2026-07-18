@@ -2,40 +2,38 @@
  * Edge Function: waha-webhook — приём входящих WhatsApp через self-hosted WAHA.
  *
  * WAHA (devlikeapro/waha, движок NOWEB) шлёт события на этот вебхук.
- * Обрабатываем:
  *  - event=message        — входящее/исходящее (fromMe). Личка (@c.us/@lid) и ГРУППЫ (@g.us).
- *  - event=session.status — статус сессии (WORKING/FAILED/…) → waha_sessions.status.
+ *  - event=session.status — статус сессии → waha_sessions.status.
  *
- * Защита: секрет в query ?key=<WAHA_WEBHOOK_SECRET> (сверяем с env).
- * Деплой: --no-verify-jwt (вызывает внешний сервис WAHA, без пользовательского JWT).
- *
- * MVP: текст + треды (личка/группа) + отправитель в группе + дедуп + reply + статус сессии.
- * Медиа-вложения — на этапе шлифовки (пометка has_attachments, скачивание TODO).
+ * Защита: секрет в query ?key=<WAHA_WEBHOOK_SECRET>. Деплой --no-verify-jwt.
+ * Медиа скачивается из WAHA и кладётся через общий storeAttachment (как wazzup).
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { storeAttachment } from "../_shared/storeAttachment.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const WAHA_WEBHOOK_SECRET = Deno.env.get("WAHA_WEBHOOK_SECRET") ?? "";
+const WAHA_URL = (Deno.env.get("WAHA_URL") ?? "").replace(/\/+$/, "");
+const WAHA_API_KEY = Deno.env.get("WAHA_API_KEY") ?? "";
 
 function svc(): SupabaseClient {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 }
 const ok = () => new Response("ok", { status: 200 });
 
+interface WahaMedia { url?: string; mimetype?: string; filename?: string; error?: unknown }
 interface WahaPayload {
   id?: string;
-  timestamp?: number;
-  from?: string;      // чат: …@c.us (личка) / …@g.us (группа) / …@lid
+  from?: string;
   to?: string;
   fromMe?: boolean;
   body?: string;
   hasMedia?: boolean;
-  participant?: string;              // в группе — кто написал (JID участника)
+  media?: WahaMedia | null;
+  participant?: string;
   replyTo?: { id?: string } | null;
   notifyName?: string;
   _data?: { notifyName?: string; pushName?: string; chat?: { name?: string } };
@@ -48,13 +46,10 @@ interface WahaEvent {
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return ok();
-
-  // Защита: секрет в query
   const url = new URL(req.url);
   if (!WAHA_WEBHOOK_SECRET || url.searchParams.get("key") !== WAHA_WEBHOOK_SECRET) {
     return new Response("forbidden", { status: 403 });
   }
-
   let evt: WahaEvent;
   try { evt = await req.json() as WahaEvent; } catch { return ok(); }
 
@@ -71,9 +66,6 @@ Deno.serve(async (req: Request) => {
   return ok();
 });
 
-// ───────────────────────────────────────────────────────────────────────────
-// Статус сессии
-// ───────────────────────────────────────────────────────────────────────────
 async function handleSessionStatus(service: SupabaseClient, evt: WahaEvent) {
   const name = evt.payload?.name ?? evt.session;
   const status = evt.payload?.status;
@@ -83,14 +75,10 @@ async function handleSessionStatus(service: SupabaseClient, evt: WahaEvent) {
     .eq("session_name", name);
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// Входящее/исходящее сообщение
-// ───────────────────────────────────────────────────────────────────────────
 async function handleMessage(service: SupabaseClient, sessionName: string, p: WahaPayload) {
   const chatId = p.from;
   if (!sessionName || !chatId || !p.id) return;
 
-  // 1. Сессия → сотрудник + воркспейс
   const { data: session } = await service
     .from("waha_sessions")
     .select("id, workspace_id, owner_user_id")
@@ -107,20 +95,18 @@ async function handleMessage(service: SupabaseClient, sessionName: string, p: Wa
   const senderJid = isGroup ? (p.participant ?? chatId) : chatId;
   const pushName = p._data?.notifyName ?? p._data?.pushName ?? p.notifyName ?? null;
 
-  // 2. Тред: один на (сессия, чат) среди живых
   const threadId = await ensureWahaThread(service, {
     sessionId: session.id as string,
-    workspaceId, ownerUserId, chatId, isGroup,
-    displayName: isGroup
-      ? (p._data?.chat?.name ?? `Группа WhatsApp`)
+    sessionName, workspaceId, ownerUserId, chatId, isGroup,
+    fallbackName: isGroup
+      ? (p._data?.chat?.name ?? null)
       : (pushName ?? jidToNumber(chatId)),
   });
 
-  // 3. Контент
+  const isMedia = !!(p.hasMedia && p.media?.url);
   const rawBody = (p.body ?? "").trim();
-  const content = rawBody || (p.hasMedia ? "📎" : "[сообщение]");
+  const content = rawBody || (isMedia ? "📎" : "[сообщение]");
 
-  // 4. Reply-lookup по waha_message_id оригинала
   let replyToDbId: string | null = null;
   if (p.replyTo?.id) {
     const { data: r } = await service.from("project_messages")
@@ -128,7 +114,6 @@ async function handleMessage(service: SupabaseClient, sessionName: string, p: Wa
     replyToDbId = r?.id ?? null;
   }
 
-  // 5. Отправитель. fromMe=true → сотрудник (владелец сессии). Иначе — клиент/участник.
   let senderParticipantId: string | null = null;
   let senderName: string;
   let senderRole: string;
@@ -147,8 +132,7 @@ async function handleMessage(service: SupabaseClient, sessionName: string, p: Wa
     senderRole = "Клиент";
   }
 
-  // 6. INSERT (дедуп по uq_project_messages_waha_message_id → 23505 при повторе)
-  const { error } = await service.from("project_messages").insert({
+  const { data: inserted, error } = await service.from("project_messages").insert({
     project_id: null,
     workspace_id: workspaceId,
     thread_id: threadId,
@@ -160,41 +144,88 @@ async function handleMessage(service: SupabaseClient, sessionName: string, p: Wa
     channel: "client",
     waha_message_id: p.id,
     reply_to_message_id: replyToDbId,
-    has_attachments: !!p.hasMedia,
-  });
-  if (error && error.code !== "23505") {
-    console.error("[waha-webhook] insert error:", error);
+    has_attachments: isMedia,
+  }).select("id").single();
+
+  if (error) {
+    if (error.code !== "23505") console.error("[waha-webhook] insert error:", error);
+    return; // 23505 = дубль webhook
   }
-  // TODO (шлифовка): скачивание медиа через WAHA media API + message_attachments,
-  // авто-транскрипция voice/audio, аватар контакта.
+
+  // Медиа: скачать из WAHA → storeAttachment
+  if (isMedia && p.media?.url) {
+    await downloadAndAttach(service, {
+      messageId: inserted.id as string, workspaceId, mediaUrl: p.media.url,
+      mimeType: p.media.mimetype ?? "application/octet-stream",
+      fileName: p.media.filename ?? guessName(p.media.mimetype, p.id),
+    });
+    // Голосовые/аудио → транскрипция (fire-and-forget)
+    const mt = p.media.mimetype ?? "";
+    if (mt.startsWith("audio/") || mt.includes("ogg")) {
+      transcribeFirst(inserted.id as string).catch((e) =>
+        console.warn("[waha-webhook] transcribe failed:", e));
+    }
+  }
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// Тред WhatsApp (личный диалог / группа), без проекта — как wazzup/mtproto
-// ───────────────────────────────────────────────────────────────────────────
+async function downloadAndAttach(
+  service: SupabaseClient,
+  a: { messageId: string; workspaceId: string; mediaUrl: string; mimeType: string; fileName: string },
+) {
+  try {
+    // media.url у WAHA может быть относительным или на самом WAHA (нужен ключ)
+    const abs = a.mediaUrl.startsWith("http") ? a.mediaUrl : `${WAHA_URL}${a.mediaUrl}`;
+    const sameHost = WAHA_URL && abs.startsWith(WAHA_URL);
+    const res = await fetch(abs, sameHost ? { headers: { "X-Api-Key": WAHA_API_KEY } } : undefined);
+    if (!res.ok) { console.warn(`[waha-webhook] media download ${res.status}`); return; }
+    const buffer = await res.arrayBuffer();
+    const contentType = res.headers.get("content-type") ?? a.mimeType;
+    await storeAttachment(service, {
+      buffer, mimeType: contentType, fileName: a.fileName,
+      workspaceId: a.workspaceId, projectId: null as unknown as string, messageId: a.messageId,
+    });
+  } catch (err) {
+    console.error("[waha-webhook] media error:", err);
+  }
+}
+
+async function transcribeFirst(messageId: string) {
+  const service = svc();
+  const { data: att } = await service.from("message_attachments")
+    .select("id").eq("message_id", messageId).limit(1).maybeSingle();
+  if (!att) return;
+  await fetch(`${SUPABASE_URL}/functions/v1/transcribe-audio`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+    body: JSON.stringify({ attachment_id: att.id }),
+  });
+}
+
 async function ensureWahaThread(
   service: SupabaseClient,
   a: {
-    sessionId: string; workspaceId: string; ownerUserId: string;
-    chatId: string; isGroup: boolean; displayName: string;
+    sessionId: string; sessionName: string; workspaceId: string; ownerUserId: string;
+    chatId: string; isGroup: boolean; fallbackName: string | null;
   },
 ): Promise<string> {
   const { data: existing } = await service.from("project_threads")
     .select("id")
-    .eq("waha_session_id", a.sessionId)
-    .eq("waha_chat_id", a.chatId)
-    .eq("is_deleted", false)
-    .maybeSingle();
+    .eq("waha_session_id", a.sessionId).eq("waha_chat_id", a.chatId)
+    .eq("is_deleted", false).maybeSingle();
   if (existing) return existing.id as string;
 
-  // Контакт: только для личных чатов (в группе собеседник неоднозначен)
+  // Имя: для группы пробуем реальное имя через WAHA, иначе fallback
+  let displayName = a.fallbackName ?? (a.isGroup ? "Группа WhatsApp" : a.chatId);
+  if (a.isGroup && WAHA_URL) {
+    const groupName = await fetchGroupName(a.sessionName, a.chatId);
+    if (groupName) displayName = groupName;
+  }
+
   let contactId: string | null = null;
   if (!a.isGroup) {
     const phone = a.chatId.endsWith("@c.us") ? jidToNumber(a.chatId) : null;
     const { data: cid } = await service.rpc("find_or_create_contact_participant", {
-      p_workspace_id: a.workspaceId,
-      p_name: a.displayName,
-      p_phone: phone,
+      p_workspace_id: a.workspaceId, p_name: displayName, p_phone: phone,
     });
     contactId = (cid as string) ?? null;
   }
@@ -204,19 +235,14 @@ async function ensureWahaThread(
     owner_user_id: a.ownerUserId,
     contact_participant_id: contactId,
     workspace_id: a.workspaceId,
-    name: a.displayName,
-    type: "chat",
-    access_type: "all",
-    waha_session_id: a.sessionId,
-    waha_chat_id: a.chatId,
-    waha_group: a.isGroup,
-    icon: "whatsapp",
-    accent_color: "emerald",
+    name: displayName,
+    type: "chat", access_type: "all",
+    waha_session_id: a.sessionId, waha_chat_id: a.chatId, waha_group: a.isGroup,
+    icon: "whatsapp", accent_color: "emerald",
     created_by: a.ownerUserId,
   }).select("id").single();
 
   if (error || !created) {
-    // Гонка: параллельный webhook мог создать тред — перечитываем
     const { data: race } = await service.from("project_threads")
       .select("id").eq("waha_session_id", a.sessionId)
       .eq("waha_chat_id", a.chatId).eq("is_deleted", false).maybeSingle();
@@ -226,6 +252,22 @@ async function ensureWahaThread(
   return created.id as string;
 }
 
+async function fetchGroupName(sessionName: string, groupId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${WAHA_URL}/api/${sessionName}/groups/${encodeURIComponent(groupId)}`, {
+      headers: { "X-Api-Key": WAHA_API_KEY },
+    });
+    if (!res.ok) return null;
+    const d = await res.json().catch(() => ({}));
+    const name = d?.name ?? d?.subject ?? d?.groupMetadata?.subject ?? null;
+    return typeof name === "string" && name.trim() ? name.trim() : null;
+  } catch { return null; }
+}
+
+function guessName(mime: string | undefined, id: string): string {
+  const ext = mime?.split("/")[1]?.split(";")[0] ?? "bin";
+  return `waha_${id.slice(-8)}.${ext}`;
+}
 function jidToNumber(jid: string): string {
   const local = jid.split("@")[0] ?? jid;
   return local.split(":")[0] || jid;

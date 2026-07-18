@@ -28,6 +28,7 @@ import {
   type WorkspaceParticipant,
 } from '@/hooks/shared/useWorkspaceParticipants'
 import { WazzupSection } from './WazzupSection'
+import { WahaSection } from './IntegrationsTab/WahaSection'
 import { LeadTemplateSetting } from './LeadTemplateSetting'
 import { ChannelDefaultIconColorSetting } from './ChannelDefaultIconColorSetting'
 import { EmailSection } from './EmailSection'
@@ -266,6 +267,7 @@ export function IntegrationsTab() {
           <>
             <IntegrationOverview {...OVERVIEW_WAZZUP} />
             <WazzupSection workspaceId={workspaceId!} employees={employees} />
+            <WahaSection workspaceId={workspaceId!} employees={employees} />
             <LeadTemplateSetting workspaceId={workspaceId!} source="wazzup" />
             <ChannelDefaultIconColorSetting
               workspaceId={workspaceId!}

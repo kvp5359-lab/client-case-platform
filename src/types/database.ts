@@ -8880,6 +8880,50 @@ export type Database = {
           },
         ]
       }
+      waha_sessions: {
+        Row: {
+          created_at: string
+          engine: string
+          id: string
+          owner_user_id: string | null
+          phone: string | null
+          session_name: string
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          engine?: string
+          id?: string
+          owner_user_id?: string | null
+          phone?: string | null
+          session_name: string
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          engine?: string
+          id?: string
+          owner_user_id?: string | null
+          phone?: string | null
+          session_name?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waha_sessions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       telegram_user_avatars: {
         Row: {
           avatar_url: string | null

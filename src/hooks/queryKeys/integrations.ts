@@ -17,6 +17,8 @@ export const integrationsKeys = {
     ['integrations', 'tg-links', workspaceId, userId ?? null] as const,
   mtprotoSessions: (workspaceId: string) =>
     ['integrations', 'mtproto-sessions', workspaceId] as const,
+  wahaSessions: (workspaceId: string) =>
+    ['integrations', 'waha-sessions', workspaceId] as const,
 }
 
 /**
