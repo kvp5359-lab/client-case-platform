@@ -6924,6 +6924,7 @@ export type Database = {
           on_complete_set_project_status_id: string | null
           override_assignees: boolean
           sort_order: number
+          task_group_id: string | null
           template_id: string | null
           thread_template_id: string
         }
@@ -6940,6 +6941,7 @@ export type Database = {
           on_complete_set_project_status_id?: string | null
           override_assignees?: boolean
           sort_order?: number
+          task_group_id?: string | null
           template_id?: string | null
           thread_template_id: string
         }
@@ -6956,6 +6958,7 @@ export type Database = {
           on_complete_set_project_status_id?: string | null
           override_assignees?: boolean
           sort_order?: number
+          task_group_id?: string | null
           template_id?: string | null
           thread_template_id?: string
         }
@@ -6972,6 +6975,13 @@ export type Database = {
             columns: ["default_status_id"]
             isOneToOne: false
             referencedRelation: "statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_template_thread_templates_task_group_id_fkey"
+            columns: ["task_group_id"]
+            isOneToOne: false
+            referencedRelation: "project_template_task_groups"
             referencedColumns: ["id"]
           },
           {

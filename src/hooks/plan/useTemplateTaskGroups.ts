@@ -114,15 +114,18 @@ export function useTemplateTaskGroups(templateId: string | undefined, workspaceI
     onSuccess: () => qc.invalidateQueries({ queryKey: planKeys.templateByTemplate(templateId ?? '') }),
   })
 
-  // Назначить/снять группу у ЗАДАЧИ шаблона (thread_templates.task_group_id).
-  // В списке «Задачи» задачи — это thread_templates (не task-блоки плана),
-  // поэтому членство хранится тут. Сидинг читает это поле.
+  // Назначить/снять группу у ЗАДАЧИ шаблона — членство ПЕР-проект-шаблон, хранится
+  // на junction project_template_thread_templates (задача-«рыба» шарится между
+  // шаблонами, поэтому глобальное thread_templates.task_group_id прятало её в чужих
+  // шаблонах). Сидинг читает пер-проектную группу через mapJunctionRow.
   const assignThread = useMutation({
     mutationFn: async ({ threadTemplateId, groupId }: { threadTemplateId: string; groupId: string | null }) => {
+      if (!templateId) throw new Error('templateId required')
       const { error } = await supabase
-        .from('thread_templates')
+        .from('project_template_thread_templates')
         .update({ task_group_id: groupId })
-        .eq('id', threadTemplateId)
+        .eq('template_id', templateId)
+        .eq('thread_template_id', threadTemplateId)
       if (error) throw error
     },
     onSuccess: () =>

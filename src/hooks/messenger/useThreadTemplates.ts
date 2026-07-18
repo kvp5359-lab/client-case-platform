@@ -73,7 +73,7 @@ export function useGlobalThreadTemplates(workspaceId: string | undefined) {
  * а пер-проектные поля (sort_order/default_status_id/on_complete...) — из
  * самой junction-строки. Так все потребители работают с привычной формой.
  */
-type JunctionRow = {
+export type JunctionRow = {
   id: string
   sort_order: number
   default_status_id: string | null
@@ -85,10 +85,13 @@ type JunctionRow = {
   access_roles: string[] | null
   /** Источник правды об исполнителях привязки (см. ThreadTemplateProjectOverride). */
   assignees_mode: 'inherit' | 'override'
+  /** Группа задачи ПЕР-проект-шаблон (задача-«рыба» шарится между шаблонами,
+      поэтому группа живёт на junction, а не глобально на thread_templates). */
+  task_group_id: string | null
   thread_templates: ThreadTemplate | null
 }
 
-function mapJunctionRow(
+export function mapJunctionRow(
   r: JunctionRow,
   overrideAssigneeIds: string[],
 ): ThreadTemplate | null {
@@ -100,6 +103,8 @@ function mapJunctionRow(
     sort_order: r.sort_order,
     default_status_id: r.default_status_id,
     on_complete_set_project_status_id: r.on_complete_set_project_status_id,
+    // Группа — пер-проект-шаблон (из junction), перебивает глобальное поле «рыбы».
+    task_group_id: r.task_group_id,
     projectOverride: {
       bindingId: r.id,
       deadline_days: r.deadline_days,
@@ -113,7 +118,7 @@ function mapJunctionRow(
 }
 
 const JUNCTION_SELECT =
-  'id, sort_order, default_status_id, on_complete_set_project_status_id, deadline_days, initial_message_html, access_type, access_roles, assignees_mode, thread_templates(*, thread_template_assignees(participant_id))'
+  'id, sort_order, default_status_id, on_complete_set_project_status_id, deadline_days, initial_message_html, access_type, access_roles, assignees_mode, task_group_id, thread_templates(*, thread_template_assignees(participant_id))'
 
 /**
  * Override-исполнители типа проекта (project_template_thread_assignees) —
