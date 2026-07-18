@@ -655,12 +655,15 @@
    (доски): там панель ложится поверх контента, main не сужается (доскам нужна
    полная ширина + горизонтальный скролл колонок).
    Только десктоп (≥768px): на мобиле панель — fullscreen overlay, сужать main
-   не нужно (иначе margin-right в 600px схлопнул бы контент на узком экране). */
+   не нужно (иначе margin-right в 600px схлопнул бы контент на узком экране).
+   Таргет — ТОЛЬКО app-level <main data-app-main> (WorkspaceLayout). Селектор
+   `main` был бы слишком широк: некоторые страницы (настройки, редакторы
+   шаблонов) рендерят свой вложенный <main>, и margin-right схлопывал бы его. */
 @media (min-width: 768px) {
-  body[data-panel-open] main {
+  body[data-panel-open] main[data-app-main] {
     margin-right: var(--panel-width, 600px);
   }
-  body[data-panel-open][data-panel-mode="overlay"] main {
+  body[data-panel-open][data-panel-mode="overlay"] main[data-app-main] {
     margin-right: 0;
   }
 }

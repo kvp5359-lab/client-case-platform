@@ -282,7 +282,13 @@ function WorkspaceLayoutImpl({ children, workspaceId: propWorkspaceId }: Workspa
 
         {/* Main content + right panel root (портал для shell) */}
         <div id="workspace-panel-root" className="flex-1 flex min-w-0 relative overflow-hidden">
-          <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[var(--cc-bottom-nav-h)] md:pb-0">
+          {/* data-app-main: маркер app-level <main>. Push-отступ панели вешается
+              ТОЛЬКО на него (globals.css), а не на вложенные <main> страниц
+              (настройки/редакторы шаблонов), иначе те схлопываются под margin-right. */}
+          <main
+            data-app-main
+            className="flex-1 overflow-y-auto overflow-x-hidden pb-[var(--cc-bottom-nav-h)] md:pb-0"
+          >
             {!isClientOnly && <LimitWarningBanner workspaceId={workspaceId} />}
             {children}
           </main>
