@@ -29,6 +29,7 @@ import {
 } from '@/hooks/shared/useWorkspaceParticipants'
 import { WazzupSection } from './WazzupSection'
 import { WahaSection } from './IntegrationsTab/WahaSection'
+import { SegmentedToggle } from '@/components/ui/segmented-toggle'
 import { LeadTemplateSetting } from './LeadTemplateSetting'
 import { ChannelDefaultIconColorSetting } from './ChannelDefaultIconColorSetting'
 import { EmailSection } from './EmailSection'
@@ -63,6 +64,8 @@ export function IntegrationsTab() {
   const queryClient = useQueryClient()
   const [dialog, setDialog] = useState<DialogState | null>(null)
   const [section, setSection] = useState<SectionKey>('telegram')
+  // Внутри раздела WhatsApp — выбор способа подключения (показывается один за раз).
+  const [waMethod, setWaMethod] = useState<'wazzup' | 'waha'>('wazzup')
 
   const { data: integrations = [] } = useQuery({
     queryKey: integrationsKeys.workspace(workspaceId),
@@ -266,30 +269,42 @@ export function IntegrationsTab() {
         {section === 'wazzup' && (
           <>
             <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-              WhatsApp можно подключить <b>одним из двух способов</b> — выбери что-то одно
-              на каждый номер (подключать один номер сразу в оба нельзя — будут дубли сообщений).
+              WhatsApp подключается <b>одним из двух способов</b>. Выбери один — на каждый
+              номер должен работать только он (иначе будут дубли сообщений).
             </div>
 
-            <div className="pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Способ 1 · Wazzup — платный шлюз (сервис берёт риск и обслуживание на себя)
-            </div>
-            <IntegrationOverview {...OVERVIEW_WAZZUP} />
-            <WazzupSection workspaceId={workspaceId!} employees={employees} />
-
-            <div className="pt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Способ 2 · Свой сервер (WAHA) — бесплатно, обслуживание на вашей стороне
-            </div>
-            <WahaSection workspaceId={workspaceId!} employees={employees} />
-
-            <div className="pt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Общие настройки WhatsApp
-            </div>
-            <LeadTemplateSetting workspaceId={workspaceId!} source="wazzup" />
-            <ChannelDefaultIconColorSetting
-              workspaceId={workspaceId!}
-              channelKey="wazzup"
-              title="WhatsApp"
+            <SegmentedToggle
+              options={[
+                { value: 'wazzup', label: 'Wazzup — платно' },
+                { value: 'waha', label: 'Свой сервер (WAHA) — бесплатно' },
+              ]}
+              value={waMethod}
+              onChange={setWaMethod}
             />
+
+            {waMethod === 'wazzup' && (
+              <>
+                <IntegrationOverview {...OVERVIEW_WAZZUP} />
+                <WazzupSection workspaceId={workspaceId!} employees={employees} />
+                <LeadTemplateSetting workspaceId={workspaceId!} source="wazzup" />
+                <ChannelDefaultIconColorSetting
+                  workspaceId={workspaceId!}
+                  channelKey="wazzup"
+                  title="WhatsApp"
+                />
+              </>
+            )}
+
+            {waMethod === 'waha' && (
+              <>
+                <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                  Подключение личного WhatsApp сотрудника к вашему серверу по QR-коду.
+                  Бесплатно (платите только за сервер), поддерживает группы. Обслуживание —
+                  на вашей стороне.
+                </div>
+                <WahaSection workspaceId={workspaceId!} employees={employees} />
+              </>
+            )}
           </>
         )}
         {section === 'email' && (
