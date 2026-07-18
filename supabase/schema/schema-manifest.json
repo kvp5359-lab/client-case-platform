@@ -4465,6 +4465,11 @@
       "body_md5": "36f5e3eb56f3c89eabf46037aca03622"
     },
     {
+      "args": "p_participant_id uuid",
+      "name": "get_contact_participation_threads",
+      "body_md5": "733691c82ce54394ec8b95da98fe68a5"
+    },
+    {
       "args": "p_document_id uuid",
       "name": "get_current_document_file",
       "body_md5": "2e53f196fb120b619404f2dd4a9c6f70"

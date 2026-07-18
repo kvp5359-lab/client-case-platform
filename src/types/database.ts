@@ -11172,6 +11172,21 @@ export type Database = {
           unread_reaction_count: number
         }[]
       }
+      get_contact_participation_threads: {
+        Args: { p_participant_id: string }
+        Returns: {
+          accent_color: string
+          channel: string
+          icon: string
+          id: string
+          last_message_at: string | null
+          name: string
+          project_id: string | null
+          project_name: string | null
+          project_name_prefix: string | null
+          type: string
+        }[]
+      }
       get_inbox_thread_one: {
         Args: { p_thread_id: string; p_user_id: string; p_workspace_id: string }
         Returns: {

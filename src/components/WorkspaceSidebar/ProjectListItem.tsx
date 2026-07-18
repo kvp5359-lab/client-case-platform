@@ -9,6 +9,7 @@ import type { BadgeDisplay } from '@/utils/inboxUnread'
 import { formatBadgeCount } from '@/utils/inboxUnread'
 import { getBadgeClasses } from './projectListConstants'
 import { getProjectIcon } from '@/components/common/project-icons'
+import { ProjectNamePrefix } from '@/components/shared/ProjectNamePrefix'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { ACTIVE_NAV_ITEM_CLASS } from '@/lib/sidebarTokens'
 import type { Project } from './useSidebarData'
@@ -144,9 +145,7 @@ export const ProjectListItem = memo(function ProjectListItem({
           )}
         </span>
         <span className="flex-1 text-left truncate mr-1">
-          {showPrefixes && project.namePrefix ? (
-            <span className="text-muted-foreground/70">{project.namePrefix} </span>
-          ) : null}
+          {showPrefixes ? <ProjectNamePrefix prefix={project.namePrefix} /> : null}
           {project.name}
         </span>
         {badge.type === 'number' ? (

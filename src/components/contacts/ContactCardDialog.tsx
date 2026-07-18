@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useMemo } from 'react'
-import { Mail, Phone, Send, FolderInput, MessagesSquare, X, Search, Pencil, Check, Settings2, Eye } from 'lucide-react'
+import { Mail, Phone, Send, X, Search, Pencil, Check, Settings2, Eye } from 'lucide-react'
+import { ThreadGroups } from '@/components/contacts/ContactThreadGroups'
 import {
   Dialog,
   DialogContent,
@@ -11,11 +12,11 @@ import {
 import {
   useContactParticipant,
   useContactThreads,
-  useDirectChatThreads,
   useMergeParticipants,
   useRenameParticipant,
 } from '@/hooks/useContactCard'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
+import { useWorkspaceSidebarSettings } from '@/hooks/useWorkspaceSidebarSettings'
 import { useParticipantsMutations } from '@/hooks/permissions/useParticipantsMutations'
 import { useWorkspacePermissions } from '@/hooks/permissions'
 import { EditParticipantDialog } from '@/components/participants/EditParticipantDialog'
@@ -35,14 +36,6 @@ type ContactCardDialogProps = {
   initialFullEdit?: boolean
 }
 
-const CHANNEL_LABEL: Record<string, string> = {
-  telegram_business: 'Telegram',
-  telegram_mtproto: 'Telegram (личный)',
-  wazzup: 'WhatsApp',
-  email: 'Email',
-  other: 'Чат',
-}
-
 export function ContactCardDialog({
   participantId,
   open,
@@ -52,8 +45,18 @@ export function ContactCardDialog({
 }: ContactCardDialogProps) {
   const { data: contact } = useContactParticipant(participantId)
   const { data: threads = [] } = useContactThreads(participantId)
-  const { data: directChats = [] } = useDirectChatThreads(contact)
+  // Серый префикс проекта — идентично сайдбару (workspace-настройка + гейт шаблона).
+  const { data: sidebarSettings } = useWorkspaceSidebarSettings(contact?.workspace_id)
+  const showProjectPrefixes = sidebarSettings.showProjectPrefixes
   const [mergeMode, setMergeMode] = useState(false)
+
+  const openThread = (threadId: string) => {
+    // В глобальном режиме (карточка из чата) onOpenThread не прокинут —
+    // открываем тред напрямую по id.
+    if (onOpenThread) onOpenThread(threadId)
+    else void openThreadById(threadId)
+    onOpenChange(false)
+  }
   // initialFullEdit разворачивает форму полного редактирования сразу при
   // открытии. Корректность держится на key={participantId} в
   // GlobalContactCardDialog — диалог пересоздаётся на каждый новый контакт.
@@ -141,75 +144,19 @@ export function ContactCardDialog({
               )}
             </div>
 
-            <div className="border-t pt-3">
+            {/* min-w-0: DialogContent — grid, его элементы не сжимаются под
+                контент (min-width:auto) → длинные названия тредов распирали
+                диалог. min-w-0 разрешает усадку → внутренний truncate работает. */}
+            <div className="border-t pt-3 min-w-0">
               <div className="text-xs font-medium text-gray-500 mb-2">
                 Переписки ({threads.length})
               </div>
-              <div className="space-y-1 max-h-72 overflow-y-auto">
-                {threads.length === 0 ? (
-                  <div className="text-sm text-muted-foreground">Нет переписок</div>
-                ) : (
-                  threads.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => {
-                        // В глобальном режиме (карточка из чата) onOpenThread не
-                        // прокинут — открываем тред напрямую по id.
-                        if (onOpenThread) onOpenThread(t.id)
-                        else void openThreadById(t.id)
-                        onOpenChange(false)
-                      }}
-                      className="w-full text-left px-2 py-1.5 rounded hover:bg-gray-50 flex items-center gap-2"
-                    >
-                      <span className="text-[10px] uppercase text-gray-400 min-w-[80px]">
-                        {CHANNEL_LABEL[t.channel] ?? t.channel}
-                      </span>
-                      <span className="text-sm flex-1 truncate">{t.name}</span>
-                      {t.project_name ? (
-                        <span className="text-[11px] text-gray-400 flex items-center gap-1">
-                          <FolderInput className="h-3 w-3" />
-                          {t.project_name}
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-gray-300 flex items-center gap-1">
-                          <MessagesSquare className="h-3 w-3" />
-                          без проекта
-                        </span>
-                      )}
-                    </button>
-                  ))
-                )}
-              </div>
+              <ThreadGroups
+                threads={threads}
+                onOpenThread={openThread}
+                showPrefixes={showProjectPrefixes}
+              />
             </div>
-
-            {directChats.length > 0 && (
-              <div className="border-t pt-3">
-                <div className="text-xs font-medium text-gray-500 mb-2">
-                  Прямой чат в Telegram
-                </div>
-                <div className="space-y-1">
-                  {directChats.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => {
-                        if (onOpenThread) onOpenThread(t.id)
-                        else void openThreadById(t.id)
-                        onOpenChange(false)
-                      }}
-                      className="w-full text-left px-2 py-1.5 rounded hover:bg-sky-50 flex items-center gap-2"
-                    >
-                      <Send className="h-3.5 w-3.5 text-sky-500 shrink-0" />
-                      <span className="text-sm flex-1 truncate">{t.name}</span>
-                      <span className="text-[10px] uppercase text-gray-400">
-                        {t.channel === 'telegram_business' ? 'Business' : 'MTProto'}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div className="border-t pt-3 flex items-center gap-2 flex-wrap">
               {canImpersonate && (
