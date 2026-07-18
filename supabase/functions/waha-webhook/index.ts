@@ -112,7 +112,7 @@ async function handleReaction(service: SupabaseClient, sessionName: string, p: W
   if (!msg) return;
 
   const { data: thread } = await service.from("project_threads")
-    .select("contact_participant_id, owner_user_id").eq("id", msg.thread_id as string).maybeSingle();
+    .select("contact_participant_id, owner_user_id, name").eq("id", msg.thread_id as string).maybeSingle();
 
   // Кто реагирует: своя реакция (fromMe) → владелец, иначе → контакт-собеседник
   let participantId: string | null = null;
@@ -124,6 +124,18 @@ async function handleReaction(service: SupabaseClient, sessionName: string, p: W
     participantId = part?.id ?? null;
   } else {
     participantId = (thread?.contact_participant_id as string) ?? null;
+    // @lid-чаты часто без привязанного контакта (номер скрыт) — создаём по имени
+    if (!participantId) {
+      const nm = (thread?.name as string) ?? jidToNumber(p.from ?? "клиент");
+      const { data: cid } = await service.rpc("find_or_create_contact_participant", {
+        p_workspace_id: workspaceId, p_name: nm, p_phone: null,
+      });
+      participantId = (cid as string) ?? null;
+      if (participantId) {
+        await service.from("project_threads")
+          .update({ contact_participant_id: participantId }).eq("id", msg.thread_id as string);
+      }
+    }
   }
   if (!participantId) return;
 
