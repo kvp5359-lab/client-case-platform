@@ -177,6 +177,7 @@ export function MessengerTabContent({
     isBusiness: !!currentThread?.business_connection_id,
     isWazzup: !!currentThread?.wazzup_channel_id,
     isMtproto: isMtprotoThread,
+    isWaha: !!currentThread?.waha_session_id,
   })
   const allowClientMode = clientFacingThread
   // Эффективный режим: при скрытом «Клиенту» сохранённый/дефолтный 'client'

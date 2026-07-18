@@ -26,6 +26,8 @@ export type ClientFacingSignals = {
   isWazzup?: boolean
   /** Личный Telegram MTProto. */
   isMtproto?: boolean
+  /** WhatsApp через self-hosted WAHA (личка/группа). */
+  isWaha?: boolean
 }
 
 export function isClientFacingThread(s: ClientFacingSignals): boolean {
@@ -35,6 +37,7 @@ export function isClientFacingThread(s: ClientFacingSignals): boolean {
     s.isEmailChat ||
     s.isBusiness ||
     s.isWazzup ||
-    s.isMtproto
+    s.isMtproto ||
+    s.isWaha
   )
 }

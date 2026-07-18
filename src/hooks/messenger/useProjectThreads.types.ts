@@ -43,6 +43,12 @@ export type ProjectThread = {
   wazzup_channel_id: string | null
   /** ID чата в Wazzup (телефон без `+` для WA, username для IG). */
   wazzup_chat_id: string | null
+  /** Привязка к сессии WAHA (WhatsApp self-hosted). NULL — не WAHA-тред. */
+  waha_session_id?: string | null
+  /** JID чата/группы в WAHA (…@c.us / …@g.us / …@lid). */
+  waha_chat_id?: string | null
+  /** Групповой WhatsApp-чат (через WAHA). */
+  waha_group?: boolean | null
   /**
    * Владелец личного диалога (треды без project_id: TG Business / MTProto /
    * Wazzup / личная почта). Определяет, у кого диалог показывается и кому
