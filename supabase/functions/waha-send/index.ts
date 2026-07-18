@@ -12,6 +12,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { htmlToWhatsApp } from "../_shared/htmlFormatting.ts";
 import { STORAGE_BUCKETS, storageDownload } from "../_shared/storage.ts";
+import { wahaMsgCore } from "../_shared/whatsappThread.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -26,7 +27,9 @@ function svc(): SupabaseClient {
 async function markSent(service: SupabaseClient, id: string, wahaMessageId: string | null) {
   await service.from("project_messages").update({
     send_status: "sent", send_failed_reason: null,
-    waha_message_id: wahaMessageId ?? undefined, waha_status: "sent",
+    waha_message_id: wahaMessageId ?? undefined,
+    waha_msg_core: wahaMessageId ? (wahaMsgCore(wahaMessageId) ?? undefined) : undefined,
+    waha_status: "sent",
   }).eq("id", id);
 }
 async function markFailed(service: SupabaseClient, id: string, reason: string) {
@@ -82,28 +85,38 @@ Deno.serve(async (req: Request) => {
 
   // Тред → сессия + чат
   const { data: thread } = await service.from("project_threads")
-    .select("waha_session_id, waha_chat_id, waha_group, workspace_id").eq("id", msg.thread_id as string).maybeSingle();
+    .select("waha_session_id, waha_chat_id, waha_group, whatsapp_pair_key, workspace_id")
+    .eq("id", msg.thread_id as string).maybeSingle();
   if (!thread?.waha_session_id || !thread?.waha_chat_id) {
     await markFailed(service, messageId, "waha thread binding missing");
     return new Response(JSON.stringify({ error: "no waha binding" }), { status: 400 });
   }
 
-  // Выбор сессии для отправки. В ГРУППЕ (общий тред) отправляем через сессию
-  // автора сообщения — его телефон тоже в группе, клиент увидит, кто написал.
-  // Фолбэк — сессия, привязанная к треду. В личке — всегда сессия треда.
-  // Ограничение: если у автора несколько подключённых номеров, берём самый
-  // ранний рабочий; предполагаем, что он в этой группе (автор — участник).
+  // Выбор сессии/чата. В общем треде (ГРУППА или пара КОЛЛЕГ) отправляем через
+  // сессию АВТОРА (его номер тоже в чате → собеседник видит, кто написал). Для
+  // пары дополнительно цель = ВТОРОЙ номер пары (двунаправленно). Фолбэк —
+  // сессия/чат, привязанные к треду. Ограничение: если у автора несколько
+  // рабочих номеров, берём самый ранний.
   let sendSessionId = thread.waha_session_id as string;
-  if (thread.waha_group && msg.sender_participant_id) {
+  let chatOverride: string | null = null;
+  if ((thread.waha_group || thread.whatsapp_pair_key) && msg.sender_participant_id) {
     const { data: sp } = await service.from("participants")
       .select("user_id").eq("id", msg.sender_participant_id as string).maybeSingle();
     if (sp?.user_id) {
       const { data: ownSess } = await service.from("waha_sessions")
-        .select("id").eq("owner_user_id", sp.user_id as string)
+        .select("id, phone").eq("owner_user_id", sp.user_id as string)
         .eq("workspace_id", thread.workspace_id as string)
         .eq("status", WAHA_STATUS_WORKING)
         .order("created_at", { ascending: true }).limit(1).maybeSingle();
-      if (ownSess?.id) sendSessionId = ownSess.id as string;
+      if (ownSess?.id) {
+        sendSessionId = ownSess.id as string;
+        if (thread.whatsapp_pair_key) {
+          const parts = (thread.whatsapp_pair_key as string).split("_");
+          const authorPhone = ((ownSess.phone as string) ?? "").replace(/\D/g, "");
+          const target = parts[0] === authorPhone ? parts[1] : parts[0];
+          if (target) chatOverride = `${target}@c.us`;
+        }
+      }
     }
   }
 
@@ -118,7 +131,7 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: "waha not configured" }), { status: 500 });
   }
   const sessionName = session.session_name as string;
-  const chatId = thread.waha_chat_id as string;
+  const chatId = chatOverride ?? (thread.waha_chat_id as string);
 
   // ── Вложения ──────────────────────────────────────────────────────────────
   if (body.attachments_only) {

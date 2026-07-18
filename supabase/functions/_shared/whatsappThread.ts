@@ -20,6 +20,34 @@ export function normalizePhone(raw: string | null | undefined): string {
   return (raw ?? "").replace(/\D/g, "");
 }
 
+/**
+ * «Ядро» WhatsApp-id — сам id сообщения без префикса направления/чата.
+ * Форматы: полный «<fromMe>_<чат>_<ЯДРО>[_<отправитель>]» / короткий «<ЯДРО>».
+ * Ядро глобально уникально на физическое сообщение → дедуп по нему схлопывает
+ * наблюдения одного сообщения РАЗНЫМИ нашими сессиями (у них разный полный id).
+ */
+export function wahaMsgCore(fullId: string | null | undefined): string | null {
+  if (!fullId) return null;
+  const segs = fullId.split("_").filter((s) => s && s !== "true" && s !== "false" && !s.includes("@"));
+  if (segs.length === 0) return null;
+  return [...segs].sort((a, b) => b.length - a.length)[0];
+}
+
+/**
+ * Наш ли это подключённый номер? Возвращает owner_user_id сессии с таким
+ * телефоном в воркспейсе (иначе null). Для атрибуции сообщений коллеги как
+ * сотрудника (а не «Клиент») в multi-number сценариях (группа/1:1 коллег).
+ */
+export async function findConnectedNumberOwner(
+  service: SupabaseClient, workspaceId: string, phone: string,
+): Promise<string | null> {
+  if (!phone) return null;
+  const { data } = await service.from("waha_sessions")
+    .select("owner_user_id").eq("workspace_id", workspaceId).eq("phone", phone)
+    .limit(1).maybeSingle();
+  return (data?.owner_user_id as string) ?? null;
+}
+
 /** Найти единый WhatsApp-тред клиента по (владелец, телефон). */
 export async function findWhatsAppThreadByPhone(
   service: SupabaseClient, ownerUserId: string, phone: string,

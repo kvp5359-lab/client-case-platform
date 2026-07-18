@@ -12,7 +12,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { storeAttachment } from "../_shared/storeAttachment.ts";
-import { bindThreadToWaha, findWhatsAppThreadByPhone, normalizePhone } from "../_shared/whatsappThread.ts";
+import {
+  bindThreadToWaha, findConnectedNumberOwner, findWhatsAppThreadByPhone,
+  normalizePhone, wahaMsgCore,
+} from "../_shared/whatsappThread.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -221,22 +224,32 @@ async function handleMessage(service: SupabaseClient, sessionName: string, p: Wa
   const senderJid = isGroup ? (p.participant ?? chatId) : chatId;
   const pushName = p._data?.notifyName ?? p._data?.pushName ?? p.notifyName ?? null;
 
-  // «Своё» сообщение (написано нами). В личке fromMe надёжен; в ГРУППЕ у своих
-  // сообщений WAHA иногда шлёт fromMe=false (баг NOWEB #1350) — доопределяем по
-  // собственному номеру сессии.
+  // Наши сервисные отправки (source=api = через WAHA API из ЛК) уже созданы
+  // приложением в БД — эхо пропускаем, чтобы не задваивать.
+  if (p.source === "api") return;
+
+  // Атрибуция по ТЕЛЕФОНУ отправителя (а не по fromMe наблюдателя): наш
+  // подключённый номер → сотрудник (кто именно), иначе клиент. Устойчиво к
+  // нескольким нашим сессиям (группа/1:1 коллег) и обходит баг NOWEB #1350
+  // (fromMe=false у своих в группе). Резолв входящего телефона дёргаем только
+  // при 2+ наших номерах (иначе входящий — всегда клиент).
   const ownPhone = normalizePhone(session.phone as string | null);
-  let isOwn = p.fromMe === true;
-  if (!isOwn && isGroup && ownPhone) {
-    const sp = await resolveWahaPhone(sessionName, senderJid);
-    if (sp && sp === ownPhone) isOwn = true;
+  const { count: sessCount } = await service.from("waha_sessions")
+    .select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId);
+  const multiNumber = (sessCount ?? 1) > 1;
+
+  let senderPhone: string | null = null;
+  if (p.fromMe) senderPhone = ownPhone;
+  else if (multiNumber) {
+    senderPhone = await resolveWahaPhone(sessionName, isGroup ? (p.participant ?? chatId) : chatId);
   }
-  // Наши сервисные отправки (source=api) уже лежат в БД (созданы приложением) —
-  // ловим ТОЛЬКО написанное с телефона (source=app) и входящие, иначе задвоим.
-  if (isOwn && p.source === "api") return;
+  let senderOwnerUserId = senderPhone
+    ? await findConnectedNumberOwner(service, workspaceId, senderPhone) : null;
+  if (!senderOwnerUserId && p.fromMe) senderOwnerUserId = ownerUserId;
 
   const threadId = await ensureWahaThread(service, {
     sessionId: session.id as string,
-    sessionName, workspaceId, ownerUserId, chatId, isGroup,
+    sessionName, workspaceId, ownerUserId, chatId, isGroup, ownPhone,
     fallbackName: isGroup
       ? (p._data?.chat?.name ?? null)
       : (pushName ?? jidToNumber(chatId)),
@@ -259,10 +272,11 @@ async function handleMessage(service: SupabaseClient, sessionName: string, p: Wa
   let senderParticipantId: string | null = null;
   let senderName: string;
   let senderRole: string;
-  if (isOwn) {
+  if (senderOwnerUserId) {
+    // Отправитель — наш сотрудник (владелец подключённого номера).
     const { data: participant } = await service.from("participants")
       .select("id, name, last_name")
-      .eq("user_id", ownerUserId).eq("workspace_id", workspaceId)
+      .eq("user_id", senderOwnerUserId).eq("workspace_id", workspaceId)
       .eq("is_deleted", false).maybeSingle();
     senderParticipantId = participant?.id ?? null;
     senderName = participant
@@ -285,6 +299,7 @@ async function handleMessage(service: SupabaseClient, sessionName: string, p: Wa
     source: "waha",
     channel: "client",
     waha_message_id: p.id,
+    waha_msg_core: wahaMsgCore(p.id), // дедуп по ядру: одно сообщение = одна запись
     reply_to_message_id: replyToDbId,
     has_attachments: isMedia,
   }).select("id").single();
@@ -388,11 +403,51 @@ async function resolveWahaPhone(sessionName: string, chatId: string): Promise<st
   return null;
 }
 
+/**
+ * Общий тред для 1:1 переписки двух наших сотрудников (оба номера подключены).
+ * Ключ — неупорядоченная пара телефонов; один тред на пару, оба в участниках.
+ * Отправка разруливается в waha-send по автору (двунаправленно).
+ */
+async function ensurePairThread(
+  service: SupabaseClient,
+  a: {
+    workspaceId: string; sessionId: string; chatId: string;
+    ownPhone: string; ownOwnerUserId: string;
+    colleaguePhone: string; colleagueOwnerUserId: string; fallbackName: string | null;
+  },
+): Promise<string> {
+  const pairKey = [a.ownPhone, a.colleaguePhone].sort().join("_");
+  const find = () => service.from("project_threads").select("id")
+    .eq("workspace_id", a.workspaceId).eq("whatsapp_pair_key", pairKey)
+    .eq("is_deleted", false).maybeSingle();
+
+  let threadId: string | null = (await find()).data?.id as string ?? null;
+  if (!threadId) {
+    const { data: created, error } = await service.from("project_threads").insert({
+      project_id: null,
+      owner_user_id: a.ownOwnerUserId,
+      workspace_id: a.workspaceId,
+      name: a.fallbackName ?? "Коллега",
+      type: "chat", access_type: "all",
+      waha_session_id: a.sessionId, waha_chat_id: a.chatId, waha_group: false,
+      whatsapp_pair_key: pairKey,
+      icon: "whatsapp", accent_color: "emerald",
+      created_by: a.ownOwnerUserId,
+    }).select("id").single();
+    threadId = (created?.id as string) ?? ((await find()).data?.id as string) ?? null;
+    if (!threadId) throw new Error(`Failed to create pair thread: ${error?.message}`);
+  }
+  // Оба сотрудника — участники (видят общий тред).
+  await ensureThreadMember(service, threadId, a.ownOwnerUserId, a.workspaceId);
+  await ensureThreadMember(service, threadId, a.colleagueOwnerUserId, a.workspaceId);
+  return threadId;
+}
+
 async function ensureWahaThread(
   service: SupabaseClient,
   a: {
     sessionId: string; sessionName: string; workspaceId: string; ownerUserId: string;
-    chatId: string; isGroup: boolean; fallbackName: string | null;
+    chatId: string; isGroup: boolean; fallbackName: string | null; ownPhone: string;
   },
 ): Promise<string> {
   // Группа = ОДИН общий тред на воркспейс (ключ по группе, не по сессии) —
@@ -415,6 +470,18 @@ async function ensureWahaThread(
   if (!a.isGroup) {
     phone = await resolveWahaPhone(a.sessionName, a.chatId);
     if (phone) {
+      // Собеседник — наш подключённый номер? → ОДИН общий тред коллег по паре.
+      if (a.ownPhone && phone !== a.ownPhone) {
+        const colleagueOwner = await findConnectedNumberOwner(service, a.workspaceId, phone);
+        if (colleagueOwner) {
+          return await ensurePairThread(service, {
+            workspaceId: a.workspaceId, sessionId: a.sessionId, chatId: a.chatId,
+            ownPhone: a.ownPhone, ownOwnerUserId: a.ownerUserId,
+            colleaguePhone: phone, colleagueOwnerUserId: colleagueOwner,
+            fallbackName: a.fallbackName,
+          });
+        }
+      }
       const wt = await findWhatsAppThreadByPhone(service, a.ownerUserId, phone);
       if (wt) {
         await bindThreadToWaha(service, wt.id, { sessionId: a.sessionId, chatId: a.chatId, phone });
