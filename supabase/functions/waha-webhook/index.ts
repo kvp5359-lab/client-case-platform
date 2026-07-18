@@ -126,11 +126,7 @@ async function handleReaction(service: SupabaseClient, sessionName: string, p: W
     participantId = (thread?.contact_participant_id as string) ?? null;
     // @lid-чаты часто без привязанного контакта (номер скрыт) — создаём по имени
     if (!participantId) {
-      const nm = (thread?.name as string) ?? jidToNumber(p.from ?? "клиент");
-      const { data: cid } = await service.rpc("find_or_create_contact_participant", {
-        p_workspace_id: workspaceId, p_name: nm, p_phone: null,
-      });
-      participantId = (cid as string) ?? null;
+      participantId = await ensureWahaContact(service, workspaceId, p.from ?? "", (thread?.name as string) ?? null);
       if (participantId) {
         await service.from("project_threads")
           .update({ contact_participant_id: participantId }).eq("id", msg.thread_id as string);
@@ -304,11 +300,7 @@ async function ensureWahaThread(
 
   let contactId: string | null = null;
   if (!a.isGroup) {
-    const phone = a.chatId.endsWith("@c.us") ? jidToNumber(a.chatId) : null;
-    const { data: cid } = await service.rpc("find_or_create_contact_participant", {
-      p_workspace_id: a.workspaceId, p_name: displayName, p_phone: phone,
-    });
-    contactId = (cid as string) ?? null;
+    contactId = await ensureWahaContact(service, a.workspaceId, a.chatId, displayName);
   }
 
   const { data: created, error } = await service.from("project_threads").insert({
@@ -352,4 +344,24 @@ function guessName(mime: string | undefined, id: string): string {
 function jidToNumber(jid: string): string {
   const local = jid.split("@")[0] ?? jid;
   return local.split(":")[0] || jid;
+}
+
+/**
+ * Контакт-собеседник WhatsApp. Для @c.us — по телефону; для @lid (номер скрыт)
+ * — по синтетическому email waha-<lid>@no-email.local (иначе RPC вернёт NULL, т.к.
+ * без идентификатора создавать контакт нечем). Идемпотентно.
+ */
+async function ensureWahaContact(
+  service: SupabaseClient, workspaceId: string, fromJid: string, name: string | null,
+): Promise<string | null> {
+  if (!fromJid) return null;
+  const local = fromJid.split("@")[0]?.split(":")[0] ?? "";
+  const isPhone = fromJid.endsWith("@c.us");
+  const { data: cid } = await service.rpc("find_or_create_contact_participant", {
+    p_workspace_id: workspaceId,
+    p_name: name ?? local ?? "Клиент",
+    p_phone: isPhone ? local : null,
+    p_email: !isPhone && local ? `waha-${local}@no-email.local` : null,
+  });
+  return (cid as string) ?? null;
 }
