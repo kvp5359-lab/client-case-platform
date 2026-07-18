@@ -1,13 +1,18 @@
 /**
- * Edge Function: waha-sessions — управление сессиями WhatsApp (WAHA) из фронта.
+ * Edge Function: waha-sessions — управление номерами WhatsApp (WAHA) из фронта.
  *
- * Прокси к WAHA API (ключ не светится фронту). Операции:
- *  - op=create  — создать/пересоздать сессию сотрудника в WAHA (store+webhook), запись в waha_sessions
- *  - op=qr      — QR-код для привязки (base64 data URL)
- *  - op=status  — актуальный статус сессии из WAHA (+ синк в waha_sessions)
- *  - op=logout  — отвязать номер (logout в WAHA, статус STOPPED)
+ * Модель как у Wazzup: номер (сессия) — самостоятельная сущность, «ответственный»
+ * (owner_user_id) назначается/переназначается отдельно. Прокси к WAHA API.
  *
- * Авторизация: пользовательский JWT (verify_jwt=true) + проверка членства в воркспейсе.
+ * Операции:
+ *  - op=create  — новый номер: создать сессию в WAHA + запись waha_sessions, вернуть {session_id}
+ *  - op=qr      — QR для привязки конкретной сессии (base64 data URL)
+ *  - op=status  — статус сессии из WAHA (+ синк в БД)
+ *  - op=assign  — назначить/сменить ответственного (owner_user_id)
+ *  - op=logout  — отвязать номер (WAHA logout, статус STOPPED)
+ *  - op=delete  — удалить номер (logout + удаление сессии из WAHA и записи)
+ *
+ * Авторизация: JWT + членство в воркспейсе.
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -31,17 +36,16 @@ const json = (body: unknown, status = 200) =>
 function service(): SupabaseClient {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 }
-
 async function waha(path: string, init?: RequestInit): Promise<Response> {
   return fetch(`${WAHA_URL}${path}`, {
     ...init,
     headers: { "X-Api-Key": WAHA_API_KEY, "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
 }
-
-// имя сессии: детерминированное по (workspace,user) — позволяет переподключение
-function sessionName(workspaceId: string, userId: string): string {
-  return `w${workspaceId.replace(/-/g, "").slice(0, 12)}u${userId.replace(/-/g, "").slice(0, 12)}`;
+function newSessionName(): string {
+  const rnd = (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}${Math.round(Math.random() * 1e9)}`)
+    .replace(/-/g, "").slice(0, 16);
+  return `waha${rnd}`;
 }
 
 Deno.serve(async (req) => {
@@ -49,7 +53,6 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method" }, 405);
   if (!WAHA_URL || !WAHA_API_KEY) return json({ error: "WAHA не настроен" }, 500);
 
-  // Пользователь
   const authHeader = req.headers.get("Authorization") ?? "";
   const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } }, auth: { persistSession: false },
@@ -57,9 +60,9 @@ Deno.serve(async (req) => {
   const { data: { user } } = await userClient.auth.getUser();
   if (!user) return json({ error: "Unauthorized" }, 401);
 
-  let body: { op?: string; workspace_id?: string };
+  let body: { op?: string; workspace_id?: string; session_id?: string; owner_user_id?: string };
   try { body = await req.json(); } catch { return json({ error: "bad json" }, 400); }
-  const { op, workspace_id } = body;
+  const { op, workspace_id, session_id } = body;
   if (!op || !workspace_id) return json({ error: "op/workspace_id required" }, 400);
 
   const svc = service();
@@ -70,61 +73,84 @@ Deno.serve(async (req) => {
     .eq("is_deleted", false).maybeSingle();
   if (!member) return json({ error: "Не участник воркспейса" }, 403);
 
-  const name = sessionName(workspace_id, user.id);
   const webhookUrl = `${SUPABASE_URL}/functions/v1/waha-webhook?key=${WAHA_WEBHOOK_SECRET}`;
   const sessionConfig = {
     noweb: { store: { enabled: true, fullSync: true } },
     webhooks: [{ url: webhookUrl, events: ["message", "session.status"] }],
   };
 
+  // Резолв имени сессии по session_id (с проверкой воркспейса)
+  async function resolveName(): Promise<string | null> {
+    if (!session_id) return null;
+    const { data } = await svc.from("waha_sessions")
+      .select("session_name").eq("id", session_id).eq("workspace_id", workspace_id).maybeSingle();
+    return (data?.session_name as string) ?? null;
+  }
+
   try {
     if (op === "create") {
-      // upsert записи в waha_sessions
-      await svc.from("waha_sessions").upsert({
+      // Новый номер. Ответственный по умолчанию — создатель (переназначается потом).
+      const name = newSessionName();
+      const { data: inserted, error } = await svc.from("waha_sessions").insert({
         workspace_id, owner_user_id: user.id, session_name: name,
-        status: "STARTING", engine: "NOWEB", updated_at: new Date().toISOString(),
-      }, { onConflict: "session_name" });
+        status: "STARTING", engine: "NOWEB",
+      }).select("id").single();
+      if (error || !inserted) return json({ error: `db: ${error?.message}` }, 500);
 
-      // создать (или перезапустить) сессию в WAHA
-      const exists = await waha(`/api/sessions/${name}`);
-      if (exists.status === 404) {
-        await waha(`/api/sessions`, {
-          method: "POST",
-          body: JSON.stringify({ name, start: true, config: sessionConfig }),
-        });
-      } else {
-        // обновить конфиг (store+webhook) и перезапустить
-        await waha(`/api/sessions/${name}`, { method: "PUT", body: JSON.stringify({ config: sessionConfig }) });
-        await waha(`/api/sessions/${name}/restart`, { method: "POST" });
-      }
-      return json({ ok: true, session: name });
+      await waha(`/api/sessions`, {
+        method: "POST",
+        body: JSON.stringify({ name, start: true, config: sessionConfig }),
+      });
+      return json({ ok: true, session_id: inserted.id, session_name: name });
     }
+
+    if (op === "assign") {
+      if (!session_id) return json({ error: "session_id required" }, 400);
+      // owner должен быть участником воркспейса (или null — снять)
+      const newOwner = body.owner_user_id ?? null;
+      if (newOwner) {
+        const { data: ok } = await svc.from("participants")
+          .select("id").eq("user_id", newOwner).eq("workspace_id", workspace_id)
+          .eq("is_deleted", false).maybeSingle();
+        if (!ok) return json({ error: "Ответственный не участник воркспейса" }, 400);
+      }
+      await svc.from("waha_sessions")
+        .update({ owner_user_id: newOwner, updated_at: new Date().toISOString() })
+        .eq("id", session_id).eq("workspace_id", workspace_id);
+      return json({ ok: true });
+    }
+
+    const name = await resolveName();
+    if (!name) return json({ error: "сессия не найдена" }, 404);
 
     if (op === "qr") {
       const res = await waha(`/api/${name}/auth/qr?format=image`);
       if (!res.ok) return json({ error: "QR недоступен (сессия ещё не готова)" }, 202);
       const buf = new Uint8Array(await res.arrayBuffer());
       let bin = ""; for (const b of buf) bin += String.fromCharCode(b);
-      const b64 = btoa(bin);
-      return json({ qr: `data:image/png;base64,${b64}` });
+      return json({ qr: `data:image/png;base64,${btoa(bin)}` });
     }
 
     if (op === "status") {
       const res = await waha(`/api/sessions/${name}`);
-      if (res.status === 404) return json({ status: "STOPPED" });
+      if (res.status === 404) { await syncStatus(svc, session_id!, "STOPPED", null); return json({ status: "STOPPED" }); }
       const data = await res.json().catch(() => ({}));
       const status = data?.status ?? "UNKNOWN";
       const phone = data?.me?.id ? String(data.me.id).split("@")[0].split(":")[0] : null;
-      await svc.from("waha_sessions").update({
-        status, phone: phone ?? undefined, updated_at: new Date().toISOString(),
-      }).eq("session_name", name);
+      await syncStatus(svc, session_id!, status, phone);
       return json({ status, phone });
     }
 
     if (op === "logout") {
       await waha(`/api/sessions/${name}/logout`, { method: "POST" });
-      await svc.from("waha_sessions").update({ status: "STOPPED", updated_at: new Date().toISOString() })
-        .eq("session_name", name);
+      await syncStatus(svc, session_id!, "STOPPED", undefined);
+      return json({ ok: true });
+    }
+
+    if (op === "delete") {
+      await waha(`/api/sessions/${name}/logout`, { method: "POST" }).catch(() => {});
+      await waha(`/api/sessions/${name}`, { method: "DELETE" }).catch(() => {});
+      await svc.from("waha_sessions").delete().eq("id", session_id).eq("workspace_id", workspace_id);
       return json({ ok: true });
     }
 
@@ -134,3 +160,9 @@ Deno.serve(async (req) => {
     return json({ error: String(err) }, 500);
   }
 });
+
+async function syncStatus(svc: SupabaseClient, sessionId: string, status: string, phone: string | null | undefined) {
+  const upd: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
+  if (phone !== undefined) upd.phone = phone;
+  await svc.from("waha_sessions").update(upd).eq("id", sessionId);
+}

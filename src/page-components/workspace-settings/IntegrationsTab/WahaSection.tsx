@@ -4,16 +4,18 @@ import { useCallback, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { getUserFacingErrorMessage } from '@/utils/errorMessage'
-import { Loader2, Phone, User } from 'lucide-react'
+import { Loader2, Phone, Plus, QrCode, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import { supabase } from '@/lib/supabase'
 import { integrationsKeys } from '@/hooks/queryKeys'
-import { useAuth } from '@/contexts/AuthContext'
 import type { WorkspaceParticipant } from '@/hooks/shared/useWorkspaceParticipants'
 
 type WahaSessionRow = {
@@ -26,24 +28,22 @@ type WahaSessionRow = {
 
 const isWorking = (s?: string | null) => s === 'WORKING'
 const onlyDigits = (s: string) => s.replace(/\D/g, '')
+const UNASSIGNED = '__none__'
 
 export function WahaSection({
   workspaceId,
   employees,
-  selfOnly = false,
 }: {
   workspaceId: string
   employees: WorkspaceParticipant[]
-  selfOnly?: boolean
 }) {
-  const { user } = useAuth()
-  const currentUserId = user?.id ?? null
   const queryClient = useQueryClient()
-  const [connectOpen, setConnectOpen] = useState(false)
+  const [qrDialog, setQrDialog] = useState<{ sessionId: string } | null>(null)
 
-  const visibleEmployees = selfOnly
-    ? employees.filter((e) => e.user_id === currentUserId)
-    : employees
+  const invalidate = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: integrationsKeys.wahaSessions(workspaceId) }),
+    [queryClient, workspaceId],
+  )
 
   const { data: sessions = [] } = useQuery({
     queryKey: integrationsKeys.wahaSessions(workspaceId),
@@ -52,25 +52,19 @@ export function WahaSection({
         .from('waha_sessions')
         .select('id, owner_user_id, session_name, phone, status')
         .eq('workspace_id', workspaceId)
+        .order('created_at', { ascending: true })
       if (error) throw error
       return (data ?? []) as WahaSessionRow[]
     },
     enabled: !!workspaceId,
   })
 
-  const sessionByUser = new Map<string, WahaSessionRow>()
-  sessions.forEach((s) => { if (s.owner_user_id) sessionByUser.set(s.owner_user_id, s) })
-  const activeCount = sessions.filter((s) => isWorking(s.status)).length
-
-  // Защита от дублей: активные Wazzup-номера — чтобы предупредить, если один
-  // номер подключают и через Wazzup, и через WAHA (получатся дубли сообщений).
+  // Активные Wazzup-номера — предупреждаем о дублях (один номер в двух способах).
   const { data: wazzupPhones } = useQuery({
     queryKey: ['waha-wazzup-overlap', workspaceId],
     queryFn: async (): Promise<Set<string>> => {
       const { data } = await supabase
-        .from('wazzup_channels')
-        .select('phone, state')
-        .eq('workspace_id', workspaceId)
+        .from('wazzup_channels').select('phone, state').eq('workspace_id', workspaceId)
       const set = new Set<string>()
       ;(data ?? []).forEach((c) => {
         if (c.phone && c.state === 'active') set.add(onlyDigits(c.phone as string))
@@ -80,19 +74,38 @@ export function WahaSection({
     enabled: !!workspaceId,
   })
 
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('waha-sessions', {
-        body: { op: 'logout', workspace_id: workspaceId },
-      })
-      if (error) throw error
-      return data
+  const activeCount = sessions.filter((s) => isWorking(s.status)).length
+  const accounts = employees.filter((e) => e.user_id)
+
+  const invoke = useCallback(async (payload: Record<string, unknown>) => {
+    const { data, error } = await supabase.functions.invoke('waha-sessions', {
+      body: { workspace_id: workspaceId, ...payload },
+    })
+    if (error) throw error
+    if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error)
+    return data as { session_id?: string }
+  }, [workspaceId])
+
+  const addMutation = useMutation({
+    mutationFn: () => invoke({ op: 'create' }),
+    onSuccess: (data) => {
+      invalidate()
+      if (data?.session_id) setQrDialog({ sessionId: data.session_id })
     },
-    onSuccess: () => {
-      toast.success('WhatsApp отключён')
-      queryClient.invalidateQueries({ queryKey: integrationsKeys.wahaSessions(workspaceId) })
-    },
-    onError: (err) => toast.error(getUserFacingErrorMessage(err, 'Не удалось отключить')),
+    onError: (e) => toast.error(getUserFacingErrorMessage(e, 'Не удалось добавить номер')),
+  })
+
+  const assignMutation = useMutation({
+    mutationFn: (v: { session_id: string; owner_user_id: string | null }) =>
+      invoke({ op: 'assign', session_id: v.session_id, owner_user_id: v.owner_user_id }),
+    onSuccess: invalidate,
+    onError: (e) => toast.error(getUserFacingErrorMessage(e, 'Не удалось назначить ответственного')),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (session_id: string) => invoke({ op: 'delete', session_id }),
+    onSuccess: () => { invalidate(); toast.success('Номер удалён') },
+    onError: (e) => toast.error(getUserFacingErrorMessage(e, 'Не удалось удалить')),
   })
 
   return (
@@ -104,89 +117,99 @@ export function WahaSection({
               <Phone className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <CardTitle className="text-base">WhatsApp (WAHA)</CardTitle>
+              <CardTitle className="text-base">Номера WhatsApp (свой сервер)</CardTitle>
               <CardDescription className="mt-0.5">
-                Подключение личного WhatsApp сотрудника по QR-коду. Личные чаты и группы
-                синхронизируются в обе стороны. Отдельное приложение не требуется.
+                Подключи номер по QR-коду и назначь ответственного. Ответственного можно
+                менять в любой момент — переподключать номер не нужно.
               </CardDescription>
             </div>
           </div>
-          {!selfOnly && (
-            <Badge variant="outline" className="text-xs">
-              {activeCount > 0 ? `Активно: ${activeCount}` : 'Никто не подключён'}
-            </Badge>
-          )}
+          <Badge variant="outline" className="text-xs">
+            {activeCount > 0 ? `Активно: ${activeCount}` : 'Нет номеров'}
+          </Badge>
         </CardHeader>
         <CardContent className="space-y-2">
-          {visibleEmployees.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {selfOnly ? 'Профиль сотрудника не найден.' : 'Нет сотрудников в воркспейсе.'}
+          <Button
+            size="sm" variant="outline" className="gap-1.5"
+            onClick={() => addMutation.mutate()}
+            disabled={addMutation.isPending}
+          >
+            {addMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            Добавить номер
+          </Button>
+
+          {sessions.length === 0 ? (
+            <p className="text-sm text-muted-foreground pt-1">
+              Пока нет подключённых номеров. Нажми «Добавить номер» и отсканируй QR.
             </p>
           ) : (
-            visibleEmployees.map((emp) => {
-              if (!emp.user_id) return null
-              const fullName =
-                [emp.name, emp.last_name].filter(Boolean).join(' ') || emp.email || '—'
-              const session = sessionByUser.get(emp.user_id)
-              const isMe = emp.user_id === currentUserId
-              const active = isWorking(session?.status)
-              const dupWazzup = !!(session?.phone && wazzupPhones?.has(onlyDigits(session.phone)))
-
+            sessions.map((s) => {
+              const active = isWorking(s.status)
+              const dupWazzup = !!(s.phone && wazzupPhones?.has(onlyDigits(s.phone)))
               return (
-                <div
-                  key={emp.id}
-                  className="flex items-center justify-between gap-3 px-3 py-1.5 rounded-md border bg-card"
-                >
+                <div key={s.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-md border bg-card">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    {emp.avatar_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={emp.avatar_url} alt="" className="h-7 w-7 rounded-full shrink-0 object-cover bg-muted" />
-                    ) : (
-                      <div className="h-7 w-7 rounded-full shrink-0 bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center">
-                        <User className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                      </div>
-                    )}
-                    <span className="font-medium text-sm truncate">{fullName}</span>
-                    {session?.phone && (
-                      <span className="text-xs text-muted-foreground truncate">— +{session.phone}</span>
-                    )}
-                    {active && (
+                    <Phone className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="font-medium text-sm truncate">
+                      {s.phone ? `+${s.phone}` : 'Новый номер'}
+                    </span>
+                    {active ? (
                       <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400">
-                        активна
+                        активен
                       </Badge>
-                    )}
-                    {session && !active && (
+                    ) : (
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
-                        {session.status === 'SCAN_QR_CODE' ? 'ждёт QR' : 'отключена'}
+                        {s.status === 'SCAN_QR_CODE' ? 'ждёт QR' : 'отключён'}
                       </Badge>
-                    )}
-                    {!session && (
-                      <span className="text-xs text-muted-foreground shrink-0">не подключено</span>
                     )}
                     {dupWazzup && (
                       <Badge
                         variant="outline"
                         className="text-[10px] px-1.5 py-0 shrink-0 border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-400"
-                        title="Этот номер уже подключён через Wazzup — будут дубли сообщений. Оставь один способ."
+                        title="Этот номер уже подключён через Wazzup — будут дубли. Оставь один способ."
                       >
                         ⚠ также в Wazzup
                       </Badge>
                     )}
                   </div>
-                  {isMe && !active && (
-                    <Button size="sm" variant="outline" onClick={() => setConnectOpen(true)}>
-                      Подключить
-                    </Button>
-                  )}
-                  {isMe && active && (
+
+                  {/* Ответственный — как в Wazzup */}
+                  <Select
+                    value={s.owner_user_id ?? UNASSIGNED}
+                    onValueChange={(v) =>
+                      assignMutation.mutate({ session_id: s.id, owner_user_id: v === UNASSIGNED ? null : v })
+                    }
+                  >
+                    <SelectTrigger className="w-44 h-8 text-sm shrink-0">
+                      <SelectValue placeholder="Ответственный" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={UNASSIGNED}>Не назначен</SelectItem>
+                      {accounts.map((e) => (
+                        <SelectItem key={e.user_id!} value={e.user_id!}>
+                          {[e.name, e.last_name].filter(Boolean).join(' ') || e.email || '—'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className="flex items-center gap-1 shrink-0">
                     <Button
-                      size="sm" variant="ghost"
-                      onClick={() => logoutMutation.mutate()}
-                      disabled={logoutMutation.isPending}
+                      size="icon" variant="ghost" className="h-8 w-8"
+                      title={active ? 'Переподключить (новый QR)' : 'Подключить (QR)'}
+                      onClick={() => setQrDialog({ sessionId: s.id })}
                     >
-                      Отключить
+                      <QrCode className="h-4 w-4" />
                     </Button>
-                  )}
+                    <Button
+                      size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive"
+                      title="Удалить номер"
+                      onClick={() => deleteMutation.mutate(s.id)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               )
             })
@@ -194,46 +217,44 @@ export function WahaSection({
         </CardContent>
       </Card>
 
-      <WahaConnectDialog
-        open={connectOpen}
-        onOpenChange={setConnectOpen}
+      <WahaQrDialog
+        open={!!qrDialog}
+        sessionId={qrDialog?.sessionId ?? null}
         workspaceId={workspaceId}
-        onConnected={() =>
-          queryClient.invalidateQueries({ queryKey: integrationsKeys.wahaSessions(workspaceId) })
-        }
+        onOpenChange={(v) => { if (!v) setQrDialog(null) }}
+        onConnected={invalidate}
       />
     </>
   )
 }
 
-function WahaConnectDialog({
-  open, onOpenChange, workspaceId, onConnected,
+function WahaQrDialog({
+  open, sessionId, workspaceId, onOpenChange, onConnected,
 }: {
   open: boolean
-  onOpenChange: (v: boolean) => void
+  sessionId: string | null
   workspaceId: string
+  onOpenChange: (v: boolean) => void
   onConnected: () => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Подключение WhatsApp</DialogTitle>
+          <DialogTitle>Подключение номера WhatsApp</DialogTitle>
           <DialogDescription>
-            Отсканируй QR-код в приложении WhatsApp: Настройки → Связанные устройства →
-            Привязка устройства.
+            Отсканируй QR-код в приложении WhatsApp (телефон с этим номером): Настройки →
+            Связанные устройства → Привязка устройства.
           </DialogDescription>
         </DialogHeader>
-
-        {/* Тело монтируется только при открытии → свежее состояние без сброса в эффекте */}
-        {open && (
-          <WahaConnectBody
+        {open && sessionId && (
+          <WahaQrBody
+            sessionId={sessionId}
             workspaceId={workspaceId}
             onConnected={onConnected}
             onClose={() => onOpenChange(false)}
           />
         )}
-
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Закрыть</Button>
         </DialogFooter>
@@ -242,9 +263,10 @@ function WahaConnectDialog({
   )
 }
 
-function WahaConnectBody({
-  workspaceId, onConnected, onClose,
+function WahaQrBody({
+  sessionId, workspaceId, onConnected, onClose,
 }: {
+  sessionId: string
   workspaceId: string
   onConnected: () => void
   onClose: () => void
@@ -255,40 +277,34 @@ function WahaConnectBody({
 
   const call = useCallback(async (op: string) => {
     const { data, error } = await supabase.functions.invoke('waha-sessions', {
-      body: { op, workspace_id: workspaceId },
+      body: { op, workspace_id: workspaceId, session_id: sessionId },
     })
     if (error) throw error
-    return data as { status?: string; qr?: string; error?: string; ok?: boolean }
-  }, [workspaceId])
+    return data as { status?: string; qr?: string; error?: string }
+  }, [workspaceId, sessionId])
 
   useEffect(() => {
     let cancelled = false
     let interval: ReturnType<typeof setInterval> | null = null
     const stop = () => { if (interval) { clearInterval(interval); interval = null } }
 
-    ;(async () => {
+    interval = setInterval(async () => {
       try {
-        await call('create')
+        const st = await call('status')
         if (cancelled) return
-        interval = setInterval(async () => {
-          try {
-            const st = await call('status')
-            if (cancelled) return
-            setStatus(st.status ?? 'UNKNOWN')
-            if (st.status === 'WORKING') {
-              stop(); setQr(null); onConnected()
-              toast.success('WhatsApp подключён')
-              setTimeout(() => onClose(), 900)
-            } else if (st.status === 'SCAN_QR_CODE') {
-              const q = await call('qr').catch(() => null)
-              if (!cancelled && q?.qr) setQr(q.qr)
-            }
-          } catch { /* транзиентно, ждём следующий тик */ }
-        }, 3000)
+        setStatus(st.status ?? 'UNKNOWN')
+        if (st.status === 'WORKING') {
+          stop(); setQr(null); onConnected()
+          toast.success('Номер подключён')
+          setTimeout(() => onClose(), 900)
+        } else if (st.status === 'SCAN_QR_CODE') {
+          const q = await call('qr').catch(() => null)
+          if (!cancelled && q?.qr) setQr(q.qr)
+        }
       } catch (e) {
-        if (!cancelled) setError(getUserFacingErrorMessage(e, 'Не удалось создать сессию'))
+        if (!cancelled) setError(getUserFacingErrorMessage(e, 'Ошибка получения QR'))
       }
-    })()
+    }, 3000)
 
     return () => { cancelled = true; stop() }
   }, [call, onConnected, onClose])
