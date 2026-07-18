@@ -102,6 +102,16 @@ async function syncWazzup(params: ReactionParams, added: boolean): Promise<void>
 }
 
 /**
+ * WAHA (WhatsApp self-hosted): нативные реакции в обе стороны. Ставим при
+ * added=true, снимаем при added=false (WAHA умеет снятие — reaction="").
+ */
+async function syncWaha(params: ReactionParams, added: boolean): Promise<void> {
+  await supabase.functions.invoke('waha-react', {
+    body: { message_id: params.messageId, emoji: added ? params.emoji : '' },
+  })
+}
+
+/**
  * Главный диспетчер. Определяет стратегию по source и применяет её.
  */
 export async function toggleReactionByChannel(
@@ -111,6 +121,7 @@ export async function toggleReactionByChannel(
   if (source === 'telegram_business') return invokeChannelNative('telegram-business-react', params)
   if (source === 'telegram_mtproto') return invokeChannelNative('telegram-mtproto-react', params)
   if (source === 'wazzup') return internalFirst(params, syncWazzup)
+  if (source === 'waha') return internalFirst(params, syncWaha)
   // Default: TG-группы (через секретаря/личного бота) + всё остальное
   // (web, email — там просто наш RPC без внешнего sync).
   return internalFirst(params, syncTelegramGroup)

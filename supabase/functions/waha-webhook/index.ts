@@ -38,10 +38,16 @@ interface WahaPayload {
   notifyName?: string;
   _data?: { notifyName?: string; pushName?: string; chat?: { name?: string } };
 }
+interface WahaReactionPayload {
+  fromMe?: boolean;
+  participant?: string;
+  from?: string;
+  reaction?: { text?: string; messageId?: string } | null;
+}
 interface WahaEvent {
   event?: string;
   session?: string;
-  payload?: WahaPayload & { name?: string; status?: string };
+  payload?: WahaPayload & WahaReactionPayload & { name?: string; status?: string };
 }
 
 Deno.serve(async (req: Request) => {
@@ -57,6 +63,8 @@ Deno.serve(async (req: Request) => {
   try {
     if (evt.event === "session.status") {
       await handleSessionStatus(service, evt);
+    } else if (evt.event === "message.reaction" && evt.payload) {
+      await handleReaction(service, evt.session ?? "", evt.payload);
     } else if (evt.event === "message" && evt.payload) {
       await handleMessage(service, evt.session ?? "", evt.payload);
     }
@@ -73,6 +81,47 @@ async function handleSessionStatus(service: SupabaseClient, evt: WahaEvent) {
   await service.from("waha_sessions")
     .update({ status, updated_at: new Date().toISOString() })
     .eq("session_name", name);
+}
+
+async function handleReaction(service: SupabaseClient, sessionName: string, p: WahaReactionPayload) {
+  const extMsgId = p.reaction?.messageId;
+  if (!sessionName || !extMsgId) return;
+
+  const { data: session } = await service.from("waha_sessions")
+    .select("workspace_id, owner_user_id").eq("session_name", sessionName).maybeSingle();
+  if (!session) return;
+  const workspaceId = session.workspace_id as string;
+
+  // Наше сообщение, на которое реакция
+  const { data: msg } = await service.from("project_messages")
+    .select("id, thread_id").eq("waha_message_id", extMsgId).maybeSingle();
+  if (!msg) return;
+
+  const { data: thread } = await service.from("project_threads")
+    .select("contact_participant_id, owner_user_id").eq("id", msg.thread_id as string).maybeSingle();
+
+  // Кто реагирует: своя реакция (fromMe) → владелец, иначе → контакт-собеседник
+  let participantId: string | null = null;
+  if (p.fromMe) {
+    const ownerUserId = (thread?.owner_user_id as string) ?? (session.owner_user_id as string);
+    const { data: part } = await service.from("participants")
+      .select("id").eq("user_id", ownerUserId).eq("workspace_id", workspaceId)
+      .eq("is_deleted", false).maybeSingle();
+    participantId = part?.id ?? null;
+  } else {
+    participantId = (thread?.contact_participant_id as string) ?? null;
+  }
+  if (!participantId) return;
+
+  // WhatsApp: одна реакция на сообщение от участника → заменяем.
+  await service.from("message_reactions")
+    .delete().eq("message_id", msg.id).eq("participant_id", participantId);
+  const emoji = p.reaction?.text?.trim();
+  if (emoji) {
+    await service.from("message_reactions").insert({
+      message_id: msg.id, participant_id: participantId, emoji,
+    });
+  }
 }
 
 async function handleMessage(service: SupabaseClient, sessionName: string, p: WahaPayload) {

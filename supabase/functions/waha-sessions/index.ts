@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
   const webhookUrl = `${SUPABASE_URL}/functions/v1/waha-webhook?key=${WAHA_WEBHOOK_SECRET}`;
   const sessionConfig = {
     noweb: { store: { enabled: true, fullSync: true } },
-    webhooks: [{ url: webhookUrl, events: ["message", "session.status"] }],
+    webhooks: [{ url: webhookUrl, events: ["message", "message.reaction", "session.status"] }],
   };
 
   // Резолв имени сессии по session_id (с проверкой воркспейса)
