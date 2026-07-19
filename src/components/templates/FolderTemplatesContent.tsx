@@ -129,6 +129,7 @@ export function FolderTemplatesContent() {
             name: slot.name,
             description: slot.description ?? null,
             knowledge_article_id: slot.knowledge_article_id ?? null,
+            slot_template_id: slot.slot_template_id ?? null,
             sort_order: slot.sort_order,
           }))
           const { error: slotsError } = await supabase

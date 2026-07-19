@@ -16,6 +16,10 @@ export type Slot = {
   ai_naming_prompt: string | null
   ai_check_prompt: string | null
   sort_order: number
+  /** Обратная ссылка на справочник (для резолва унаследованной статьи в редакторе). */
+  slot_template_id?: string | null
+  /** Встроенная статья справочника (embed) — для книжки-иконки унаследованной статьи. */
+  slot_template?: { knowledge_article_id: string | null } | null
 }
 
 export type CreateSlotInput = {

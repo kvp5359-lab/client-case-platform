@@ -78,12 +78,12 @@ export function SlotsEditor({
     queryFn: async () => {
       const { data, error } = await supabase
         .from(config.table)
-        .select('*')
+        .select('*, slot_template:slot_templates(knowledge_article_id)')
         .eq(config.foreignKey, config.foreignKeyValue)
         .order('sort_order')
 
       if (error) throw error
-      return data as Slot[]
+      return data as unknown as Slot[]
     },
   })
 
@@ -273,7 +273,7 @@ export function SlotsEditor({
                 </span>
                 <FileUp className="h-3 w-3 text-amber-700/50 flex-shrink-0" />
                 <span className="text-xs text-amber-800/70 italic">{slot.name}</span>
-                {slot.knowledge_article_id ? (
+                {slot.knowledge_article_id || slot.slot_template?.knowledge_article_id ? (
                   <BookOpen className="h-3 w-3 text-blue-500/70 flex-shrink-0" />
                 ) : slot.description ? (
                   <Popover>

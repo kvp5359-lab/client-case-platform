@@ -207,6 +207,8 @@ export function useFolderOperations(
                   name: slot.name,
                   description: slot.description ?? null,
                   knowledge_article_id: slot.knowledge_article_id ?? null,
+                  // Протягиваем связь со справочником слота (резолв «?» в проекте).
+                  slot_template_id: slot.slot_template_id ?? null,
                   ai_naming_prompt: slot.ai_naming_prompt ?? null,
                   ai_check_prompt: slot.ai_check_prompt ?? null,
                   sort_order: slot.sort_order,
