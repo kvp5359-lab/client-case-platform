@@ -28,6 +28,8 @@ interface FolderData {
 interface SlotData {
   ai_naming_prompt: string | null;
   ai_check_prompt: string | null;
+  // Embed справочника: унаследованные промпты шаблона слота (PostgREST → объект или null).
+  slot_template: { ai_naming_prompt: string | null; ai_check_prompt: string | null } | null;
 }
 
 interface WorkspaceData {
@@ -124,21 +126,22 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Получаем AI-промпты по иерархии: слот → папка → дефолт воркспейса.
+    // Получаем AI-промпты по иерархии: слот → шаблон слота (справочник) → папка → дефолт воркспейса.
     // Уровень слота: документ привязан к folder_slot через folder_slots.document_id.
     let aiNamingPrompt: string | null = null;
     let aiCheckPrompt: string | null = null;
 
     const { data: slot } = await supabase
       .from("folder_slots")
-      .select("ai_naming_prompt, ai_check_prompt")
+      .select("ai_naming_prompt, ai_check_prompt, slot_template:slot_templates(ai_naming_prompt, ai_check_prompt)")
       .eq("document_id", document_id)
       .limit(1)
       .maybeSingle<SlotData>();
 
     if (slot) {
-      aiNamingPrompt = slot.ai_naming_prompt || null;
-      aiCheckPrompt = slot.ai_check_prompt || null;
+      // Эффективный промпт: локальный слота ?? унаследованный из справочника.
+      aiNamingPrompt = slot.ai_naming_prompt || slot.slot_template?.ai_naming_prompt || null;
+      aiCheckPrompt = slot.ai_check_prompt || slot.slot_template?.ai_check_prompt || null;
     }
 
     // Уровень папки: добиваем недостающие промпты с папки.
