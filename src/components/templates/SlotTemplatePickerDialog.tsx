@@ -42,6 +42,8 @@ export type PickedSlotTemplate = {
   knowledge_article_id: string | null
   ai_naming_prompt: string | null
   ai_check_prompt: string | null
+  /** id шаблона слота (справочник) — для обратной ссылки slot_template_id. */
+  slot_template_id: string
 }
 
 type SlotTemplatePickerDialogProps = {
@@ -63,6 +65,7 @@ const toPicked = (t: SlotTemplate): PickedSlotTemplate => ({
   knowledge_article_id: t.knowledge_article_id,
   ai_naming_prompt: t.ai_naming_prompt,
   ai_check_prompt: t.ai_check_prompt,
+  slot_template_id: t.id,
 })
 
 export function SlotTemplatePickerDialog({

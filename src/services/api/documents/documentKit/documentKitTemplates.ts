@@ -99,6 +99,7 @@ async function buildSlotsFromKitTemplate(
     name: string
     description: string | null
     knowledge_article_id: string | null
+    slot_template_id: string | null
     sort_order: number
   }[] = []
 
@@ -113,6 +114,8 @@ async function buildSlotsFromKitTemplate(
         name: slot.name,
         description: slot.description ?? null,
         knowledge_article_id: slot.knowledge_article_id ?? null,
+        // Протягиваем связь со справочником слота — чтобы «?» резолвился в проекте.
+        slot_template_id: slot.slot_template_id ?? null,
         sort_order: slot.sort_order,
       })
     }

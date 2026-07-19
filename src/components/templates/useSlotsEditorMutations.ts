@@ -24,6 +24,8 @@ export type CreateSlotInput = {
   knowledge_article_id?: string | null
   ai_naming_prompt?: string | null
   ai_check_prompt?: string | null
+  /** Обратная ссылка на шаблон слота (справочник) — при добавлении из справочника. */
+  slot_template_id?: string | null
 }
 
 export type UpdateSlotInput = {
@@ -66,6 +68,7 @@ export function useSlotsEditorMutations(config: SlotTableConfig, slots: Slot[]) 
         knowledge_article_id: data.knowledge_article_id ?? null,
         ai_naming_prompt: data.ai_naming_prompt ?? null,
         ai_check_prompt: data.ai_check_prompt ?? null,
+        slot_template_id: (data as CreateSlotInput).slot_template_id ?? null,
         sort_order: maxOrder + 1,
       } as never)
 
@@ -95,6 +98,7 @@ export function useSlotsEditorMutations(config: SlotTableConfig, slots: Slot[]) 
           knowledge_article_id: data.knowledge_article_id ?? null,
           ai_naming_prompt: data.ai_naming_prompt ?? null,
           ai_check_prompt: data.ai_check_prompt ?? null,
+          slot_template_id: data.slot_template_id ?? null,
           sort_order: maxOrder + 1 + i,
         })) as never,
       )

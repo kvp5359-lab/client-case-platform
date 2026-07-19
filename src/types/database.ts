@@ -1694,6 +1694,7 @@ export type Database = {
           kit_folder_id: string
           knowledge_article_id: string | null
           name: string
+          slot_template_id: string | null
           sort_order: number
         }
         Insert: {
@@ -1705,6 +1706,7 @@ export type Database = {
           kit_folder_id: string
           knowledge_article_id?: string | null
           name: string
+          slot_template_id?: string | null
           sort_order?: number
         }
         Update: {
@@ -1716,6 +1718,7 @@ export type Database = {
           kit_folder_id?: string
           knowledge_article_id?: string | null
           name?: string
+          slot_template_id?: string | null
           sort_order?: number
         }
         Relationships: [
@@ -1731,6 +1734,13 @@ export type Database = {
             columns: ["knowledge_article_id"]
             isOneToOne: false
             referencedRelation: "knowledge_articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_kit_template_folder_slots_slot_template_id_fkey"
+            columns: ["slot_template_id"]
+            isOneToOne: false
+            referencedRelation: "slot_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -2819,6 +2829,7 @@ export type Database = {
           knowledge_article_id: string | null
           name: string
           project_id: string
+          slot_template_id: string | null
           sort_order: number | null
           status: string | null
           updated_at: string
@@ -2838,6 +2849,7 @@ export type Database = {
           knowledge_article_id?: string | null
           name: string
           project_id: string
+          slot_template_id?: string | null
           sort_order?: number | null
           status?: string | null
           updated_at?: string
@@ -2857,6 +2869,7 @@ export type Database = {
           knowledge_article_id?: string | null
           name?: string
           project_id?: string
+          slot_template_id?: string | null
           sort_order?: number | null
           status?: string | null
           updated_at?: string
@@ -2906,6 +2919,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "folder_slots_slot_template_id_fkey"
+            columns: ["slot_template_id"]
+            isOneToOne: false
+            referencedRelation: "slot_templates"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "folder_slots_status_fkey"
             columns: ["status"]
             isOneToOne: false
@@ -2931,6 +2951,7 @@ export type Database = {
           id: string
           knowledge_article_id: string | null
           name: string
+          slot_template_id: string | null
           sort_order: number | null
           updated_at: string
           workspace_id: string
@@ -2944,6 +2965,7 @@ export type Database = {
           id?: string
           knowledge_article_id?: string | null
           name: string
+          slot_template_id?: string | null
           sort_order?: number | null
           updated_at?: string
           workspace_id: string
@@ -2957,6 +2979,7 @@ export type Database = {
           id?: string
           knowledge_article_id?: string | null
           name?: string
+          slot_template_id?: string | null
           sort_order?: number | null
           updated_at?: string
           workspace_id?: string
@@ -2974,6 +2997,13 @@ export type Database = {
             columns: ["knowledge_article_id"]
             isOneToOne: false
             referencedRelation: "knowledge_articles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folder_template_slots_slot_template_id_fkey"
+            columns: ["slot_template_id"]
+            isOneToOne: false
+            referencedRelation: "slot_templates"
             referencedColumns: ["id"]
           },
           {
@@ -4975,6 +5005,27 @@ export type Database = {
           },
         ]
       }
+      thread_user_names: {
+        Row: {
+          thread_id: string
+          user_id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          thread_id: string
+          user_id: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          thread_id?: string
+          user_id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_mute: {
         Row: {
           muted_until: string
@@ -5100,6 +5151,7 @@ export type Database = {
           search_vector: unknown
           telegram_user_id: number | null
           telegram_username: string | null
+          messenger_name: string | null
           updated_at: string
           user_id: string | null
           workspace_id: string
@@ -5122,6 +5174,7 @@ export type Database = {
           search_vector?: unknown
           telegram_user_id?: number | null
           telegram_username?: string | null
+          messenger_name?: string | null
           updated_at?: string
           user_id?: string | null
           workspace_id: string
@@ -5144,6 +5197,7 @@ export type Database = {
           search_vector?: unknown
           telegram_user_id?: number | null
           telegram_username?: string | null
+          messenger_name?: string | null
           updated_at?: string
           user_id?: string | null
           workspace_id?: string
@@ -10009,6 +10063,9 @@ export type Database = {
           suspended_at: string | null
           translation_model: string | null
           translation_use_thread_context: boolean
+          telegram_show_sender_name: boolean
+          wazzup_show_sender_name: boolean
+          waha_show_sender_name: boolean
           updated_at: string
           voyageai_api_key_id: string | null
         }
@@ -10051,6 +10108,9 @@ export type Database = {
           suspended_at?: string | null
           translation_model?: string | null
           translation_use_thread_context?: boolean
+          telegram_show_sender_name?: boolean
+          wazzup_show_sender_name?: boolean
+          waha_show_sender_name?: boolean
           updated_at?: string
           voyageai_api_key_id?: string | null
         }
@@ -10093,6 +10153,9 @@ export type Database = {
           suspended_at?: string | null
           translation_model?: string | null
           translation_use_thread_context?: boolean
+          telegram_show_sender_name?: boolean
+          wazzup_show_sender_name?: boolean
+          waha_show_sender_name?: boolean
           updated_at?: string
           voyageai_api_key_id?: string | null
         }

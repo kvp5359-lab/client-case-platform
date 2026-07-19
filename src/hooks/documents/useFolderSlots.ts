@@ -24,6 +24,7 @@ export function useFolderSlots(projectId: string) {
         .select(
           `
           *,
+          slot_template:slot_templates ( knowledge_article_id, description ),
           document:documents (
             *,
             document_files (*)
@@ -36,15 +37,24 @@ export function useFolderSlots(projectId: string) {
 
       if (error) throw error
 
-      // Фильтруем: если документ удалён — считаем слот пустым
-      return ((data || []) as FolderSlotWithDocument[]).map((slot) => {
-        const doc = slot.document as
+      // Фильтруем: если документ удалён — считаем слот пустым. Плюс резолвим
+      // эффективную статью/описание: local ?? шаблон слота (slot_template_id).
+      // Справочник слотов — источник по умолчанию, локальное значение перебивает.
+      return ((data || []) as unknown as (FolderSlotWithDocument & {
+        slot_template?: { knowledge_article_id: string | null; description: string | null } | null
+      })[]).map(({ slot_template, ...slot }) => {
+        const resolved = {
+          ...slot,
+          knowledge_article_id: slot.knowledge_article_id ?? slot_template?.knowledge_article_id ?? null,
+          description: slot.description ?? slot_template?.description ?? null,
+        }
+        const doc = resolved.document as
           | (FolderSlotWithDocument['document'] & { is_deleted?: boolean })
           | null
         if (doc?.is_deleted === true) {
-          return { ...slot, document: null, document_id: null }
+          return { ...resolved, document: null, document_id: null }
         }
-        return slot
+        return resolved
       })
     },
     enabled: !!projectId,
