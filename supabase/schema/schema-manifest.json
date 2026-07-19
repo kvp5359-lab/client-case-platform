@@ -4007,7 +4007,7 @@
     {
       "args": "p_article_id uuid, p_project_id uuid",
       "name": "article_available_in_project",
-      "body_md5": "2a351e21477c90806d8277886e798f5b"
+      "body_md5": "29537515449ecf6b34923e7f2e087eb1"
     },
     {
       "args": "",
