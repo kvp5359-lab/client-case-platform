@@ -7,8 +7,11 @@
  * Эти тесты фиксируют, что адрес всегда доезжает.
  */
 import { describe, it, expect } from 'vitest'
+// ⚠️ `_shared/channelText.ts` здесь НЕ импортируем: он тянет `./htmlFormatting.ts`
+// с расширением (обязательно для Deno), а Next при сборке type-check'ает всё, до
+// чего дотянулись тесты, и падает на `allowImportingTsExtensions`. Wazzup-путь =
+// `anchorsToText` + strip тегов, ядро покрыто тестами ниже.
 import { anchorsToText, htmlToWhatsApp } from '../supabase/functions/_shared/htmlFormatting'
-import { stripHtmlBasic } from '../supabase/functions/_shared/channelText'
 
 describe('anchorsToText', () => {
   it('текст ≠ адрес → «Текст: URL»', () => {
@@ -56,9 +59,12 @@ describe('WhatsApp-конвертеры сохраняют адрес', () => {
     expect(out).toContain('Папка проекта: https://drive.google.com/x')
   })
 
-  it('stripHtmlBasic (Wazzup): ссылка в абзаце', () => {
-    expect(stripHtmlBasic('<p><a href="https://ex.com/a">Анкета</a></p>')).toBe(
-      'Анкета: https://ex.com/a',
-    )
+  it('Wazzup-путь (anchorsToText + strip тегов): ссылка в абзаце', () => {
+    // Зеркало stripHtmlBasic: сперва разворот ссылок, потом срезание тегов.
+    const out = anchorsToText('<p><a href="https://ex.com/a">Анкета</a></p>')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .trim()
+    expect(out).toBe('Анкета: https://ex.com/a')
   })
 })
