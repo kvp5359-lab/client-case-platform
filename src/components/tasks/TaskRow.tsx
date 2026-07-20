@@ -23,6 +23,7 @@ import { UnreadBadge } from './UnreadBadge'
 import { TaskActionsMenu } from './TaskActionsMenu'
 import type { TaskItem } from './types'
 import { useTaskActionPerms } from '@/hooks/permissions'
+import { useThreadNameResolver } from '@/hooks/useThreadUserNames'
 
 type TaskRowProps = {
   task: TaskItem
@@ -75,6 +76,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
   isActive,
 }, ref) {
   const { canDeleteTask, canChangeStatus } = useTaskActionPerms(workspaceId)
+  const resolveThreadName = useThreadNameResolver()
   const currentStatus = useMemo(
     () => statuses.find((s) => s.id === task.status_id) ?? null,
     [statuses, task.status_id],
@@ -143,7 +145,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
           className={cn('text-sm font-medium truncate', isOverdue && 'text-red-600')}
           style={nameStyle}
         >
-          {task.name}
+          {resolveThreadName(task.id, task.name)}
         </span>
         {task.type && task.type !== 'task' && (
           <span className={cn('shrink-0', isFinal && 'opacity-40')}>

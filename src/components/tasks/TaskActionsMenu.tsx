@@ -13,7 +13,7 @@
  * один раз и появляются во всех местах автоматически.
  */
 
-import { MoreVertical, ExternalLink, Trash2, CheckCircle2, Calendar as CalendarIcon, X, Settings, Bell, BellOff, Repeat } from 'lucide-react'
+import { MoreVertical, ExternalLink, Trash2, CheckCircle2, Calendar as CalendarIcon, X, Settings, Bell, BellOff, Repeat, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { Button } from '@/components/ui/button'
@@ -54,6 +54,9 @@ export type TaskActionsMenuProps = {
   /** Открыть настройки треда/чата. Если не передан — пункт скрыт. */
   onOpenSettings?: () => void
 
+  /** Назвать тред для себя (личное имя). Если не передан — пункт скрыт. */
+  onRenameForSelf?: () => void
+
   /** Сделать задачу повторяющейся. Если не передан — пункт скрыт. */
   onMakeRecurring?: () => void
 
@@ -85,6 +88,7 @@ export function TaskActionsMenu({
   onDeadlineClear,
   deadlinePending,
   onOpenSettings,
+  onRenameForSelf,
   onMakeRecurring,
   isSubscribed,
   onToggleSubscribe,
@@ -212,6 +216,13 @@ export function TaskActionsMenu({
                 Настройки
               </DropdownMenuItem>
             </>
+          )}
+
+          {onRenameForSelf && (
+            <DropdownMenuItem onClick={onRenameForSelf} className="text-xs cursor-pointer">
+              <Pencil className="mr-2 h-3.5 w-3.5" />
+              Назвать для себя
+            </DropdownMenuItem>
           )}
 
           {hasMakeRecurring && (

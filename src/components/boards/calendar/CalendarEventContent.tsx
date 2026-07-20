@@ -5,12 +5,14 @@
  */
 
 import type { CalEvent } from './calEventTypes'
+import { useThreadNameResolver } from '@/hooks/useThreadUserNames'
 
 export function CalendarEventContent({ event }: { event: CalEvent }) {
+  const resolveThreadName = useThreadNameResolver()
   const project = event.resource?.project_name
   return (
     <>
-      <div className="font-medium truncate">{event.title}</div>
+      <div className="font-medium truncate">{resolveThreadName(event.id, event.title)}</div>
       {project && (
         <div className="truncate opacity-75 text-[10px] leading-tight">{project}</div>
       )}

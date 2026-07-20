@@ -13,6 +13,9 @@ import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { htmlToWhatsApp } from "../_shared/htmlFormatting.ts";
 import { STORAGE_BUCKETS, storageDownload } from "../_shared/storage.ts";
 import { wahaMsgCore } from "../_shared/whatsappThread.ts";
+import { resolveSenderName } from "../_shared/senderPrefix.ts";
+
+type SenderRow = { name?: string | null; last_name?: string | null; messenger_name?: string | null };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -99,24 +102,46 @@ Deno.serve(async (req: Request) => {
   // рабочих номеров, берём самый ранний.
   let sendSessionId = thread.waha_session_id as string;
   let chatOverride: string | null = null;
+  let senderPrefixName: string | null = null; // имя-префикс (настройка «показывать отправителя»)
   if ((thread.waha_group || thread.whatsapp_pair_key) && msg.sender_participant_id) {
-    const { data: sp } = await service.from("participants")
-      .select("user_id").eq("id", msg.sender_participant_id as string).maybeSingle();
-    if (sp?.user_id) {
-      const { data: ownSess } = await service.from("waha_sessions")
-        .select("id, phone").eq("owner_user_id", sp.user_id as string)
-        .eq("workspace_id", thread.workspace_id as string)
-        .eq("status", WAHA_STATUS_WORKING)
-        .order("created_at", { ascending: true }).limit(1).maybeSingle();
-      if (ownSess?.id) {
-        sendSessionId = ownSess.id as string;
-        if (thread.whatsapp_pair_key) {
-          const parts = (thread.whatsapp_pair_key as string).split("_");
-          const authorPhone = ((ownSess.phone as string) ?? "").replace(/\D/g, "");
-          const target = parts[0] === authorPhone ? parts[1] : parts[0];
-          if (target) chatOverride = `${target}@c.us`;
+    // Автор — участник этого треда (его номер РЕАЛЬНО в чате)? Только тогда шлём
+    // с его номера. Иначе (напр. менеджер, которого нет в группе) — уходит с
+    // номера, привязанного к треду (номер группы), лишь бы доставилось; кто автор
+    // на самом деле — видно в сервисе (и в префиксе, если настройка включена).
+    const { data: memberRow } = await service.from("project_thread_members")
+      .select("participant_id").eq("thread_id", msg.thread_id as string)
+      .eq("participant_id", msg.sender_participant_id as string).maybeSingle();
+    if (memberRow) {
+      const { data: sp } = await service.from("participants")
+        .select("user_id").eq("id", msg.sender_participant_id as string).maybeSingle();
+      if (sp?.user_id) {
+        const { data: ownSess } = await service.from("waha_sessions")
+          .select("id, phone").eq("owner_user_id", sp.user_id as string)
+          .eq("workspace_id", thread.workspace_id as string)
+          .eq("status", WAHA_STATUS_WORKING)
+          .order("created_at", { ascending: true }).limit(1).maybeSingle();
+        if (ownSess?.id) {
+          sendSessionId = ownSess.id as string;
+          if (thread.whatsapp_pair_key) {
+            const parts = (thread.whatsapp_pair_key as string).split("_");
+            const authorPhone = ((ownSess.phone as string) ?? "").replace(/\D/g, "");
+            const target = parts[0] === authorPhone ? parts[1] : parts[0];
+            if (target) chatOverride = `${target}@c.us`;
+          }
         }
       }
+    }
+  }
+
+  // Настройка воркспейса «показывать имя отправителя» — префикс к тексту (клиент
+  // видит, кто из команды написал). Не для пары коллег (они и так знают друг друга).
+  if (!thread.whatsapp_pair_key && msg.sender_participant_id) {
+    const { data: ws } = await service.from("workspaces")
+      .select("waha_show_sender_name").eq("id", thread.workspace_id as string).maybeSingle();
+    if (ws?.waha_show_sender_name) {
+      const { data: p } = await service.from("participants")
+        .select("name, last_name, messenger_name").eq("id", msg.sender_participant_id as string).maybeSingle();
+      senderPrefixName = resolveSenderName(p as SenderRow | null);
     }
   }
 
@@ -143,7 +168,10 @@ Deno.serve(async (req: Request) => {
     }
     // caption — текст сообщения, кроме плейсхолдера «📎»
     const rawText = htmlToWhatsApp(msg.content ?? "");
-    const caption = rawText && rawText !== "📎" ? rawText : "";
+    const baseCaption = rawText && rawText !== "📎" ? rawText : "";
+    const caption = senderPrefixName && baseCaption
+      ? `*${senderPrefixName}:*\n${baseCaption}`
+      : baseCaption;
     let lastId: string | null = null;
     const failed: string[] = [];
 
@@ -188,7 +216,8 @@ Deno.serve(async (req: Request) => {
   }
 
   // ── Текст ─────────────────────────────────────────────────────────────────
-  const text = htmlToWhatsApp(msg.content ?? "");
+  const baseText = htmlToWhatsApp(msg.content ?? "");
+  const text = senderPrefixName && baseText.trim() ? `*${senderPrefixName}:*\n${baseText}` : baseText;
   if (!text.trim()) {
     await markSent(service, messageId, null);
     return new Response(JSON.stringify({ ok: true, skipped: "empty" }), { status: 200 });

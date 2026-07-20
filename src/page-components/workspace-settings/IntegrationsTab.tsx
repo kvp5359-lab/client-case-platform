@@ -32,6 +32,7 @@ import { WahaSection } from './IntegrationsTab/WahaSection'
 import { SegmentedToggle } from '@/components/ui/segmented-toggle'
 import { LeadTemplateSetting } from './LeadTemplateSetting'
 import { ChannelDefaultIconColorSetting } from './ChannelDefaultIconColorSetting'
+import { ShowSenderNameSetting } from './IntegrationsTab/WhatsappSenderNameSetting'
 import { EmailSection } from './EmailSection'
 import { BotTokenDialog } from './IntegrationsTab/BotTokenDialog'
 import { EmployeeBotsSection } from './IntegrationsTab/EmployeeBotsSection'
@@ -215,6 +216,7 @@ export function IntegrationsTab() {
                 setDialog({ title: 'Токен бота-секретаря', bot, createParams: null })
               }
             />
+            <ShowSenderNameSetting workspaceId={workspaceId!} channel="telegram" />
             <IntegrationOverview {...OVERVIEW_TELEGRAM_EMPLOYEE_BOT} />
             <EmployeeBotsSection
               employees={employees}
@@ -286,6 +288,7 @@ export function IntegrationsTab() {
               <>
                 <IntegrationOverview {...OVERVIEW_WAZZUP} />
                 <WazzupSection workspaceId={workspaceId!} employees={employees} />
+                <ShowSenderNameSetting workspaceId={workspaceId!} channel="wazzup" />
                 <LeadTemplateSetting workspaceId={workspaceId!} source="wazzup" />
                 <ChannelDefaultIconColorSetting
                   workspaceId={workspaceId!}
@@ -303,6 +306,7 @@ export function IntegrationsTab() {
                   на вашей стороне.
                 </div>
                 <WahaSection workspaceId={workspaceId!} employees={employees} />
+                <ShowSenderNameSetting workspaceId={workspaceId!} channel="waha" />
               </>
             )}
           </>

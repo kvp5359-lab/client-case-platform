@@ -26,6 +26,9 @@ import {
 import { markMessageSent, markMessageFailed } from "../_shared/messageSendStatus.ts";
 import { stripHtmlBasic } from "../_shared/channelText.ts";
 import { signAttachmentToken } from "../_shared/attachmentToken.ts";
+import { resolveSenderName } from "../_shared/senderPrefix.ts";
+
+type SenderRow = { name?: string | null; last_name?: string | null; messenger_name?: string | null };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 
@@ -53,7 +56,7 @@ Deno.serve(async (req: Request) => {
   // 1. Сообщение
   const { data: msg } = await service
     .from("project_messages")
-    .select("id, thread_id, content, wazzup_message_id, send_status, workspace_id, reply_to_message_id, has_attachments, visibility")
+    .select("id, thread_id, content, wazzup_message_id, send_status, workspace_id, reply_to_message_id, has_attachments, visibility, sender_participant_id")
     .eq("id", body.message_id)
     .maybeSingle();
   if (!msg || !msg.thread_id) return jsonRes({ skip: "no thread" }, 200, req);
@@ -118,6 +121,19 @@ Deno.serve(async (req: Request) => {
       // (его собственное сообщение или наше предыдущее). Один перенос — иначе
       // в WhatsApp выходит лишняя пустая строка.
       text = `> ${truncated}\n${text}`;
+    }
+  }
+
+  // Настройка «показывать имя отправителя» — префикс имени сотрудника (клиент
+  // видит, кто из команды написал). Имя = messenger_name ?? обычное имя.
+  if (msg.sender_participant_id) {
+    const { data: ws } = await service.from("workspaces")
+      .select("wazzup_show_sender_name").eq("id", channel.workspace_id).maybeSingle();
+    if ((ws as { wazzup_show_sender_name?: boolean } | null)?.wazzup_show_sender_name) {
+      const { data: p } = await service.from("participants")
+        .select("name, last_name, messenger_name").eq("id", msg.sender_participant_id).maybeSingle();
+      const nm = resolveSenderName(p as SenderRow | null);
+      if (nm && text.trim()) text = `*${nm}:*\n${text}`;
     }
   }
 

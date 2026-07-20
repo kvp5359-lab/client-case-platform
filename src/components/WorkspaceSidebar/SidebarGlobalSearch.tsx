@@ -28,6 +28,7 @@ import { useDebounce } from '@/hooks/shared/useDebounce'
 import { supabase } from '@/lib/supabase'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { knowledgeArticleHref, projectHref, threadHref } from '@/lib/entityLinks'
+import { useThreadNameResolver } from '@/hooks/useThreadUserNames'
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   SearchInputInline,
@@ -94,6 +95,7 @@ export function SidebarGlobalSearch({
 }: Props) {
   const router = useRouter()
   const [query, setQuery] = useState('')
+  const resolveThreadName = useThreadNameResolver()
   const [isOpen, setIsOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -251,7 +253,11 @@ export function SidebarGlobalSearch({
                       {resolveProjectPrefix(row.project_template_id)}{' '}
                     </span>
                   )}
-                <span>{row.title || '—'}</span>
+                <span>
+                  {row.entity_type === 'thread' && row.thread_id
+                    ? resolveThreadName(row.thread_id, row.title || '—')
+                    : row.title || '—'}
+                </span>
                 {row.subtitle && (
                   <span className="text-gray-400 ml-2 font-normal">{row.subtitle}</span>
                 )}
@@ -267,7 +273,7 @@ export function SidebarGlobalSearch({
         </li>
       )
     },
-    [handlePick, resolveProjectIcon, resolveProjectPrefix, workspaceId],
+    [handlePick, resolveProjectIcon, resolveProjectPrefix, workspaceId, resolveThreadName],
   )
 
   const dropdown = (

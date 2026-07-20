@@ -179,8 +179,10 @@ export async function sendAttachmentsWithFallback(
     console.error("[telegram-send-message] secretary token resolve failed:", e);
     return false;
   }
-  const fallbackCaption = args.caption
-    ? `<b>${escapeHtmlEntities(args.senderName ?? "")}:</b>\n${args.caption}`
+  // Префикс имени только если senderName задан (пусто = настройка «показывать
+  // имя отправителя» выключена → без префикса).
+  const fallbackCaption = args.caption && args.senderName
+    ? `<b>${escapeHtmlEntities(args.senderName)}:</b>\n${args.caption}`
     : args.caption;
 
   let allOk = true;

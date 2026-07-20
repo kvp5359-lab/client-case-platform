@@ -16,6 +16,9 @@ import { detectChatMigration } from "../_shared/telegramMigration.ts";
 import { isReplyNotFoundError, loadReplyQuoteHtml } from "./helpers.ts";
 import { sendAttachmentsWithFallback } from "./attachments.ts";
 import { markMessageSent, markMessageFailed } from "../_shared/messageSendStatus.ts";
+import { resolveSenderName } from "../_shared/senderPrefix.ts";
+
+type SenderRow = { name?: string | null; last_name?: string | null; messenger_name?: string | null };
 
 interface RequestBody {
   message_id: string;
@@ -293,8 +296,31 @@ Deno.serve(async (req: Request) => {
     }
 
     // Через личный бот сотрудника — Telegram сам покажет имя/аватарку, префикс не нужен.
+    // Настройка воркспейса «показывать имя отправителя» (Telegram) + имя для
+    // мессенджеров отправителя (перебивает обычное имя в префиксе).
+    let telegramShowSender = true;
+    let senderDisplayName = body.sender_name;
+    if (senderParticipantId) {
+      const { data: pp } = await serviceClient
+        .from("participants")
+        .select("name, last_name, messenger_name, workspace_id")
+        .eq("id", senderParticipantId)
+        .maybeSingle();
+      senderDisplayName = resolveSenderName(pp as SenderRow | null) ?? body.sender_name;
+      const wsId = (pp as { workspace_id?: string | null } | null)?.workspace_id;
+      if (wsId) {
+        const { data: ws } = await serviceClient
+          .from("workspaces")
+          .select("telegram_show_sender_name")
+          .eq("id", wsId)
+          .maybeSingle();
+        telegramShowSender =
+          (ws as { telegram_show_sender_name?: boolean } | null)?.telegram_show_sender_name ?? true;
+      }
+    }
+
     // В лид-DM префикс «Имя:» — по настройке бота (config.show_sender_name).
-    let showSenderName = !isEmployeeBot && (!isLeadChat || leadShowSenderName);
+    let showSenderName = !isEmployeeBot && (!isLeadChat || leadShowSenderName) && telegramShowSender;
     if (showSenderName && body.project_id) {
       // thread_id текущего сообщения — без него «последнее сообщение» приходило
       // из любого другого треда того же проекта с тем же channel ("client"). Если
@@ -547,9 +573,11 @@ Deno.serve(async (req: Request) => {
         ? htmlToTelegramHtml(body.content)
         : escapeHtmlEntities(body.content);
       const formattedText = showSenderName
-        ? `<b>${escapeHtmlEntities(body.sender_name)}:</b>\n${contentForTelegram}`
+        ? `<b>${escapeHtmlEntities(senderDisplayName)}:</b>\n${contentForTelegram}`
         : contentForTelegram;
-      const secretaryFormatted = `<b>${escapeHtmlEntities(body.sender_name)}:</b>\n${contentForTelegram}`;
+      const secretaryFormatted = telegramShowSender
+        ? `<b>${escapeHtmlEntities(senderDisplayName)}:</b>\n${contentForTelegram}`
+        : contentForTelegram;
 
       const sent = await sendTextWithFallbacks({
         initialChatId: body.telegram_chat_id,
@@ -711,7 +739,7 @@ Deno.serve(async (req: Request) => {
           ? htmlToTelegramHtml(body.content)
           : escapeHtmlEntities(body.content);
         const formattedCaption = showSenderName
-          ? `<b>${escapeHtmlEntities(body.sender_name || "")}:</b>\n${contentForTelegram}`
+          ? `<b>${escapeHtmlEntities(senderDisplayName || "")}:</b>\n${contentForTelegram}`
           : contentForTelegram;
 
         // Считаем, сколько будет вложений — чтобы решить, как слать текст.
@@ -739,7 +767,7 @@ Deno.serve(async (req: Request) => {
             caption: formattedCaption,
             replyTo: attachmentReplyTo,
             isEmployeeBot,
-            senderName: body.sender_name,
+            senderName: telegramShowSender ? senderDisplayName : "",
           });
         } else {
           // Split-text: текст отдельным сообщением ПЕРЕД альбомом (2+ файла или
@@ -802,7 +830,7 @@ Deno.serve(async (req: Request) => {
             primaryToken: TELEGRAM_BOT_TOKEN,
             skipIdUpdate: true,
             isEmployeeBot,
-            senderName: body.sender_name,
+            senderName: telegramShowSender ? senderDisplayName : "",
           });
         }
       } else {
@@ -814,7 +842,7 @@ Deno.serve(async (req: Request) => {
           primaryToken: TELEGRAM_BOT_TOKEN,
           replyTo: attachmentReplyTo,
           isEmployeeBot,
-          senderName: body.sender_name,
+          senderName: telegramShowSender ? senderDisplayName : "",
         });
       }
 

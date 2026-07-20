@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
+import { useThreadNameResolver } from '@/hooks/useThreadUserNames'
 import { participantKeys, inboxThreadDetailKeys, STALE_TIME } from '@/hooks/queryKeys'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { ThreadTemplate } from '@/types/threadTemplate'
@@ -71,6 +72,7 @@ export function InboxChatHeader({
   threadTemplates,
   onCreateThread,
 }: InboxChatHeaderProps) {
+  const resolveThreadName = useThreadNameResolver()
   const router = useRouter()
 
   // Загружаем deadline треда (для задач) отдельным запросом —
@@ -174,7 +176,7 @@ export function InboxChatHeader({
 
         {/* 2. Название чата */}
         <span className="text-sm text-muted-foreground truncate max-w-[200px]">
-          {chat.thread_name}
+          {resolveThreadName(chat.thread_id, chat.thread_name)}
         </span>
 
         {/* 3. Срок (если есть) */}

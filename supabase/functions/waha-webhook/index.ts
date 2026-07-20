@@ -12,6 +12,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { storeAttachment } from "../_shared/storeAttachment.ts";
+import { resolveSenderName } from "../_shared/senderPrefix.ts";
 import {
   bindThreadToWaha, findConnectedNumberOwner, findWhatsAppThreadByPhone,
   normalizePhone, wahaMsgCore,
@@ -421,13 +422,28 @@ async function ensurePairThread(
     .eq("workspace_id", a.workspaceId).eq("whatsapp_pair_key", pairKey)
     .eq("is_deleted", false).maybeSingle();
 
+  // Имена обоих сотрудников (для общего имени и автосева личных имён) —
+  // messenger_name ?? имя+фамилия (единый резолв).
+  const nameOf = async (userId: string): Promise<string | null> => {
+    const { data } = await service.from("participants")
+      .select("name, last_name, messenger_name").eq("user_id", userId).eq("workspace_id", a.workspaceId)
+      .eq("is_deleted", false).maybeSingle();
+    return resolveSenderName(data as { name?: string | null; last_name?: string | null; messenger_name?: string | null } | null);
+  };
+  const ownName = await nameOf(a.ownOwnerUserId);
+  const colleagueName = await nameOf(a.colleagueOwnerUserId);
+
   let threadId: string | null = (await find()).data?.id as string ?? null;
   if (!threadId) {
+    // Общее имя = оба имени (видят не-участники, напр. менеджеры). Участники
+    // видят личное имя = имя собеседника (автосев ниже).
+    const sharedName = [ownName, colleagueName].filter(Boolean).join(" · ")
+      || a.fallbackName || "Коллега";
     const { data: created, error } = await service.from("project_threads").insert({
       project_id: null,
       owner_user_id: a.ownOwnerUserId,
       workspace_id: a.workspaceId,
-      name: a.fallbackName ?? "Коллега",
+      name: sharedName,
       type: "chat", access_type: "all",
       waha_session_id: a.sessionId, waha_chat_id: a.chatId, waha_group: false,
       whatsapp_pair_key: pairKey,
@@ -436,6 +452,16 @@ async function ensurePairThread(
     }).select("id").single();
     threadId = (created?.id as string) ?? ((await find()).data?.id as string) ?? null;
     if (!threadId) throw new Error(`Failed to create pair thread: ${error?.message}`);
+
+    // Автосев личных имён: каждому — имя собеседника. Не перезаписываем, если
+    // пользователь уже задал своё (onConflict do nothing).
+    const seed: { thread_id: string; user_id: string; name: string }[] = [];
+    if (colleagueName) seed.push({ thread_id: threadId, user_id: a.ownOwnerUserId, name: colleagueName });
+    if (ownName) seed.push({ thread_id: threadId, user_id: a.colleagueOwnerUserId, name: ownName });
+    if (seed.length) {
+      await service.from("thread_user_names")
+        .upsert(seed, { onConflict: "thread_id,user_id", ignoreDuplicates: true });
+    }
   }
   // Оба сотрудника — участники (видят общий тред).
   await ensureThreadMember(service, threadId, a.ownOwnerUserId, a.workspaceId);

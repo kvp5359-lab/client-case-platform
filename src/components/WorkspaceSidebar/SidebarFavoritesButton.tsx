@@ -60,6 +60,7 @@ import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads.types'
 import { getProjectIcon } from '@/components/common/project-icons'
 import { useProjectIconResolver, useProjectTemplateIcons } from '@/hooks/useGlobalSearch'
+import { useThreadNameResolver } from '@/hooks/useThreadUserNames'
 
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
 
@@ -111,6 +112,7 @@ export function SidebarFavoritesButton({ workspaceId }: { workspaceId: string | 
     [favorites],
   )
   const { data: threadRows = [] } = useThreadNames(workspaceId, favThreadIds)
+  const resolveThreadName = useThreadNameResolver()
 
   const wsPrefix = workspaceId ? `/workspaces/${workspaceId}` : ''
 
@@ -190,14 +192,14 @@ export function SidebarFavoritesButton({ workspaceId }: { workspaceId: string | 
           favId: f.id,
           type: 'thread',
           id: f.entity_id,
-          name: t?.name ?? '— удалён —',
+          name: t ? resolveThreadName(t.id, t.name) : '— удалён —',
           Icon: t?.icon ? getChatIconComponent(t.icon) : t?.type === 'task' ? CheckSquare : MessageSquare,
           iconClass: t?.accent_color ? (COLOR_TEXT[t.accent_color as ThreadAccentColor] ?? undefined) : undefined,
         })
       }
     }
     return byType
-  }, [favorites, projects, boards, lists, threadRows, resolveProjIcon, templatesById])
+  }, [favorites, projects, boards, lists, threadRows, resolveProjIcon, templatesById, resolveThreadName])
 
   // ── Текущая открытая сущность («Добавить текущее») ──
   const current = useMemo<ResolvedFavorite | null>(() => {

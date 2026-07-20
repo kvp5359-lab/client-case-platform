@@ -75,6 +75,7 @@ export function EditParticipantDialog({
   const [phone, setPhone] = useState('')
   const [telegramUserId, setTelegramUserId] = useState('')
   const [telegramUsername, setTelegramUsername] = useState('')
+  const [messengerName, setMessengerName] = useState('')
   const [role, setRole] = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
   const [canLogin, setCanLogin] = useState(true)
@@ -103,6 +104,7 @@ export function EditParticipantDialog({
       setPhone(participant.phone || '')
       setTelegramUserId(participant.telegram_user_id?.toString() || '')
       setTelegramUsername(participant.telegram_username || '')
+      setMessengerName(participant.messenger_name || '')
       setCanLogin(participant.can_login)
       setAvatarUrl(participant.avatar_url || null)
       setAvatarPreview(null)
@@ -194,6 +196,7 @@ export function EditParticipantDialog({
         phone,
         telegram_user_id: telegramUserId ? Number(telegramUserId) : null,
         telegram_username: telegramUsername.trim().replace(/^@/, '') || null,
+        messenger_name: messengerName.trim() || null,
         avatar_url: avatarUrl,
         workspace_roles: role ? [role] : [],
         can_login: canLogin,
@@ -451,6 +454,22 @@ export function EditParticipantDialog({
                 />
                 <p className="text-xs text-muted-foreground">
                   Ник в Telegram — чтобы найти диалог по @username
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="messengerName">Имя для мессенджеров</Label>
+                <Input
+                  id="messengerName"
+                  type="text"
+                  value={messengerName}
+                  onChange={(e) => setMessengerName(e.target.value)}
+                  placeholder="Как подписывать в WhatsApp/Telegram"
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Подставляется как имя отправителя в мессенджерах (если включена
+                  настройка «показывать имя отправителя»). Пусто — берётся обычное имя.
                 </p>
               </div>
             </div>

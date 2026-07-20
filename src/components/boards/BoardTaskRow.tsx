@@ -8,6 +8,7 @@ import { ParticipantAvatars, type AvatarParticipant } from '@/components/partici
 import { UnreadBadge } from '@/components/tasks/UnreadBadge'
 import { TaskActionsMenu } from '@/components/tasks/TaskActionsMenu'
 import { useTaskActionPerms } from '@/hooks/permissions'
+import { useThreadNameResolver } from '@/hooks/useThreadUserNames'
 import type { WorkspaceTask } from '@/hooks/tasks/useWorkspaceThreads'
 import type { CardLayout, CardFieldId, CardFieldStyle, DisplayMode, VisibleField } from './types'
 import { getDeadlineAccentClass, formatDeadlineDisplay } from '@/utils/deadlineUtils'
@@ -105,6 +106,7 @@ function TaskField({
 }) {
   const classes = fieldStyleToClasses(style)
   const { canDeleteTask } = useTaskActionPerms(workspaceId)
+  const resolveThreadName = useThreadNameResolver()
 
   switch (fieldId) {
     case 'spacer':
@@ -138,7 +140,7 @@ function TaskField({
             overdue && 'text-red-500',
           )}
         >
-          {task.name}
+          {resolveThreadName(task.id, task.name)}
         </span>
       )
 

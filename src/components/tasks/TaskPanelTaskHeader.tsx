@@ -21,6 +21,7 @@ import { useThreadSubscription } from '@/hooks/messenger/useThreadSubscription'
 import { toast } from 'sonner'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useUpdateThread } from '@/hooks/messenger/useProjectThreads'
+import { useThreadNameResolver } from '@/hooks/useThreadUserNames'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import { StatusDropdown, type StatusOption } from '@/components/common/status-dropdown'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
@@ -30,6 +31,7 @@ import { AssigneesPopover } from './AssigneesPopover'
 import { TaskActionsMenu } from './TaskActionsMenu'
 import { useTaskActionPerms } from '@/hooks/permissions'
 import { RecurringRuleDialog } from '@/components/recurring/RecurringRuleDialog'
+import { ThreadPersonalNameDialog } from './ThreadPersonalNameDialog'
 import type { ProjectHeaderInfo, TaskItem } from './types'
 
 type TaskPanelTaskHeaderProps = {
@@ -94,6 +96,7 @@ export function TaskPanelTaskHeader({
   const { canDeleteTask } = useTaskActionPerms(workspaceId)
   const ThreadIcon = getChatIconComponent(task.icon)
   const updateThread = useUpdateThread()
+  const resolveThreadName = useThreadNameResolver()
 
   // Привязка треда к проекту прямо из шапки — кнопка видна только пока проект
   // НЕ выбран. После выбора тред переносится (move_thread_to_project: тред +
@@ -154,6 +157,7 @@ export function TaskPanelTaskHeader({
   // Мобила: выдвижная панель действий (исполнители/срок/проект/поиск/⋮) —
   // на узком экране они давят название, поэтому прячем в раскрывающийся ряд.
   const [actionsOpen, setActionsOpen] = useState(false)
+  const [personalNameOpen, setPersonalNameOpen] = useState(false)
 
   const [prevTaskId, setPrevTaskId] = useState(task.id)
   if (task.id !== prevTaskId) {
@@ -202,7 +206,7 @@ export function TaskPanelTaskHeader({
             onClick={onSettingsOpen}
             title="Открыть настройки треда"
           >
-            {task.name}
+            {resolveThreadName(task.id, task.name)}
           </h2>
         )}
 
@@ -334,6 +338,12 @@ export function TaskPanelTaskHeader({
             }}
           />
         )}
+        <ThreadPersonalNameDialog
+          threadId={task.id}
+          sharedName={task.name}
+          open={personalNameOpen}
+          onOpenChange={setPersonalNameOpen}
+        />
         {/* Колокольчик уведомлений в выдвижной панели — ТОЛЬКО мобила (на десктопе
             он inline в правом кластере). Только иконка, прижата вправо (ml-auto). */}
         {viewMode === 'thread' && subscription.isSubscribed !== null && (
@@ -402,6 +412,7 @@ export function TaskPanelTaskHeader({
             onDeadlineClear={onDeadlineClear}
             deadlinePending={deadlinePending}
             onOpenSettings={onSettingsOpen}
+            onRenameForSelf={() => setPersonalNameOpen(true)}
             onMakeRecurring={isTask ? () => setRecurringOpen(true) : undefined}
             isSubscribed={subscription.isSubscribed}
             onToggleSubscribe={subscription.setSubscribed}

@@ -25,6 +25,7 @@ import {
 import { playIncomingSound } from './useMessageSound'
 import { subscribeInboxBroadcast } from './inboxBroadcastBus'
 import { useNotificationMute } from '@/hooks/useNotificationMute'
+import { threadUserNameKeys } from '@/hooks/useThreadUserNames'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import type { TaskItem } from '@/components/tasks/types'
 
@@ -254,6 +255,13 @@ export function useNewMessageToast(workspaceId: string | undefined) {
             threadName = threadName ?? (row?.name ?? null)
             if (!isPersonal) projectName = projectName ?? (row?.projects?.name ?? null)
           }
+          // Личное имя треда (если задано) перебивает общее.
+          const myNames = queryClient.getQueryData<Map<string, string>>(
+            threadUserNameKeys.mine(userRef.current?.id),
+          )
+          const myName = msg.thread_id ? myNames?.get(msg.thread_id) : undefined
+          if (myName) threadName = myName
+
           // Последний фоллбэк имени проекта, чтобы не показать пустые скобки.
           if (!isPersonal && !projectName) projectName = 'Проект'
 

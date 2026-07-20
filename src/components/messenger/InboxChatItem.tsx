@@ -17,6 +17,7 @@ import {
 } from './inboxChatItem.helpers'
 import { resolveInboxPreview } from './resolveInboxPreview'
 import { InboxItemPreview } from './InboxItemPreview'
+import { useThreadNameResolver } from '@/hooks/useThreadUserNames'
 
 type InboxChatItemProps = {
   chat: InboxThreadEntry
@@ -48,6 +49,8 @@ export const InboxChatItem = memo(function InboxChatItem({
   mutedBadge = false,
 }: InboxChatItemProps) {
   const prefetchMessages = usePrefetchThreadMessages()
+  const resolveThreadName = useThreadNameResolver()
+  const displayThreadName = resolveThreadName(chat.thread_id, chat.thread_name)
 
   // Черновик из localStorage
   const draftHtml = localStorage.getItem(`msg_draft:${chat.project_id}:${chat.thread_id}`)
@@ -104,7 +107,7 @@ export const InboxChatItem = memo(function InboxChatItem({
               accent.ring,
             )}
           >
-            {(avatarFallbackName ?? chat.thread_name).charAt(0).toUpperCase()}
+            {(avatarFallbackName ?? displayThreadName).charAt(0).toUpperCase()}
           </div>
         )}
         {/* Значок в углу аватара: канал (в цвет акцента) или иконка треда */}
@@ -126,7 +129,7 @@ export const InboxChatItem = memo(function InboxChatItem({
                 hasUnreadIndicator ? 'font-semibold text-gray-900' : 'font-medium text-gray-700',
               )}
             >
-              {chat.thread_name}
+              {displayThreadName}
             </span>
             {!hideProjectName && chat.project_name && (
               <span className="truncate shrink-0 max-w-[50%] rounded bg-[#e6ebf2] px-1.5 py-0 text-[12px] leading-[18px] font-medium text-gray-700">

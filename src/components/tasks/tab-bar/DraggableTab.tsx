@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/context-menu'
 import type { BadgeDisplay } from '@/utils/inboxUnread'
 import type { TaskPanelTab } from '@/types/taskPanelTabs'
+import { useThreadNameResolver } from '@/hooks/useThreadUserNames'
 
 export type DraggableTabProps = {
   tab: TaskPanelTab
@@ -45,6 +46,8 @@ export function DraggableTab({
   const { attributes, listeners, setNodeRef, isDragging, transform, transition } = useSortable({
     id: tab.id,
   })
+  const resolveTabName = useThreadNameResolver()
+  const tabLabel = resolveTabName(tab.id, tab.title)
 
   // Y залочен: вкладка скользит только по горизонтали. Соседние вкладки сами
   // расступаются под курсором благодаря horizontalListSortingStrategy —
@@ -81,11 +84,11 @@ export function DraggableTab({
             isDragging && 'shadow-2xl ring-2 ring-blue-500/60 cursor-grabbing scale-105 z-50',
           )}
           onClick={() => onActivate(tab.id)}
-          title={tab.title}
+          title={tabLabel}
         >
           <Icon className="shrink-0 w-3.5 h-3.5" />
           {!tab.pinned && (
-            <span className="truncate min-w-0 flex-1 max-w-[110px]">{tab.title}</span>
+            <span className="truncate min-w-0 flex-1 max-w-[110px]">{tabLabel}</span>
           )}
 
           {/* Бейдж и крестик. У pinned — мини-бейдж в углу (без места под крестик). */}
