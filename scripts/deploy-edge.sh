@@ -25,6 +25,8 @@ NO_JWT_FUNCTIONS=(
   telegram-edit-message
   wazzup-webhook
   wazzup-send
+  waha-webhook
+  waha-send
   attachment-proxy
   gmail-webhook
   email-internal-send

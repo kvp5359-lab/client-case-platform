@@ -9,9 +9,14 @@
  *
  * Раньше эта функция жила байт-в-байт в `wazzup-send` и `wazzup-send-reaction`.
  * Вынесена, чтобы копии не разъезжались (класс карантинных багов — дрейф копий).
+ *
+ * Ссылки разворачиваются в видимый адрес (`anchorsToText`) — иначе href терялся
+ * бы вместе с тегом и клиент получал текст без возможности открыть ссылку.
  */
+import { anchorsToText } from "./htmlFormatting.ts";
+
 export function stripHtmlBasic(html: string): string {
-  return html
+  return anchorsToText(html)
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/p>/gi, "\n")
     .replace(/<[^>]+>/g, "")

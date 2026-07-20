@@ -162,12 +162,43 @@ export function htmlToTelegramHtml(html: string): string {
 }
 
 /**
+ * Разворачивает `<a href="URL">Текст</a>` в плоский текст с ВИДИМЫМ адресом.
+ *
+ * Зачем: WhatsApp (WAHA/Wazzup) не поддерживает ссылки «под текстом» — в нём нет
+ * разметки ссылок вообще, кликабельным становится только сам URL в тексте.
+ * Раньше общий strip тегов срезал `<a>` вместе с href → адрес пропадал МОЛЧА,
+ * клиент получал «Анкета для ВНЖ» без возможности открыть.
+ *
+ * Правила: текст ссылки совпадает с адресом (или пуст) → только адрес;
+ * иначе → `Текст: URL`.
+ *
+ * ⚠️ Вызывать ДО общего срезания тегов. Для Telegram НЕ применять — там `<a>`
+ * поддерживается нативно (см. `htmlToTelegramHtml`).
+ */
+export function anchorsToText(html: string): string {
+  return html.replace(
+    /<a\b[^>]*?href\s*=\s*["']([^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi,
+    (_m, rawHref: string, inner: string) => {
+      const href = rawHref.replace(/&amp;/g, "&").trim();
+      const text = inner.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim();
+      if (!href) return text;
+      if (!text) return href;
+      // Текст и есть адрес (в т.ч. без схемы: «example.com» ↔ «https://example.com»)
+      const norm = (s: string) => s.replace(/^https?:\/\//i, "").replace(/\/+$/, "").toLowerCase();
+      if (norm(text) === norm(href)) return href;
+      return `${text}: ${href}`;
+    },
+  );
+}
+
+/**
  * Конвертирует Tiptap HTML → текст с разметкой WhatsApp.
  * WhatsApp понимает: *жирный*, _курсив_, ~зачёркнутый~, `моно`, ```блок```.
  * Списки → текст с нумерацией (иерархической, уважает start — как в Telegram).
  */
 export function htmlToWhatsApp(html: string): string {
-  let result = html;
+  // Ссылки → видимый адрес (WhatsApp не умеет ссылки «под текстом») — ДО срезания тегов.
+  let result = anchorsToText(html);
 
   // Блочный код <pre> → ```…``` (до inline, чтобы не сломать)
   result = result.replace(/<pre[^>]*>([\s\S]*?)<\/pre>/gi, (_m, i: string) =>
