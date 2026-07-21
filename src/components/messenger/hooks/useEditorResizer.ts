@@ -1,12 +1,19 @@
 import { useState, useRef, useCallback } from 'react'
 
 const MIN_EDITOR_HEIGHT = 36
-const MAX_EDITOR_HEIGHT = 600
+// Запас под тулбар композера + чуть места сверху: поле не растёт выше окна.
+const VIEWPORT_RESERVE = 150
 // Базовая (минимальная) высота поля — ~1 строка. Перетаскивание ручки её меняет,
 // поэтому пустое поле тоже становится выше (высота НЕ зависит от содержимого).
 const DEFAULT_EDITOR_HEIGHT = 40
 // Потолок авто-роста от контента, если базовая высота меньше него.
 const DEFAULT_MAX_HEIGHT = 255
+
+/** Верхняя граница высоты поля — по высоте окна (минус запас), без фикс-потолка. */
+function maxEditorHeight(): number {
+  if (typeof window === 'undefined') return 600
+  return Math.max(MIN_EDITOR_HEIGHT, window.innerHeight - VIEWPORT_RESERVE)
+}
 
 export function useEditorResizer() {
   const [editorHeight, setEditorHeight] = useState(DEFAULT_EDITOR_HEIGHT)
@@ -25,7 +32,7 @@ export function useEditorResizer() {
         if (!isDraggingResizer.current) return
         const delta = dragStartY.current - ev.clientY
         const newHeight = Math.min(
-          MAX_EDITOR_HEIGHT,
+          maxEditorHeight(),
           Math.max(MIN_EDITOR_HEIGHT, dragStartHeight.current + delta),
         )
         setEditorHeight(newHeight)
