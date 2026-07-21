@@ -230,32 +230,30 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
   }
 
   if (hasAnyAttachments && params.threadId && isClientVisible) {
-    // Для Email / Wazzup / MTProto-тредов триггер БД пропускает сообщения с
-    // has_attachments=true (как и для группового TG). Поэтому здесь сами
-    // инициируем отправку — соответствующая edge function подтянет файлы из
-    // message_attachments и создаст signed URLs / зальёт через MTProto.
+    // Доставка вложений. НЕ-email каналы (wazzup/mtproto/waha/business/tg-группа)
+    // идут КАНОНИЧЕСКИМ серверным диспетчером deliver_message → dispatch(id, has_att)
+    // → per-channel *-send через dispatch_send_http (→ message_send_dispatch →
+    // watchdog покрывает результат, «Повторить» работает). Тот же путь, что у
+    // текста и у публикации черновика (messengerDraftService.publishDraft).
     //
-    // Email добавлен в этот блок, потому что иначе была race: триггер
-    // запускал email-internal-send до того, как фронт успевал загрузить
-    // файлы → письмо уходило с неполным набором вложений (или с одним).
+    // Раньше файл слался прямым invoke каждой *-send fire-and-forget: если вызов
+    // из браузера не доходил (сеть / зависший getSession / закрытая вкладка) —
+    // сообщение молча висло в pending без страховки, watchdog его не видел,
+    // «Повторить» файлы не переотправлял (инцидент 2026-07-21, WhatsApp).
+    //
+    // Email — только фронт-invoke: диспетчер email-вложения пропускает (иначе
+    // двойная отправка с draft-путём, из-за исторической гонки загрузки файлов).
     const { data: extThread } = await supabase
       .from('project_threads')
-      .select('type, wazzup_channel_id, wazzup_chat_id, waha_session_id, waha_chat_id, mtproto_session_user_id, mtproto_client_tg_user_id, business_connection_id, email_send_account_id')
+      .select(
+        'type, email_send_account_id, wazzup_channel_id, wazzup_chat_id, waha_session_id, waha_chat_id, mtproto_session_user_id, mtproto_client_tg_user_id, business_connection_id',
+      )
       .eq('id', params.threadId)
       .maybeSingle()
+    const isEmailChannel =
+      resolveThreadChannel((extThread as ThreadChannelSignals) ?? {}) === 'email'
 
-    const extRow = extThread as ThreadChannelSignals | null
-
-    // Единый резолвер канала (канон = SQL-триггер), вместо ad-hoc if/else.
-    // Для одноканального треда результат идентичен прежнему; убран дубль
-    // маршрутизации (D2.1 плана консолидации). tg-группа обрабатывается ниже
-    // отдельным блоком (по project_telegram_chats).
-    const channelKind = resolveThreadChannel(extRow ?? {})
-
-    if (channelKind === 'email') {
-      // Refresh session — но не блокируем invoke если что-то пошло не так
-      // (вид сессии гонит свою цепочку обновления, иначе пользовательские
-      // jpg-апроверы могли подвиснуть).
+    if (isEmailChannel) {
       void supabase.auth.getSession().catch(() => {})
       try {
         const { error } = await supabase.functions.invoke('email-internal-send', {
@@ -264,9 +262,6 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
         if (error) throw error
       } catch (err) {
         logger.error('Failed to send email with attachments:', err)
-        // Серверный лог — sticky-toast прилетит пользователю даже если он
-        // закрыл вкладку. Раньше catch проглатывал ошибку и пользователь
-        // не понимал почему сообщение «зависло» на «Отправляется».
         void logSendFailure({
           workspace_id: params.workspaceId,
           project_id: params.projectId ?? null,
@@ -280,63 +275,25 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
           metadata: { stage: 'email_internal_send_invoke' },
         })
       }
-    } else if (channelKind === 'wazzup') {
-      await supabase.auth.getSession()
-      supabase.functions
-        .invoke('wazzup-send', { body: { message_id: message.id, attachments_only: true } })
-        .catch((err) => {
-          logger.error('Failed to send attachments to Wazzup:', err)
-        })
-    } else if (channelKind === 'mtproto') {
-      await supabase.auth.getSession()
-      supabase.functions
-        .invoke('telegram-mtproto-send', { body: { message_id: message.id } })
-        .catch((err) => {
-          logger.error('Failed to send attachments via MTProto:', err)
-        })
-    } else if (channelKind === 'waha') {
-      await supabase.auth.getSession()
-      supabase.functions
-        .invoke('waha-send', { body: { message_id: message.id, attachments_only: true } })
-        .catch((err) => {
-          logger.error('Failed to send attachments to WAHA:', err)
-        })
-    }
-  }
-
-  if (hasAnyAttachments && isClientVisible) {
-    let tgQuery = supabase
-      .from('project_telegram_chats')
-      .select('telegram_chat_id')
-      .eq('is_active', true)
-    if (params.threadId) {
-      tgQuery = tgQuery.eq('thread_id', params.threadId)
     } else {
-      tgQuery = tgQuery.eq('project_id', params.projectId ?? '').eq('channel', channel)
-    }
-    const { data: tgLink } = await tgQuery.maybeSingle()
-
-    if (tgLink?.telegram_chat_id) {
-      // Refresh session to ensure fresh JWT for Edge Function auth
-      await supabase.auth.getSession()
-
-      supabase.functions
-        .invoke('telegram-send-message', {
-          body: {
-            message_id: message.id,
-            project_id: params.projectId,
-            // В split-варианте текст уже ушёл триггером как отдельное сообщение —
-            // здесь отправляем только файлы, без caption (placeholder 📎).
-            content: shouldSplit ? ATTACHMENT_PLACEHOLDER : params.content,
-            sender_name: params.senderName,
-            sender_role: params.senderRole,
-            telegram_chat_id: tgLink.telegram_chat_id,
-            attachments_only: true,
-          },
+      await supabase.auth.getSession().catch(() => {})
+      const { error } = await supabase.rpc('deliver_message', { p_message_id: message.id })
+      if (error) {
+        logger.error('Failed to deliver attachments:', error)
+        // Серверный лог → sticky-toast, даже если пользователь закрыл вкладку.
+        void logSendFailure({
+          workspace_id: params.workspaceId,
+          project_id: params.projectId ?? null,
+          thread_id: params.threadId,
+          participant_id: params.senderParticipantId,
+          content: params.content ?? null,
+          attachment_names: (params.attachments ?? []).map((f) => f.name),
+          error_text: error.message,
+          error_code: 'attachment_deliver_failed',
+          source: 'web',
+          metadata: { stage: 'deliver_message' },
         })
-        .catch((err) => {
-          logger.error('Failed to send attachments to Telegram:', err)
-        })
+      }
     }
   }
 

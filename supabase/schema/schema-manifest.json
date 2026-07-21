@@ -2186,6 +2186,26 @@
       "table_name": "thread_templates"
     },
     {
+      "name": "thread_user_names_delete",
+      "def_md5": "121f3e82f7b5d1c230d5f5db37b99aba",
+      "table_name": "thread_user_names"
+    },
+    {
+      "name": "thread_user_names_insert",
+      "def_md5": "c30833b77fb30adabc6068f6aac8a5a7",
+      "table_name": "thread_user_names"
+    },
+    {
+      "name": "thread_user_names_select",
+      "def_md5": "7712f5d31490cdd5ce631caa1462852b",
+      "table_name": "thread_user_names"
+    },
+    {
+      "name": "thread_user_names_update",
+      "def_md5": "3a415bf09aed3187274e4d60374dedfd",
+      "table_name": "thread_user_names"
+    },
+    {
       "name": "user_active_preset_all",
       "def_md5": "e6f9962378729e5f82dfb652bf5b7ac0",
       "table_name": "user_active_preset"
@@ -2249,6 +2269,16 @@
       "name": "user_telegram_links_select",
       "def_md5": "32ef420e013fa1f495378e88f41006df",
       "table_name": "user_telegram_links"
+    },
+    {
+      "name": "waha_sessions_manage",
+      "def_md5": "3b42e9da36ac571aa2e06cb010f95477",
+      "table_name": "waha_sessions"
+    },
+    {
+      "name": "waha_sessions_select",
+      "def_md5": "bde4b6b52174b2e4a02c36d4c07923e5",
+      "table_name": "waha_sessions"
     },
     {
       "name": "Workspace managers update wazzup channels",
@@ -3831,6 +3861,11 @@
     },
     {
       "args": "",
+      "name": "_report_registry",
+      "body_md5": "457d7abfe451ca6175553a6c97716e3d"
+    },
+    {
+      "args": "",
       "name": "_schema_invariants",
       "body_md5": "e1641cd1532109e77f9af494c5ceb804"
     },
@@ -3867,7 +3902,7 @@
     {
       "args": "p_kit_template_id uuid, p_folder_template_ids uuid[], p_start_order_index integer",
       "name": "add_folders_to_kit_template",
-      "body_md5": "8e6cae78eb4e141b7d063d9c91072c24"
+      "body_md5": "3ee911bc15d33f6835fb5fdf2dff1158"
     },
     {
       "args": "p_conversation_id uuid, p_user_message text, p_assistant_message text, p_user_id uuid, p_document_ids uuid[]",
@@ -4142,7 +4177,7 @@
     {
       "args": "p_template_id uuid, p_project_id uuid, p_workspace_id uuid",
       "name": "create_document_kit_from_template",
-      "body_md5": "26174a8163648f53127db5a97b043e3c"
+      "body_md5": "220405581494a7b2565d24c56d9a9eb5"
     },
     {
       "args": "p_document_id uuid, p_workspace_id uuid, p_version integer, p_file_path text, p_file_name text, p_file_size bigint, p_mime_type text, p_uploaded_by uuid, p_file_id uuid, p_is_compressed boolean",
@@ -4197,7 +4232,7 @@
     {
       "args": "p_message_id uuid, p_force_attachments boolean",
       "name": "dispatch_message_to_channels",
-      "body_md5": "3e7db0ccee61db65d4da824e5114a19f"
+      "body_md5": "ed503d1406b15c98a0b3ac767aa25026"
     },
     {
       "args": "",
@@ -5087,7 +5122,7 @@
     {
       "args": "",
       "name": "notify_on_send_status_retry",
-      "body_md5": "12c2d30f5591abfce1e8e128dbf01b13"
+      "body_md5": "549ff01c0882f90b2ab35a7e0f43c5a6"
     },
     {
       "args": "",
@@ -5282,7 +5317,7 @@
     {
       "args": "p_workspace_id uuid, p_config jsonb",
       "name": "run_report",
-      "body_md5": "840a9731229871267b0bcaf3d5f639b5"
+      "body_md5": "44811d3d56d21d5b5868660c15823144"
     },
     {
       "args": "",
