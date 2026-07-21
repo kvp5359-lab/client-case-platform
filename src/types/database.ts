@@ -2826,6 +2826,7 @@ export type Database = {
           folder_id: string
           folder_template_slot_id: string | null
           id: string
+          kit_template_folder_slot_id: string | null
           knowledge_article_id: string | null
           name: string
           project_id: string
@@ -2846,6 +2847,7 @@ export type Database = {
           folder_id: string
           folder_template_slot_id?: string | null
           id?: string
+          kit_template_folder_slot_id?: string | null
           knowledge_article_id?: string | null
           name: string
           project_id: string
@@ -2866,6 +2868,7 @@ export type Database = {
           folder_id?: string
           folder_template_slot_id?: string | null
           id?: string
+          kit_template_folder_slot_id?: string | null
           knowledge_article_id?: string | null
           name?: string
           project_id?: string
@@ -2902,6 +2905,13 @@ export type Database = {
             columns: ["folder_template_slot_id"]
             isOneToOne: false
             referencedRelation: "folder_template_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folder_slots_kit_template_folder_slot_id_fkey"
+            columns: ["kit_template_folder_slot_id"]
+            isOneToOne: false
+            referencedRelation: "document_kit_template_folder_slots"
             referencedColumns: ["id"]
           },
           {
