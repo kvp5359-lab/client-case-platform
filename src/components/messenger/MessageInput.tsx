@@ -52,7 +52,7 @@ export function MessageInput({
   const [openQuickReplyPicker, setOpenQuickReplyPicker] = useState(false)
   const editorRef = useRef<Editor | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const { editorMaxHeight, handleResizerMouseDown } = useEditorResizer()
+  const { editorMinHeight, editorMaxHeight, handleResizerMouseDown } = useEditorResizer()
 
   const draftKey = threadId ? `msg_draft:${threadId}` : `msg_draft:${projectId}:${channel}`
   const translationKey = threadId
@@ -239,6 +239,7 @@ export function MessageInput({
           disabled={isPending}
           onEditorReady={setEditor}
           editorMaxHeight={editorMaxHeight}
+          editorMinHeight={editorMinHeight}
           mentionItems={mentionItems}
         />
       </div>

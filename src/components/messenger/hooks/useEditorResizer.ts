@@ -2,10 +2,14 @@ import { useState, useRef, useCallback } from 'react'
 
 const MIN_EDITOR_HEIGHT = 36
 const MAX_EDITOR_HEIGHT = 600
-const DEFAULT_EDITOR_HEIGHT = 255
+// Базовая (минимальная) высота поля — ~1 строка. Перетаскивание ручки её меняет,
+// поэтому пустое поле тоже становится выше (высота НЕ зависит от содержимого).
+const DEFAULT_EDITOR_HEIGHT = 40
+// Потолок авто-роста от контента, если базовая высота меньше него.
+const DEFAULT_MAX_HEIGHT = 255
 
 export function useEditorResizer() {
-  const [editorMaxHeight, setEditorMaxHeight] = useState(DEFAULT_EDITOR_HEIGHT)
+  const [editorHeight, setEditorHeight] = useState(DEFAULT_EDITOR_HEIGHT)
   const isDraggingResizer = useRef(false)
   const dragStartY = useRef(0)
   const dragStartHeight = useRef(DEFAULT_EDITOR_HEIGHT)
@@ -15,7 +19,7 @@ export function useEditorResizer() {
       e.preventDefault()
       isDraggingResizer.current = true
       dragStartY.current = e.clientY
-      dragStartHeight.current = editorMaxHeight
+      dragStartHeight.current = editorHeight
 
       const onMouseMove = (ev: MouseEvent) => {
         if (!isDraggingResizer.current) return
@@ -24,7 +28,7 @@ export function useEditorResizer() {
           MAX_EDITOR_HEIGHT,
           Math.max(MIN_EDITOR_HEIGHT, dragStartHeight.current + delta),
         )
-        setEditorMaxHeight(newHeight)
+        setEditorHeight(newHeight)
       }
 
       const onMouseUp = () => {
@@ -40,8 +44,14 @@ export function useEditorResizer() {
       document.addEventListener('mousemove', onMouseMove)
       document.addEventListener('mouseup', onMouseUp)
     },
-    [editorMaxHeight],
+    [editorHeight],
   )
 
-  return { editorMaxHeight, handleResizerMouseDown }
+  // min = заданная ручкой базовая высота (пустое поле такой высоты);
+  // max = не меньше базовой, иначе авто-рост до DEFAULT_MAX_HEIGHT и скролл.
+  return {
+    editorMinHeight: editorHeight,
+    editorMaxHeight: Math.max(editorHeight, DEFAULT_MAX_HEIGHT),
+    handleResizerMouseDown,
+  }
 }
