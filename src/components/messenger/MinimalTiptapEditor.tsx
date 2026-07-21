@@ -60,6 +60,15 @@ const SendOnEnter = Extension.create({
   },
 
   addKeyboardShortcuts() {
+    // «/», «\» и «|» в ПУСТОМ поле открывают пикер быстрых ответов (как
+    // кнопка-молния). Ловим в ProseMirror (событие приходит сюда раньше, чем
+    // всплывает на React-обёртку) → надёжно гасим вставку символа и открываем
+    // пикер. «|» = Shift+«\» — bind'им отдельно, т.к. keymap чувствителен к Shift.
+    const openPicker = ({ editor }: { editor: Editor }) => {
+      if (!editor.isEmpty) return false
+      this.options.onSlash()
+      return true
+    }
     return {
       'Mod-Enter': () => {
         this.options.onSend()
@@ -71,14 +80,10 @@ const SendOnEnter = Extension.create({
         editor.commands.setHardBreak()
         return true
       },
-      // «/» в ПУСТОМ поле открывает пикер быстрых ответов (как кнопка-молния).
-      // Ловим в ProseMirror (событие приходит сюда раньше, чем всплывает на
-      // React-обёртку) → надёжно гасим вставку «/» и открываем пикер.
-      '/': ({ editor }) => {
-        if (!editor.isEmpty) return false
-        this.options.onSlash()
-        return true
-      },
+      '/': openPicker,
+      '\\': openPicker,
+      '|': openPicker,
+      'Shift-\\': openPicker,
     }
   },
 })
