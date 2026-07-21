@@ -52,8 +52,13 @@ export function MessageInput({
   const [openQuickReplyPicker, setOpenQuickReplyPicker] = useState(false)
   const editorRef = useRef<Editor | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const { editorMinHeight, editorMaxHeight, handleResizerMouseDown, bumpEditorHeight } =
-    useEditorResizer()
+  const {
+    editorMinHeight,
+    editorMaxHeight,
+    handleResizerMouseDown,
+    bumpEditorHeight,
+    resetEditorHeight,
+  } = useEditorResizer()
 
   const draftKey = threadId ? `msg_draft:${threadId}` : `msg_draft:${projectId}:${channel}`
   const translationKey = threadId
@@ -172,6 +177,7 @@ export function MessageInput({
     clearFiles,
     clearDraft,
     skipDraftRestoreRef,
+    onSent: resetEditorHeight,
   })
 
   const totalFiles = files.length + existingAttachments.length + forwardedAttachments.length
@@ -193,7 +199,11 @@ export function MessageInput({
       <div
         className="absolute -top-1 left-0 right-0 h-2 cursor-row-resize z-20 flex items-center justify-center group"
         onMouseDown={handleResizerMouseDown}
-        onDoubleClick={() => bumpEditorHeight(500)}
+        onDoubleClick={() => {
+          bumpEditorHeight(500)
+          // Курсор — в поле (focus() без аргумента восстанавливает прежнюю позицию).
+          editorRef.current?.commands.focus()
+        }}
         title="Потяните, чтобы изменить высоту · двойной клик — +500px"
       >
         <div className="w-8 h-1 rounded-full bg-border group-hover:bg-muted-foreground/40 transition-colors" />

@@ -59,6 +59,11 @@ export function useEditorResizer() {
     setEditorHeight((h) => Math.min(maxEditorHeight(), Math.max(MIN_EDITOR_HEIGHT, h + delta)))
   }, [])
 
+  // Сброс к минимальной высоте (после отправки сообщения).
+  const resetEditorHeight = useCallback(() => {
+    setEditorHeight(DEFAULT_EDITOR_HEIGHT)
+  }, [])
+
   // min = заданная ручкой базовая высота (пустое поле такой высоты);
   // max = не меньше базовой, иначе авто-рост до DEFAULT_MAX_HEIGHT и скролл.
   return {
@@ -66,5 +71,6 @@ export function useEditorResizer() {
     editorMaxHeight: Math.max(editorHeight, DEFAULT_MAX_HEIGHT),
     handleResizerMouseDown,
     bumpEditorHeight,
+    resetEditorHeight,
   }
 }

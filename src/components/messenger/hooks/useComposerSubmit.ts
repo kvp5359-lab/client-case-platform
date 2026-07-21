@@ -44,6 +44,8 @@ export function useComposerSubmit(deps: {
   clearFiles: () => void
   clearDraft: () => void
   skipDraftRestoreRef: MutableRefObject<boolean>
+  /** Вызывается после реальной отправки (не черновик) — напр. сброс высоты поля. */
+  onSent?: () => void
 }): {
   handleSend: () => void
   handleSchedule: (sendAt: Date) => void
@@ -75,6 +77,7 @@ export function useComposerSubmit(deps: {
     clearFiles,
     clearDraft,
     skipDraftRestoreRef,
+    onSent,
   } = deps
 
   const handleSend = useCallback(() => {
@@ -152,6 +155,7 @@ export function useComposerSubmit(deps: {
       onClearReply()
       setTranslation(null)
       clearPersistedTranslation()
+      onSent?.()
     }
 
     // Если в пикере выбран новый статус — сначала меняем его, потом (только если
@@ -194,6 +198,7 @@ export function useComposerSubmit(deps: {
     sendBlockedReason,
     editorRef,
     setHasText,
+    onSent,
   ])
 
   const handleSchedule = useCallback(
@@ -223,8 +228,9 @@ export function useComposerSubmit(deps: {
       clearFiles()
       clearDraft()
       onClearReply()
+      onSent?.()
     },
-    [onSchedule, files, replyTo, clearFiles, clearDraft, onClearReply, sendBlockedReason, composerMode, editorRef, setHasText],
+    [onSchedule, files, replyTo, clearFiles, clearDraft, onClearReply, sendBlockedReason, composerMode, editorRef, setHasText, onSent],
   )
 
   const handleSaveDraft = useCallback(() => {
