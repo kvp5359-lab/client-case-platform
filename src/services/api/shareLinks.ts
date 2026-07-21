@@ -25,6 +25,12 @@ export type ShareableExternal = {
   url: string
   /** Для kit_folder/doc_folder — id набора документов (иерархия подпапок). */
   kit_id?: string | null
+  /** Идентификатор узла (для дерева по реальной структуре Диска). */
+  id?: string
+  /** Родитель в дереве; null — корень. Есть только у «живого» Drive-дерева. */
+  parent_id?: string | null
+  /** Доп. подпись серым после названия (реальное имя папки Диска у корня). */
+  sub_label?: string | null
 }
 
 /**
@@ -79,6 +85,26 @@ export async function getProjectShareableResources(projectId: string): Promise<P
     external: obj.external ?? [],
     doc_tree: obj.doc_tree ?? [],
   }
+}
+
+/**
+ * Реальная структура папок проекта на Google Drive (вкладка «Внешние») —
+ * читается прямо у Google Drive, чтобы дерево совпадало с Диском (включая
+ * реальную папку брифа). Возвращает узлы с id/parent_id.
+ *
+ * null — если Диск не подключён / не удалось прочитать: вызывающий откатывается
+ * на дерево из БД (get_project_shareable_resources.external).
+ */
+export async function getProjectDriveExternalTree(
+  projectId: string,
+): Promise<ShareableExternal[] | null> {
+  const { data, error } = await supabase.functions.invoke('google-drive-shareable-tree', {
+    body: { p_project_id: projectId, projectId },
+  })
+  if (error) return null
+  const nodes = (data as { ok?: boolean; nodes?: ShareableExternal[] } | null)?.nodes
+  if (!nodes || nodes.length === 0) return null
+  return nodes
 }
 
 export async function ensureArticleShareLink(articleId: string, projectId: string): Promise<string> {

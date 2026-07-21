@@ -8,7 +8,9 @@
 
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { documentKitKeys, projectShareableKeys } from '@/hooks/queryKeys'
 import { extractGoogleDriveFolderId } from '@/utils/googleDrive'
 import { logger } from '@/utils/logger'
 import type { DocumentKitWithDocuments } from '@/components/documents/types'
@@ -57,6 +59,8 @@ export function useDriveFoldersWizard(params: {
     defaultProjectFolderName,
     onOpenChange,
   } = params
+
+  const qc = useQueryClient()
 
   const [step, setStep] = useState<1 | 2>(1)
   const [showNewFolderInput, setShowNewFolderInput] = useState(false)
@@ -117,6 +121,24 @@ export function useDriveFoldersWizard(params: {
     setShowNewFolderInput(false)
   }
 
+  /**
+   * Привязать Drive-папку к набору сразу (не дожидаясь шага 2 «Подпапки»).
+   * Без этого папка, созданную кнопкой «Новая папка», существовала только на
+   * Диске и в состоянии формы — во «Внешних» она появлялась лишь после создания
+   * подпапок. Best-effort: ошибку логируем, но не мешаем работе мастера.
+   * Инвалидируем список наборов и сборщик ссылок пикера («Внешние»).
+   */
+  const linkDriveFolderToKit = async (folderId: string) => {
+    if (!kit || kit.drive_folder_id === folderId) return
+    try {
+      await supabase.from('document_kits').update({ drive_folder_id: folderId }).eq('id', kit.id)
+      qc.invalidateQueries({ queryKey: documentKitKeys.byProject(kit.project_id) })
+      qc.invalidateQueries({ queryKey: projectShareableKeys.byProject(kit.project_id) })
+    } catch (error) {
+      logger.error('Failed to link drive folder to kit:', error)
+    }
+  }
+
   const handleCreateTargetFolder = async () => {
     if (!projectFolderId || !newFolderName.trim()) return
     const name = newFolderName.trim()
@@ -137,6 +159,9 @@ export function useDriveFoldersWizard(params: {
       setTargetFolder(created)
       setSelectedFolderId(created.id)
       setShowNewFolderInput(false)
+      // Сразу привязываем созданную папку к набору → появляется во «Внешних»,
+      // даже если пользователь закроет мастер, не создав подпапки (шаг 2).
+      await linkDriveFolderToKit(created.id)
       toast.success(`Папка «${name}» создана`)
       setReloadKey((k) => k + 1)
     } catch (error) {
@@ -221,6 +246,9 @@ export function useDriveFoldersWizard(params: {
             }
           }
           await Promise.allSettled(saves)
+          // Обновить пикер ссылок («Внешние») и список наборов без перезагрузки.
+          qc.invalidateQueries({ queryKey: documentKitKeys.byProject(kit.project_id) })
+          qc.invalidateQueries({ queryKey: projectShareableKeys.byProject(kit.project_id) })
         } catch (saveErr) {
           logger.error('Failed to save drive folder links:', saveErr)
         }

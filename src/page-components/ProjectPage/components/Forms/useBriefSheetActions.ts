@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { formKitKeys } from '@/hooks/queryKeys'
+import { formKitKeys, projectShareableKeys } from '@/hooks/queryKeys'
 import { extractGoogleDriveFolderId, extractGoogleSheetsId } from '@/utils/googleDrive'
 import { logger } from '@/utils/logger'
 import type { FormKit } from '@/hooks/forms/useFormKitsQuery'
@@ -111,6 +111,7 @@ export function useBriefSheetActions(params: {
       }
 
       queryClient.invalidateQueries({ queryKey: formKitKeys.byProject(projectId) })
+      queryClient.invalidateQueries({ queryKey: projectShareableKeys.byProject(projectId) })
       setBriefDialog({ open: false, formKitId: '', briefName: '', templateSheetId: '' })
 
       const sharedMsg = data?.sharedWith > 0 ? ` Доступ выдан ${data.sharedWith} участникам.` : ''
@@ -145,6 +146,7 @@ export function useBriefSheetActions(params: {
       if (error) throw error
 
       queryClient.invalidateQueries({ queryKey: formKitKeys.byProject(projectId) })
+      queryClient.invalidateQueries({ queryKey: projectShareableKeys.byProject(projectId) })
       toast.success('Бриф отключён')
     } catch (error) {
       logger.error('Ошибка отключения брифа:', error)
@@ -173,6 +175,7 @@ export function useBriefSheetActions(params: {
       if (error) throw error
 
       queryClient.invalidateQueries({ queryKey: formKitKeys.byProject(projectId) })
+      queryClient.invalidateQueries({ queryKey: projectShareableKeys.byProject(projectId) })
       setConnectDialog({ open: false, formKitId: '', sheetLink: '' })
       toast.success('Бриф подключён')
     } catch (error) {

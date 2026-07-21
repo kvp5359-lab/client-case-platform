@@ -11,7 +11,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { logger } from '@/utils/logger'
-import { documentKitKeys, folderSlotKeys, googleDriveKeys, STALE_TIME } from '@/hooks/queryKeys'
+import {
+  documentKitKeys,
+  folderSlotKeys,
+  googleDriveKeys,
+  projectShareableKeys,
+  STALE_TIME,
+} from '@/hooks/queryKeys'
 import {
   getDocumentKitsWithContents,
   createDocumentKitFromTemplate,
@@ -99,6 +105,11 @@ export function useCreateDocumentKitFromDriveMutation() {
       })
       queryClient.invalidateQueries({
         queryKey: googleDriveKeys.sourceDocuments(variables.projectId),
+      })
+      // Набор из папки Drive пишет drive_folder_id набора и подпапок → обновить
+      // сборщик ссылок пикера («Внешние») без перезагрузки.
+      queryClient.invalidateQueries({
+        queryKey: projectShareableKeys.byProject(variables.projectId),
       })
     },
     // Ошибку показывает вызывающий диалог (с конкретным текстом из сервиса)

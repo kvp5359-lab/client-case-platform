@@ -4687,7 +4687,7 @@
     {
       "args": "p_project_id uuid",
       "name": "get_project_shareable_resources",
-      "body_md5": "6435c77d3a834e2dd592e4bd369d9884"
+      "body_md5": "a67536a8000d2696b4067a1c460fc741"
     },
     {
       "args": "p_workspace_id uuid, p_period_start timestamp with time zone, p_period_end timestamp with time zone",

@@ -7,7 +7,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { updateProject } from '@/services/api/projectService'
 import { useErrorHandler } from '@/hooks/shared'
-import { projectKeys, accessibleProjectKeys, sidebarKeys } from '@/hooks/queryKeys'
+import {
+  projectKeys,
+  accessibleProjectKeys,
+  sidebarKeys,
+  projectShareableKeys,
+} from '@/hooks/queryKeys'
 import type { ProjectUpdate } from '@/types/entities'
 
 export function useProjectMutations(projectId: string | undefined) {
@@ -75,6 +80,8 @@ export function useProjectMutations(projectId: string | undefined) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: projectKeys.detail(projectId!) })
+      // Корневая папка проекта — первая строка «Внешних» в пикере ссылок.
+      queryClient.invalidateQueries({ queryKey: projectShareableKeys.byProject(projectId!) })
     },
     onError: (error) => {
       handleError(error, 'Не удалось обновить ссылку на Google Drive')

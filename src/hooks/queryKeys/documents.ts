@@ -17,6 +17,20 @@ export const documentKitKeys = {
   byProject: (projectId: string) => ['documentKits', projectId] as const,
 }
 
+/**
+ * Ключ сборщика ссылок для клиента (вкладка «Внешние»/«Документы»/«Статьи»
+ * в пикере молнии, RPC get_project_shareable_resources). Любая мутация,
+ * меняющая состав (бриф, папки набора на Drive, корневая папка проекта,
+ * ссылки статей), должна инвалидировать этот ключ — иначе пикер покажет
+ * старые данные до перезагрузки страницы.
+ */
+export const projectShareableKeys = {
+  byProject: (projectId: string) => ['project-shareables', projectId] as const,
+  /** Живая структура папок с Google Drive («Внешние»). Подключ byProject —
+   *  инвалидация byProject (префикс) сбрасывает и её. */
+  driveTree: (projectId: string) => ['project-shareables', projectId, 'drive-tree'] as const,
+}
+
 export const folderSlotKeys = {
   all: ['folder-slots'] as const,
   byProject: (projectId: string) => ['folder-slots', projectId] as const,

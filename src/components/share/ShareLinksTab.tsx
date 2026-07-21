@@ -41,6 +41,7 @@ import { useSharePrefs } from '@/components/share/useSharePrefs'
 import { useShareExpansion } from '@/components/share/useShareExpansion'
 import {
   getProjectShareableResources,
+  getProjectDriveExternalTree,
   ensureArticleShareLink,
   regenerateArticleShareLink,
   buildShareUrl,
@@ -48,6 +49,7 @@ import {
   type ShareableArticle,
   type ShareableDocKit,
   type ShareableDocFolder,
+  type ShareableExternal,
 } from '@/services/api/shareLinks'
 import { projectShareableKeys } from '@/hooks/queryKeys'
 
@@ -78,6 +80,27 @@ const UPLOADED_MODE: Record<UploadedDisplay, { icon: typeof Eye; label: string }
   keep: { icon: Eye, label: 'Показывать' },
   strike: { icon: Strikethrough, label: 'Зачёркивать' },
   hide: { icon: EyeOff, label: 'Скрывать' },
+}
+
+/**
+ * Дерево из БД (get_project_shareable_resources.external) → к единому виду с
+ * id/parent_id, как у «живого» Drive-дерева, чтобы ExternalLinksView рисовал их
+ * одним алгоритмом. Логическая вложенность: корень проекта → бриф + папки
+ * наборов → подпапки (менее точна, чем Диск, — это фолбэк без подключённого Drive).
+ */
+function normalizeDbExternal(items: ShareableExternal[]): ShareableExternal[] {
+  const root = items.find((e) => e.kind === 'drive_folder')
+  const rootId = root ? 'root' : null
+  const shownKitIds = new Set(items.filter((e) => e.kind === 'kit_folder').map((e) => e.kit_id))
+  return items.map((e, i) => {
+    if (e.kind === 'drive_folder') return { ...e, id: 'root', parent_id: null }
+    if (e.kind === 'kit_folder') return { ...e, id: `kit:${e.kit_id}`, parent_id: rootId }
+    if (e.kind === 'doc_folder') {
+      const underKit = e.kit_id && shownKitIds.has(e.kit_id)
+      return { ...e, id: `doc:${i}`, parent_id: underKit ? `kit:${e.kit_id}` : rootId }
+    }
+    return { ...e, id: `db:${i}`, parent_id: rootId }
+  })
 }
 
 export function ShareLinksTab({ editor, projectId, search, enabled, view, onInserted }: Props) {
@@ -240,8 +263,25 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
     }
   }
 
+  // «Внешние» — живая структура папок с Google Drive (совпадает с Диском,
+  // включая реальную папку брифа). Грузим только при открытой вкладке; если Диск
+  // не подключён / не прочитался — откатываемся на дерево из БД (data.external).
+  const { data: driveTree, isLoading: driveLoading } = useQuery({
+    queryKey: projectShareableKeys.driveTree(projectId),
+    enabled: enabled && !!projectId && view === 'external',
+    queryFn: () => getProjectDriveExternalTree(projectId),
+  })
+
+  // Пока живое Drive-дерево грузится — не показываем старое БД-дерево (мигание
+  // «неправильная → правильная структура»): отдаём пусто и рисуем лоадер.
+  const externalLoading = view === 'external' && driveLoading
+
   const articles = useMemo(() => data?.articles ?? [], [data])
-  const external = useMemo(() => data?.external ?? [], [data])
+  const external = useMemo(() => {
+    if (externalLoading) return []
+    if (driveTree && driveTree.length > 0) return driveTree
+    return normalizeDbExternal(data?.external ?? [])
+  }, [externalLoading, driveTree, data])
   const docTree = useMemo(() => data?.doc_tree ?? [], [data])
   const selectedCount = selected.size
   // Порядок отметки — Set сохраняет порядок вставки ключей.
@@ -409,7 +449,7 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
       ? realGroups.length === 0
       : view === 'descriptions'
         ? filteredTree.length === 0
-        : filteredExternal.length === 0
+        : !externalLoading && filteredExternal.length === 0
 
   const renderActions = (label: string, articleId: string | null, token: string | null) => (
     <ShareRowActions
@@ -425,9 +465,10 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
   return (
     <div className="flex h-[min(400px,45vh)] flex-col">
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-1 py-1">
-        {isLoading && (
+        {(isLoading || externalLoading) && (
           <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Загрузка…
+            <Loader2 className="h-4 w-4 animate-spin" />{' '}
+            {externalLoading ? 'Читаем структуру Google Диска…' : 'Загрузка…'}
           </div>
         )}
         {error && (
