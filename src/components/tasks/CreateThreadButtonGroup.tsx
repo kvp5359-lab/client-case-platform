@@ -86,7 +86,7 @@ export function CreateThreadButtonGroup({
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-56 p-1 max-h-[min(70vh,28rem)] overflow-y-auto"
+          className="w-[18.2rem] p-1 max-h-[min(70vh,28rem)] overflow-y-auto"
           align="end"
           sideOffset={6}
         >
