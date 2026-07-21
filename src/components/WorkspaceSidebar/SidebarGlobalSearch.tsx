@@ -69,6 +69,8 @@ type DisplayRow = {
   accent_color: string | null
   project_template_id: string | null
   project_status_id: string | null
+  /** Иконка треда (project_threads.icon) — для иконки канала. */
+  thread_icon: string | null
 }
 
 /** URL для open-in-new-tab. Возвращает null, если для типа нет осмысленной ссылки. */
@@ -179,6 +181,7 @@ export function SidebarGlobalSearch({
       accent_color: r.accent_color,
       project_template_id: r.project_template_id,
       project_status_id: r.project_status_id,
+      thread_icon: r.thread_icon,
     }))
   }, [recent])
 
@@ -200,6 +203,7 @@ export function SidebarGlobalSearch({
       accent_color: r.accent_color,
       project_template_id: r.project_template_id,
       project_status_id: r.project_status_id,
+      thread_icon: r.thread_icon,
     }))
     const fromRecent = rows.filter((r) => recentKeys.has(r.key))
     const rest = rows.filter((r) => !recentKeys.has(r.key))
@@ -239,6 +243,7 @@ export function SidebarGlobalSearch({
               <EntityIcon
                 type={row.entity_type}
                 threadType={row.thread_type}
+                threadIcon={row.thread_icon}
                 accentColor={row.accent_color}
                 projectTemplateId={row.project_template_id}
                 projectStatusId={row.project_status_id}

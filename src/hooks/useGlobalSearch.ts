@@ -46,6 +46,8 @@ export type GlobalSearchRow = {
   project_template_id: string | null
   /** status_id проекта (для режима icon_color_mode='status'). */
   project_status_id: string | null
+  /** Иконка треда (project_threads.icon: telegram/whatsapp/mail/…) — для иконки канала. */
+  thread_icon: string | null
 }
 
 export type RecentlyViewedRow = {
@@ -59,6 +61,8 @@ export type RecentlyViewedRow = {
   accent_color: string | null
   project_template_id: string | null
   project_status_id: string | null
+  /** Иконка треда (project_threads.icon) — для иконки канала в «Недавнем». */
+  thread_icon: string | null
   opened_at: string
 }
 

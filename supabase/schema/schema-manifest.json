@@ -4697,7 +4697,7 @@
     {
       "args": "p_workspace_id uuid, p_limit integer",
       "name": "get_recently_viewed",
-      "body_md5": "e4ce1b807f8343b236c5253ed45c73eb"
+      "body_md5": "baba94ae0626d818ebc9bf7a8dbbdf8e"
     },
     {
       "args": "p_workspace_id uuid, p_project_id uuid",
@@ -4852,7 +4852,7 @@
     {
       "args": "p_workspace_id uuid, p_query text, p_limit integer",
       "name": "global_search",
-      "body_md5": "108fe3ef010f49f18bd5f61bdab0721d"
+      "body_md5": "8b10eab6be5495b74421c2bcb2528775"
     },
     {
       "args": "internal",

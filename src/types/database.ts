@@ -11922,6 +11922,7 @@ export type Database = {
           project_status_id: string
           project_template_id: string
           subtitle: string
+          thread_icon: string
           thread_type: string
           title: string
         }[]
@@ -12228,6 +12229,7 @@ export type Database = {
           rank: number
           snippet: string
           subtitle: string
+          thread_icon: string
           thread_id: string
           thread_type: string
           title: string

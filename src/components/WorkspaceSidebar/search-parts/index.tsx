@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { getProjectIcon } from '@/components/common/project-icons'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
+import { iconByThreadIcon } from '@/components/messenger/inboxChatItem.helpers'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads'
 import type { GlobalSearchEntityType } from '@/hooks/useGlobalSearch'
 
@@ -92,6 +93,7 @@ type ProjectIconResolver = (
 export function EntityIcon({
   type,
   threadType,
+  threadIcon = null,
   accentColor,
   projectTemplateId,
   projectStatusId,
@@ -100,6 +102,8 @@ export function EntityIcon({
 }: {
   type: GlobalSearchEntityType
   threadType: string | null
+  /** Сохранённая иконка треда (project_threads.icon: telegram/whatsapp/mail/…). */
+  threadIcon?: string | null
   accentColor: string | null
   projectTemplateId: string | null
   projectStatusId: string | null
@@ -130,7 +134,10 @@ export function EntityIcon({
   if (type === 'thread' || type === 'message') {
     if (threadType === 'task') return <ListChecks size={size} className={cls} />
     if (threadType === 'email') return <Mail size={size} className={cls} />
-    return <MessageSquare size={size} className={cls} />
+    // Чат: иконка КАНАЛА (telegram → самолётик, whatsapp, …) по сохранённой
+    // иконке треда — как в инбоксе; неизвестная/пустая → облачко.
+    const ChannelGlyph = (threadIcon && iconByThreadIcon[threadIcon]) || MessageSquare
+    return <ChannelGlyph size={size} className={cls} />
   }
   if (type === 'project') {
     // muted (для шапки секции «Проекты») — без template, ставим базовую папку с серым.
