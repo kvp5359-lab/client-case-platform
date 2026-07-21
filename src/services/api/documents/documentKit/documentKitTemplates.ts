@@ -60,6 +60,52 @@ function mapTemplateFolderToInsert(
   }
 }
 
+/** Слот шаблона набора — поля, которые наследует слот проекта. */
+type KitTemplateSlotRow = {
+  id: string
+  name: string
+  description: string | null
+  knowledge_article_id: string | null
+  ai_naming_prompt: string | null
+  ai_check_prompt: string | null
+  slot_template_id: string | null
+  sort_order: number
+}
+
+/**
+ * Поля слота, наследуемые из шаблона набора. Единый источник для INSERT и UPDATE
+ * folder_slots — чтобы списки полей не разъезжались.
+ */
+function kitSlotTemplateFields(ks: KitTemplateSlotRow) {
+  return {
+    name: ks.name,
+    description: ks.description ?? null,
+    knowledge_article_id: ks.knowledge_article_id ?? null,
+    ai_naming_prompt: ks.ai_naming_prompt ?? null,
+    ai_check_prompt: ks.ai_check_prompt ?? null,
+    // Связь со справочником слота — чтобы «?» резолвился в проекте.
+    slot_template_id: ks.slot_template_id ?? null,
+    sort_order: ks.sort_order,
+  }
+}
+
+/** Маппинг слота шаблона набора → строка для INSERT в folder_slots. */
+function mapKitSlotToFolderSlotInsert(
+  ks: KitTemplateSlotRow,
+  folderId: string,
+  projectId: string,
+  workspaceId: string,
+) {
+  return {
+    folder_id: folderId,
+    project_id: projectId,
+    workspace_id: workspaceId,
+    // Якорь на слот шаблона набора — по нему синхронизируется состав слотов.
+    kit_template_folder_slot_id: ks.id,
+    ...kitSlotTemplateFields(ks),
+  }
+}
+
 /**
  * Создаёт слоты в папках на основе шаблонов папок набора документов.
  * Читает слоты из document_kit_template_folder_slots (инлайн-слоты шаблона набора).
@@ -92,39 +138,15 @@ async function buildSlotsFromKitTemplate(
 
   if (!kitSlots || kitSlots.length === 0) return
 
-  const slotsToCreate: {
-    folder_id: string
-    project_id: string
-    workspace_id: string
-    name: string
-    description: string | null
-    knowledge_article_id: string | null
-    ai_naming_prompt: string | null
-    ai_check_prompt: string | null
-    slot_template_id: string | null
-    kit_template_folder_slot_id: string
-    sort_order: number
-  }[] = []
+  const slotsToCreate: ReturnType<typeof mapKitSlotToFolderSlotInsert>[] = []
 
   for (const mapping of folderMappings) {
     const slots = kitSlots.filter((s) => s.kit_folder_id === mapping.kitTemplateFolderId)
     for (const slot of slots) {
       if (excludeKitSlotIds?.has(slot.id)) continue
-      slotsToCreate.push({
-        folder_id: mapping.projectFolderId,
-        project_id: projectId,
-        workspace_id: workspaceId,
-        name: slot.name,
-        description: slot.description ?? null,
-        knowledge_article_id: slot.knowledge_article_id ?? null,
-        ai_naming_prompt: slot.ai_naming_prompt ?? null,
-        ai_check_prompt: slot.ai_check_prompt ?? null,
-        // Протягиваем связь со справочником слота — чтобы «?» резолвился в проекте.
-        slot_template_id: slot.slot_template_id ?? null,
-        // Якорь на слот шаблона набора — по нему синхронизируется состав слотов.
-        kit_template_folder_slot_id: slot.id,
-        sort_order: slot.sort_order,
-      })
+      slotsToCreate.push(
+        mapKitSlotToFolderSlotInsert(slot, mapping.projectFolderId, projectId, workspaceId),
+      )
     }
   }
 
@@ -228,18 +250,7 @@ async function syncSlotsForExistingFolders(
     )
     .map((s) => {
       const ks = kitSlotById.get(s.kit_template_folder_slot_id)!
-      return supabase
-        .from('folder_slots')
-        .update({
-          name: ks.name,
-          description: ks.description,
-          knowledge_article_id: ks.knowledge_article_id,
-          ai_naming_prompt: ks.ai_naming_prompt,
-          ai_check_prompt: ks.ai_check_prompt,
-          slot_template_id: ks.slot_template_id,
-          sort_order: ks.sort_order,
-        })
-        .eq('id', s.id)
+      return supabase.from('folder_slots').update(kitSlotTemplateFields(ks)).eq('id', s.id)
     })
 
   const updateResults = await Promise.all(updatePromises)
@@ -269,19 +280,7 @@ async function syncSlotsForExistingFolders(
     .map((ks) => {
       const folderId = projectFolderByKitFolder.get(ks.kit_folder_id)
       if (!folderId) return null
-      return {
-        folder_id: folderId,
-        project_id: projectId,
-        workspace_id: workspaceId,
-        name: ks.name,
-        description: ks.description ?? null,
-        knowledge_article_id: ks.knowledge_article_id ?? null,
-        ai_naming_prompt: ks.ai_naming_prompt ?? null,
-        ai_check_prompt: ks.ai_check_prompt ?? null,
-        slot_template_id: ks.slot_template_id ?? null,
-        kit_template_folder_slot_id: ks.id,
-        sort_order: ks.sort_order,
-      }
+      return mapKitSlotToFolderSlotInsert(ks, folderId, projectId, workspaceId)
     })
     .filter((s): s is NonNullable<typeof s> => s !== null)
 
