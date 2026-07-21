@@ -54,11 +54,17 @@ export function useEditorResizer() {
     [editorHeight],
   )
 
+  // Двойной клик по ручке — увеличить высоту на шаг (ограничено высотой окна).
+  const bumpEditorHeight = useCallback((delta: number) => {
+    setEditorHeight((h) => Math.min(maxEditorHeight(), Math.max(MIN_EDITOR_HEIGHT, h + delta)))
+  }, [])
+
   // min = заданная ручкой базовая высота (пустое поле такой высоты);
   // max = не меньше базовой, иначе авто-рост до DEFAULT_MAX_HEIGHT и скролл.
   return {
     editorMinHeight: editorHeight,
     editorMaxHeight: Math.max(editorHeight, DEFAULT_MAX_HEIGHT),
     handleResizerMouseDown,
+    bumpEditorHeight,
   }
 }
