@@ -60,12 +60,20 @@ const SendOnEnter = Extension.create({
   },
 
   addKeyboardShortcuts() {
-    // «/», «\» и «|» в ПУСТОМ поле открывают пикер быстрых ответов (как
-    // кнопка-молния). Ловим в ProseMirror (событие приходит сюда раньше, чем
-    // всплывает на React-обёртку) → надёжно гасим вставку символа и открываем
-    // пикер. «|» = Shift+«\» — bind'им отдельно, т.к. keymap чувствителен к Shift.
+    // «/», «\» и «|» открывают пикер быстрых ответов (как кнопка-молния), когда
+    // перед символом в ТЕКУЩЕЙ строке только пробелы: начало поля, начало строки
+    // или после ведущих пробелов. Если строку уже начали текстом (напр. «км/ч»,
+    // «C:\») — символ вставляется как обычно. Ловим в ProseMirror (событие
+    // приходит сюда раньше всплытия на React-обёртку) → надёжно гасим вставку.
+    // «|» = Shift+«\» — bind'им отдельно, т.к. keymap чувствителен к Shift.
     const openPicker = ({ editor }: { editor: Editor }) => {
-      if (!editor.isEmpty) return false
+      const { selection } = editor.state
+      if (!selection.empty) return false
+      const { $from } = selection
+      // Текст текущего текстблока от начала до каретки; hardBreak (Shift+Enter) → '\n'.
+      const before = $from.parent.textBetween(0, $from.parentOffset, '\n', '\n')
+      const currentLine = before.slice(before.lastIndexOf('\n') + 1)
+      if (currentLine.trim() !== '') return false
       this.options.onSlash()
       return true
     }
