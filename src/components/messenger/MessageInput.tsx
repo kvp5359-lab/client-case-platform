@@ -183,6 +183,7 @@ export function MessageInput({
   return (
     <div
       ref={containerRef}
+      data-composer-root
       className="border-t relative"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}

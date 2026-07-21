@@ -5,6 +5,7 @@
  */
 
 import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Zap, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,7 +47,19 @@ export function QuickReplyPicker({
   const [editingReply, setEditingReply] = useState<QuickReply | null>(null)
   const updateReply = useUpdateQuickReply(workspaceId)
   const containerRef = useRef<HTMLDivElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  // Портим попап в корень композера ([data-composer-root]) — он `relative` и
+  // НЕ является container-query контейнером, поэтому `bottom-full` встаёт над
+  // ВСЕМ композером (поле ввода + тулбар), а не над кнопкой внутри тулбара.
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    if (open) {
+      setPortalTarget(
+        (containerRef.current?.closest('[data-composer-root]') as HTMLElement | null) ?? null,
+      )
+    }
+  }, [open])
 
   const setOpen = (val: boolean) => {
     openRef.current = val
@@ -75,7 +88,11 @@ export function QuickReplyPicker({
       // попапа — клик по ним не «мимо», не закрываем.
       const target = e.target as Element | null
       if (target?.closest('[data-radix-popper-content-wrapper]')) return
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      // Попап портится в корень композера → он вне containerRef, проверяем и его.
+      const node = e.target as Node
+      const insideTrigger = !!containerRef.current?.contains(node)
+      const insidePopup = !!popupRef.current?.contains(node)
+      if (!insideTrigger && !insidePopup) {
         setOpen(false)
       }
     }
@@ -227,8 +244,13 @@ export function QuickReplyPicker({
           <Zap className="h-4 w-4" />
         </Button>
 
-        {open && (
-          <div className="absolute bottom-full left-0 mb-4 w-[520px] max-w-[calc(100vw-56px)] md:max-w-[calc(100vw-32px)] rounded-md border bg-popover text-popover-foreground shadow-[0_4px_24px_-2px_rgba(0,0,0,0.18),0_0_0_1px_rgba(0,0,0,0.07)] overflow-hidden z-50">
+        {open &&
+          (() => {
+            const popup = (
+              <div
+                ref={popupRef}
+                className="absolute bottom-full left-2 mb-2 w-[520px] max-w-[calc(100vw-56px)] md:max-w-[calc(100vw-32px)] rounded-md border bg-popover text-popover-foreground shadow-[0_4px_24px_-2px_rgba(0,0,0,0.18),0_0_0_1px_rgba(0,0,0,0.07)] overflow-hidden z-50"
+              >
             {/* Поиск */}
             <div className="p-2 border-b">
               <div className="relative">
@@ -332,8 +354,10 @@ export function QuickReplyPicker({
                 onEdit={handleEditClick}
               />
             </div>
-          </div>
-        )}
+              </div>
+            )
+            return portalTarget ? createPortal(popup, portalTarget) : popup
+          })()}
       </div>
 
       <QuickReplyFormDialog
