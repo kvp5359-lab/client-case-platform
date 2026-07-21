@@ -49,6 +49,7 @@ import {
   type ShareableDocKit,
   type ShareableDocFolder,
 } from '@/services/api/shareLinks'
+import { projectShareableKeys } from '@/hooks/queryKeys'
 
 type Props = {
   editor: Editor
@@ -83,7 +84,7 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
   const qc = useQueryClient()
   const { user } = useAuth()
   const userId = user?.id
-  const queryKey = ['project-shareables', projectId] as const
+  const queryKey = projectShareableKeys.byProject(projectId)
 
   const { data, isLoading, error } = useQuery<ProjectShareables>({
     queryKey,
@@ -422,7 +423,7 @@ export function ShareLinksTab({ editor, projectId, search, enabled, view, onInse
   )
 
   return (
-    <div className="flex h-[400px] flex-col">
+    <div className="flex h-[min(400px,45vh)] flex-col">
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-1 py-1">
         {isLoading && (
           <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">

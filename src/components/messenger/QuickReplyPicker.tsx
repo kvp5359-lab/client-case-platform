@@ -228,7 +228,7 @@ export function QuickReplyPicker({
         </Button>
 
         {open && (
-          <div className="absolute bottom-full left-0 mb-2 w-[520px] max-w-[calc(100vw-56px)] md:max-w-[calc(100vw-32px)] rounded-md border bg-popover text-popover-foreground shadow-[0_4px_24px_-2px_rgba(0,0,0,0.18),0_0_0_1px_rgba(0,0,0,0.07)] overflow-hidden z-50">
+          <div className="absolute bottom-full left-0 mb-4 w-[520px] max-w-[calc(100vw-56px)] md:max-w-[calc(100vw-32px)] rounded-md border bg-popover text-popover-foreground shadow-[0_4px_24px_-2px_rgba(0,0,0,0.18),0_0_0_1px_rgba(0,0,0,0.07)] overflow-hidden z-50">
             {/* Поиск */}
             <div className="p-2 border-b">
               <div className="relative">
@@ -314,8 +314,10 @@ export function QuickReplyPicker({
             <div
               className={cn(
                 'overflow-y-auto overflow-x-hidden',
-                // С вкладками — фиксированная высота (не скачет при смене вкладки/фильтре).
-                showTabs ? 'h-[400px]' : 'max-h-[450px]',
+                // С вкладками — стабильная высота (не скачет при смене вкладки/фильтре),
+                // но не выше 45vh — иначе на невысоком окне попап занимает весь экран
+                // и прижимается вплотную к композеру.
+                showTabs ? 'h-[min(400px,45vh)]' : 'max-h-[min(450px,50vh)]',
                 showTabs && activeTab !== 'replies' && 'hidden',
               )}
             >
