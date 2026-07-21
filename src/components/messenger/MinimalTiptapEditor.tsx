@@ -29,6 +29,8 @@ import { ToolbarButton } from '@/components/tiptap-editor/menu-bar/toolbar-butto
 
 type MinimalTiptapEditorProps = {
   onSend: () => void
+  /** «/» в пустом поле — открыть пикер быстрых ответов (кнопка-молния). */
+  onSlash?: () => void
   onTyping?: () => void
   onPasteFiles?: (files: File[]) => void
   placeholder?: string
@@ -54,7 +56,7 @@ const SendOnEnter = Extension.create({
   name: 'sendOnEnter',
 
   addOptions() {
-    return { onSend: () => {} }
+    return { onSend: () => {}, onSlash: () => {} }
   },
 
   addKeyboardShortcuts() {
@@ -67,6 +69,14 @@ const SendOnEnter = Extension.create({
         // Мягкий перенос строки внутри текущего блока. Внутри списка НЕ
         // разрывает пункт (splitBlock рвал список на куски и ломал нумерацию).
         editor.commands.setHardBreak()
+        return true
+      },
+      // «/» в ПУСТОМ поле открывает пикер быстрых ответов (как кнопка-молния).
+      // Ловим в ProseMirror (событие приходит сюда раньше, чем всплывает на
+      // React-обёртку) → надёжно гасим вставку «/» и открываем пикер.
+      '/': ({ editor }) => {
+        if (!editor.isEmpty) return false
+        this.options.onSlash()
         return true
       },
     }
@@ -140,6 +150,7 @@ export function MessengerToolbar({ editor }: { editor: Editor }) {
 
 export function MinimalTiptapEditor({
   onSend,
+  onSlash,
   onTyping,
   onPasteFiles,
   placeholder = 'Введите сообщение...',
@@ -180,6 +191,13 @@ export function MinimalTiptapEditor({
 
   // Стабильная обёртка для передачи в extension (не читает ref при рендере)
   const stableSend = useCallback(() => onSendRef.current(), [])
+
+  // Ref для onSlash — по той же причине (extension захватывает колбэк один раз).
+  const onSlashRef = useRef(onSlash)
+  useEffect(() => {
+    onSlashRef.current = onSlash
+  }, [onSlash])
+  const stableSlash = useCallback(() => onSlashRef.current?.(), [])
 
   // Ref для onPasteFiles — чтобы editorProps.handlePaste всегда видел актуальный callback
   const onPasteFilesRef = useRef(onPasteFiles)
@@ -236,7 +254,7 @@ export function MinimalTiptapEditor({
       }),
       Placeholder.configure({ placeholder }),
       // eslint-disable-next-line react-hooks/refs -- Tiptap extensions init once; stableSend reads ref only on keypress, not during render
-      SendOnEnter.configure({ onSend: stableSend }),
+      SendOnEnter.configure({ onSend: stableSend, onSlash: stableSlash }),
       // eslint-disable-next-line react-hooks/refs -- extension init once; getItems reads ref only on @-trigger
       buildMentionExtension(() => mentionItemsRef.current),
     ],

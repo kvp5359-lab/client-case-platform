@@ -216,18 +216,11 @@ export function MessageInput({
         />
       )}
 
-      <div
-        className="px-4 pt-1 min-w-0"
-        onKeyDown={(e) => {
-          if (e.key === '/' && !hasText && editorRef.current) {
-            e.preventDefault()
-            setOpenQuickReplyPicker(true)
-          }
-        }}
-      >
+      <div className="px-4 pt-1 min-w-0">
         <MinimalTiptapEditor
           editorRef={editorRef}
           onSend={handleSend}
+          onSlash={() => setOpenQuickReplyPicker(true)}
           onTyping={() => {
             const text = editorRef.current?.getText() ?? ''
             const html = editorRef.current?.getHTML() ?? ''
