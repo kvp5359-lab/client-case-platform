@@ -83,20 +83,41 @@ export async function syncTelegramReactions(
     .maybeSingle();
   if (participant) participantId = participant.id as string;
 
-  // Сносим прежние реакции этого юзера на ЭТО конкретное TG-сообщение.
-  await service
+  const newEmojis = (reaction.new_reaction ?? [])
+    .filter((r) => r.type === "emoji" && r.emoji)
+    .map((r) => r.emoji!) as string[];
+
+  // 🔴 ИДЕМПОТЕНТНАЯ СВЕРКА (не «снести всё + вставить заново»).
+  // Telegram переприсылает одно и то же обновление реакции (при любом изменении
+  // набора реакций на сообщении, при повторной доставке и — особенно — когда в
+  // группе несколько ботов: каждый бот получает копию события). Прежний
+  // DELETE+INSERT пересоздавал строку с `created_at = now()`, и это время
+  // прыгало вперёд ЗА момент «Прочитано» → тред снова становился непрочитанным
+  // из-за той же реакции. Теперь трогаем только реально изменившееся: снимаем
+  // исчезнувшие эмодзи, вставляем новые, а у оставшихся `created_at` сохраняется.
+  const { data: existing } = await service
     .from("message_reactions")
-    .delete()
+    .select("id, emoji")
     .eq("message_id", msg.id)
     .eq("telegram_user_id", telegramUserId)
     .eq("telegram_source_message_id", telegramMessageId);
 
-  const newEmojis = (reaction.new_reaction ?? [])
-    .filter((r) => r.type === "emoji" && r.emoji)
-    .map((r) => r.emoji!) as string[];
-  if (newEmojis.length === 0) return;
+  const existingEmojis = new Set((existing ?? []).map((r) => r.emoji as string));
+  const desiredEmojis = new Set(newEmojis);
 
-  const rows = newEmojis.map((emoji) => ({
+  // Снять только реакции, которых больше нет (в т.ч. пустой new_reaction = снять все).
+  const toDeleteIds = (existing ?? [])
+    .filter((r) => !desiredEmojis.has(r.emoji as string))
+    .map((r) => r.id as string);
+  if (toDeleteIds.length > 0) {
+    await service.from("message_reactions").delete().in("id", toDeleteIds);
+  }
+
+  // Вставить только по-настоящему новые эмодзи (у существующих время не меняем).
+  const toInsertEmojis = newEmojis.filter((e) => !existingEmojis.has(e));
+  if (toInsertEmojis.length === 0) return;
+
+  const rows = toInsertEmojis.map((emoji) => ({
     message_id: msg.id,
     participant_id: participantId,
     telegram_user_id: telegramUserId,
@@ -150,29 +171,58 @@ export async function syncTelegramReactionsAggregated(
   const msg = msgs && msgs.length > 0 ? msgs[0] : null;
   if (!msg) return;
 
-  // Сносим прежние анонимные строки для этого TG-msg, чтобы не плодить дубли.
-  await service
+  // 🔴 ИДЕМПОТЕНТНАЯ СВЕРКА по КОЛИЧЕСТВУ на эмодзи (не «снести всё + вставить»).
+  // Тот же корень, что у per-user пути: DELETE+INSERT переписывал `created_at`
+  // на now() → анонимная реакция «молодела» за момент «Прочитано» и воскрешала
+  // тред. Теперь для каждого эмодзи доводим число строк до нужного: лишние
+  // снимаем, недостающие добавляем, у остающихся `created_at` сохраняется.
+  const { data: existing } = await service
     .from("message_reactions")
-    .delete()
+    .select("id, emoji")
     .eq("message_id", msg.id)
     .eq("telegram_source_message_id", telegramMessageId)
     .is("telegram_user_id", null);
 
-  const rows = (update.reactions ?? [])
-    .filter((r) => r.type.type === "emoji" && r.type.emoji && r.total_count > 0)
-    .flatMap((r) =>
-      // Один total_count → один ряд (без user info). UI отрисует это как
-      // обычную реакцию с tg_user_name="Telegram"; для нескольких — multiplier.
-      Array.from({ length: r.total_count }, () => ({
-        message_id: msg.id,
-        participant_id: null,
-        telegram_user_id: null,
-        telegram_user_name: "Telegram",
-        emoji: r.type.emoji!,
-        telegram_source_message_id: telegramMessageId,
-      })),
-    );
+  const desiredCount = new Map<string, number>();
+  for (const r of update.reactions ?? []) {
+    if (r.type.type === "emoji" && r.type.emoji && r.total_count > 0) {
+      desiredCount.set(r.type.emoji, (desiredCount.get(r.type.emoji) ?? 0) + r.total_count);
+    }
+  }
 
+  const existingByEmoji = new Map<string, string[]>();
+  for (const r of existing ?? []) {
+    const arr = existingByEmoji.get(r.emoji as string) ?? [];
+    arr.push(r.id as string);
+    existingByEmoji.set(r.emoji as string, arr);
+  }
+
+  const toDeleteIds: string[] = [];
+  const rows: Array<Record<string, unknown>> = [];
+  const allEmojis = new Set<string>([...desiredCount.keys(), ...existingByEmoji.keys()]);
+  for (const emoji of allEmojis) {
+    const want = desiredCount.get(emoji) ?? 0;
+    const have = existingByEmoji.get(emoji) ?? [];
+    if (have.length > want) {
+      // Снимаем лишние (у оставшихся `have.slice(0, want)` время не трогаем).
+      toDeleteIds.push(...have.slice(want));
+    } else if (have.length < want) {
+      for (let i = 0; i < want - have.length; i++) {
+        rows.push({
+          message_id: msg.id,
+          participant_id: null,
+          telegram_user_id: null,
+          telegram_user_name: "Telegram",
+          emoji,
+          telegram_source_message_id: telegramMessageId,
+        });
+      }
+    }
+  }
+
+  if (toDeleteIds.length > 0) {
+    await service.from("message_reactions").delete().in("id", toDeleteIds);
+  }
   if (rows.length === 0) return;
 
   const { error } = await service.from("message_reactions").insert(rows);
