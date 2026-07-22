@@ -5015,6 +5015,62 @@ export type Database = {
           },
         ]
       }
+      thread_input_drafts: {
+        Row: {
+          thread_id: string
+          user_id: string
+          content: string
+          updated_at: string
+        }
+        Insert: {
+          thread_id: string
+          user_id: string
+          content: string
+          updated_at?: string
+        }
+        Update: {
+          thread_id?: string
+          user_id?: string
+          content?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      thread_input_draft_files: {
+        Row: {
+          id: string
+          thread_id: string
+          user_id: string
+          file_id: string
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          thread_id: string
+          user_id: string
+          file_id: string
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          thread_id?: string
+          user_id?: string
+          file_id?: string
+          sort_order?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_input_draft_files_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thread_user_names: {
         Row: {
           thread_id: string

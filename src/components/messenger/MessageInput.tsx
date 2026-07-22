@@ -9,6 +9,7 @@ import { isHtmlContent, plainTextToHtml } from '@/utils/format/messengerHtml'
 import { useDraftMessage } from './hooks/useDraftMessage'
 import { useMessageFiles } from './hooks/useMessageFiles'
 import { useEditorResizer } from './hooks/useEditorResizer'
+import { useAuth } from '@/contexts/AuthContext'
 import { useQuoteInsertion } from './hooks/useQuoteInsertion'
 import { useComposerTranslation } from './hooks/useComposerTranslation'
 import { useComposerFocus } from './hooks/useComposerFocus'
@@ -51,6 +52,7 @@ export function MessageInput({
   const [editor, setEditor] = useState<Editor | null>(null)
   const [openQuickReplyPicker, setOpenQuickReplyPicker] = useState(false)
   const editorRef = useRef<Editor | null>(null)
+  const { user } = useAuth()
   const containerRef = useRef<HTMLDivElement>(null)
   const {
     editorMinHeight,
@@ -94,6 +96,8 @@ export function MessageInput({
     !!editor,
     editingMessage,
     setHasText,
+    threadId,
+    user?.id,
   )
 
   // Вся фокус-логика композера (автофокус, возврат после отправки/ответа,
