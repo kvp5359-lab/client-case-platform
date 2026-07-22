@@ -4577,12 +4577,12 @@
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_inbox_thread_aggregates",
-      "body_md5": "d623993eb39a93631f7e1368e749e6ec"
+      "body_md5": "5d569be7aad0bc0f60fc773db82c15c3"
     },
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_inbox_thread_aggregates_impl",
-      "body_md5": "7e21fbb85778f20652eb417c57b230d4"
+      "body_md5": "c92f5b79d1bb5233e09f02730b5345c9"
     },
     {
       "args": "p_workspace_id uuid, p_user_id uuid, p_thread_id uuid",
@@ -5152,7 +5152,7 @@
     {
       "args": "p_participant_id uuid, p_thread_id uuid",
       "name": "recompute_thread_unread_for",
-      "body_md5": "1bc682957c39ea6e469981870f73e397"
+      "body_md5": "68d970808dac5930d2bd6900dec2b233"
     },
     {
       "args": "p_thread_id uuid",
