@@ -266,14 +266,12 @@ function SortableFolder({
     disabled,
   })
 
-  // Галочка папки берёт саму папку И все её слоты (решение владельца).
-  const keys = [docFolderKey(folder.folder_id), ...folder.slots.map((s) => docSlotKey(s.slot_id))]
-  const selCount = keys.filter((k) => selected.has(k)).length
-  const state: boolean | 'indeterminate' =
-    selCount === 0 ? false : selCount === keys.length ? true : 'indeterminate'
+  // Галочка папки — ТОЛЬКО сама папка (жирный заголовок в сообщении), слоты не
+  // трогает. Массовый выбор слотов — hover-кнопкой «Выбрать все». Раньше галочка
+  // брала папку вместе со слотами — владелец попросил развести (2026-07-22):
+  // иногда нужен только заголовок, иногда только список.
+  const folderKey = docFolderKey(folder.folder_id)
   const slotIds = folder.slots.map((s) => docSlotKey(s.slot_id))
-  // «Выбрать все» (hover) — только СЛОТЫ, сама папка не трогается: жирный
-  // заголовок в сообщении не нужен, когда хочется просто перечислить документы.
   const allSlotsSelected = slotIds.length > 0 && slotIds.every((k) => selected.has(k))
 
   return (
@@ -285,9 +283,9 @@ function SortableFolder({
       <div className="group/row flex items-center gap-1.5 rounded-md py-1 pl-3 pr-2 hover:bg-accent/60">
         <DragHandle attributes={attributes} listeners={listeners} disabled={disabled} />
         <Checkbox
-          checked={state}
-          onCheckedChange={() => onSetSelected(keys, selCount !== keys.length)}
-          aria-label="Выбрать папку и все документы внутри"
+          checked={selected.has(folderKey)}
+          onCheckedChange={() => onToggle(folderKey)}
+          aria-label="Выбрать папку (заголовок)"
         />
         {/* Номер папки в сообщение не идёт (она жирный заголовок), но задаёт
             первую цифру своих слотов — поэтому правится. */}
