@@ -15,14 +15,12 @@
  * «пустой» queryFn и класть [] в кэш — тогда у всех тредов разом исчезали бейджи.
  */
 
-import { useMemo, useSyncExternalStore } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import { cn } from '@/lib/utils'
-import { inboxKeys } from '@/hooks/queryKeys'
-import type { InboxThreadAggregate } from '@/services/api/inboxService'
 import { getBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads.types'
 import { acc, ACCENT_SLUGS } from '@/lib/accentPalette'
+import { useInboxAggregatesCache } from '@/hooks/messenger/useInboxAggregatesCache'
 
 // Бейдж непрочитанного = основной цвет акцента (из настраиваемой палитры).
 const ACCENT_BADGE: Record<ThreadAccentColor, string> = Object.fromEntries(
@@ -35,14 +33,9 @@ type UnreadBadgeProps = {
   accentColor?: string
 }
 
-function computeBadge(
-  data: InboxThreadAggregate[] | undefined,
-  threadId: string,
-): BadgeDisplay {
-  if (!data) return { type: 'none' as const }
-  const entry = data.find((e) => e.thread_id === threadId)
-  return entry ? getBadgeDisplay(entry) : { type: 'none' as const }
-}
+// Смешанные непрочитанные («Всем» + «Команде») — системный красный, как
+// «смешанный» бейдж проекта в сайдбаре. Иначе — цвет акцента треда.
+const MIXED_BADGE = acc.bgMain('rose')
 
 export function UnreadBadge({ threadId, workspaceId, accentColor }: UnreadBadgeProps) {
   // ВАЖНО: подписываемся на кэш inbox v2 БЕЗ собственного useQuery.
@@ -54,35 +47,22 @@ export function UnreadBadge({ threadId, workspaceId, accentColor }: UnreadBadgeP
   // queryFn и без setState из subscribe (избегаем «Cannot update a component
   // while rendering a different component»: getSnapshot возвращает стабильную
   // ссылку на массив тредов, badge выводим через useMemo в render-фазе).
-  const queryClient = useQueryClient()
-  const queryKey = useMemo(() => inboxKeys.aggregates(workspaceId), [workspaceId])
+  const data = useInboxAggregatesCache(workspaceId)
 
-  const data = useSyncExternalStore<InboxThreadAggregate[] | undefined>(
-    (onChange) => {
-      const cache = queryClient.getQueryCache()
-      return cache.subscribe((event) => {
-        const evKey = event.query.queryKey
-        if (
-          !Array.isArray(evKey) ||
-          evKey.length !== queryKey.length ||
-          evKey[0] !== queryKey[0] ||
-          evKey[1] !== queryKey[1] ||
-          evKey[2] !== queryKey[2]
-        ) {
-          return
-        }
-        onChange()
-      })
-    },
-    () => queryClient.getQueryData<InboxThreadAggregate[]>(queryKey),
-    () => undefined,
+  const entry = useMemo(
+    () => data?.find((e) => e.thread_id === threadId),
+    [data, threadId],
   )
-
-  const badge = useMemo<BadgeDisplay>(() => computeBadge(data, threadId), [data, threadId])
+  const badge = useMemo<BadgeDisplay>(
+    () => (entry ? getBadgeDisplay(entry) : { type: 'none' as const }),
+    [entry],
+  )
 
   if (!badge || badge.type === 'none') return null
 
-  const badgeBg = ACCENT_BADGE[accentColor as ThreadAccentColor] ?? 'bg-primary'
+  const badgeBg = entry?.has_mixed_unread
+    ? MIXED_BADGE
+    : ACCENT_BADGE[accentColor as ThreadAccentColor] ?? 'bg-primary'
 
   if (badge.type === 'dot') {
     return (

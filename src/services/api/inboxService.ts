@@ -299,6 +299,12 @@ export type InboxThreadAggregate = {
   last_from_staff: boolean | null
   /** В треде есть хотя бы одно сообщение из внешнего канала (TG/Wazzup/Email). */
   has_external: boolean
+  /**
+   * Среди непрочитанных СООБЩЕНИЙ есть и «Всем» (client), и «Команде» (team).
+   * Бейдж в таком случае красный (`rose`) — по аналогии со «смешанным» бейджем
+   * проекта в сайдбаре. События/реакции не учитываются (у них нет видимости).
+   */
+  has_mixed_unread: boolean
 }
 
 /**

@@ -9288,6 +9288,7 @@ export type Database = {
       }
       thread_unread_state: {
         Row: {
+          has_mixed_unread: boolean
           has_unread_reaction: boolean
           last_reaction_emoji: string | null
           last_read_at: string | null
@@ -9305,6 +9306,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          has_mixed_unread?: boolean
           has_unread_reaction?: boolean
           last_reaction_emoji?: string | null
           last_read_at?: string | null
@@ -9322,6 +9324,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          has_mixed_unread?: boolean
           has_unread_reaction?: boolean
           last_reaction_emoji?: string | null
           last_read_at?: string | null
@@ -11267,6 +11270,7 @@ export type Database = {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: {
           has_external: boolean
+          has_mixed_unread: boolean
           has_unread_reaction: boolean
           last_from_staff: boolean
           last_message_at: string
@@ -11285,6 +11289,7 @@ export type Database = {
         Args: { p_user_id: string; p_workspace_id: string }
         Returns: {
           has_external: boolean
+          has_mixed_unread: boolean
           has_unread_reaction: boolean
           last_from_staff: boolean
           last_message_at: string

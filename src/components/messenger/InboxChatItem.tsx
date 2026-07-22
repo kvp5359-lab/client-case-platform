@@ -19,6 +19,12 @@ import { resolveInboxPreview } from './resolveInboxPreview'
 import { InboxItemPreview } from './InboxItemPreview'
 import { useThreadNameResolver } from '@/hooks/useThreadUserNames'
 import { threadHref, entityLinkClickHandlers } from '@/lib/entityLinks'
+import { useThreadMixedUnread } from '@/hooks/messenger/useInboxAggregatesCache'
+import { acc } from '@/lib/accentPalette'
+
+// Смешанные непрочитанные («Всем» + «Команде») — системный красный, тот же
+// `rose`, что у «смешанного» бейджа проекта в сайдбаре.
+const MIXED_BADGE = acc.bgMain('rose')
 
 type InboxChatItemProps = {
   chat: InboxThreadEntry
@@ -56,6 +62,8 @@ export const InboxChatItem = memo(function InboxChatItem({
   const prefetchMessages = usePrefetchThreadMessages()
   const resolveThreadName = useThreadNameResolver()
   const displayThreadName = resolveThreadName(chat.thread_id, chat.thread_name)
+  // Флага нет в строке инбокса (v3_for его не несёт) — берём из кэша агрегатов.
+  const mixedUnread = useThreadMixedUnread(workspaceId, chat.thread_id)
 
   // Черновик из localStorage
   const draftHtml = localStorage.getItem(`msg_draft:${chat.project_id}:${chat.thread_id}`)
@@ -73,8 +81,15 @@ export const InboxChatItem = memo(function InboxChatItem({
   const showDelivery = !!deliveryStatus && !draftText && !reactionIsNewer && !eventIsNewer
 
   const accent = accentStyles[chat.thread_accent_color] ?? defaultAccent
-  // Заглушённый тред — бейдж непрочитанного светло-серый (архив Telegram).
-  const badgeBg = mutedBadge ? 'bg-gray-400' : accent.badge
+  // Бейдж: заглушённый тред — светло-серый (архив Telegram); смешанные
+  // непрочитанные («Всем» + «Команде») — системный красный (как «смешанный»
+  // бейдж проекта в сайдбаре); иначе — цвет акцента треда.
+  // Флаг живёт в агрегатах (v3_for его намеренно не несёт — см. миграцию).
+  const badgeBg = mutedBadge
+    ? 'bg-gray-400'
+    : mixedUnread
+      ? MIXED_BADGE
+      : accent.badge
   const badgeText = 'text-white'
   // Значок канала на аватаре (по thread_icon, иначе по каналу); цвет = акцент треда.
   const ChannelIcon = iconByThreadIcon[chat.thread_icon] ?? channelIcons[chat.channel_type] ?? MessageSquare
