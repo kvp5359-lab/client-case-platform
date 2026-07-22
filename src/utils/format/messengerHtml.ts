@@ -167,6 +167,61 @@ function trimEdgeWhitespaceHtml(html: string): string {
   return html.replace(EDGE, '')
 }
 
+/**
+ * Срезать пустоту ПОД последним текстом бабла: хвостовые пустые блоки
+ * (`<p><br></p>`, `<p></p>`, `<div></div>`, голый `<br>`).
+ *
+ * trimEdgeWhitespaceHtml снимает только «голые» `<br>`/пробелы на краях строки,
+ * а пустая строка после normalizeRootBlankLines — это уже ЭЛЕМЕНТ `<p><br></p>`,
+ * поэтому хвост оставался и рисовал пустой блок в конце сообщения.
+ *
+ * Внутренние пустые строки не трогаем (они значимы — сообщение выглядит как в
+ * редакторе), только хвост. Блоки с медиа (картинка/видео/таблица) пустыми НЕ
+ * считаем, даже если текста в них нет.
+ */
+function stripTrailingBlankBlocks(root: Element): void {
+  // nodeType числами — как во всём остальном файле (3 = текст, 1 = элемент).
+  const isBlank = (node: ChildNode): boolean => {
+    if (node.nodeType === 3) return !(node.textContent ?? '').trim()
+    if (node.nodeType !== 1) return true
+    const el = node as Element
+    if (el.querySelector(MEDIA_TAGS)) return false
+    return !(el.textContent ?? '').trim()
+  }
+  while (root.lastChild && isBlank(root.lastChild)) root.removeChild(root.lastChild)
+}
+
+/** Медиа внутри блока: такой блок пустым НЕ считаем, даже если текста нет. */
+const MEDIA_TAGS = 'img, video, audio, iframe, table'
+
+/** SSR-fallback для stripTrailingBlankBlocks. Список тегов держим тем же, что у
+ *  BLOCK_TAGS выше, иначе SSR-рендер расходится с клиентским. */
+function stripTrailingBlankBlocksRegex(html: string): string {
+  const TAIL =
+    /(?:<(p|div|blockquote|li|ol|ul)(?:\s[^>]*)?>(?:\s|&nbsp;|&#160;|&#xA0;|<br\s*\/?>)*<\/\1>|<br\s*\/?>|\s|&nbsp;|&#160;|&#xA0;)+$/i
+  let prev: string
+  let curr = html
+  do {
+    prev = curr
+    curr = curr.replace(TAIL, '')
+  } while (curr !== prev)
+  return curr
+}
+
+/**
+ * Публичный срез хвостовой пустоты — для мест, которые берут СЫРОЙ
+ * `project_messages.content` в обход sanitizeMessengerHtml (пересылка
+ * «Оригинал», подстановка в редактор). Без него бабл и редактор расходятся
+ * по хвосту — инвариант «бабл = редактор = пересылка 1:1» (ledger 2026-07-16).
+ */
+export function trimTrailingBlankHtml(html: string): string {
+  if (typeof document === 'undefined') return stripTrailingBlankBlocksRegex(html)
+  const root = document.createElement('div')
+  root.innerHTML = html
+  stripTrailingBlankBlocks(root)
+  return root.innerHTML
+}
+
 /** Белый список inline-CSS, который оставляем у элементов письма. Только
  *  «косметика» — цвет/жирность/фон/выравнивание/отступы/скругление. НЕ пускаем
  *  width/height/position/float/margin — они ломают вёрстку внутри узкого бабла
@@ -527,6 +582,7 @@ function collapseEmptyLines(html: string): string {
   trimInnerEdgeBreaks(root)
   moveTrailingParaBreaks(root)
   normalizeRootBlankLines(root, true)
+  stripTrailingBlankBlocks(root)
 
   let result = root.innerHTML
   // 3+ подряд <br> → 2 (= одна пустая строка).
@@ -575,6 +631,7 @@ function normalizeMessageBlankLines(html: string): string {
 
   moveTrailingParaBreaks(root)
   normalizeRootBlankLines(root, false)
+  stripTrailingBlankBlocks(root)
 
   return trimEdgeWhitespaceHtml(root.innerHTML)
 }
@@ -583,7 +640,7 @@ function normalizeMessageBlankLines(html: string): string {
  *  и обрезка краёв, без обхода DOM. */
 function normalizeMessageBlankLinesRegex(html: string): string {
   const curr = html.replace(/<p(\s[^>]*)?>\s*<\/p>/gi, '<p$1><br></p>')
-  return trimEdgeWhitespaceHtml(curr)
+  return trimEdgeWhitespaceHtml(stripTrailingBlankBlocksRegex(curr))
 }
 
 /** SSR-fallback. Покрывает базовые случаи `<div></div>` / `<p><br></p>` /
@@ -599,7 +656,7 @@ function collapseEmptyLinesRegex(html: string): string {
     )
   } while (curr !== prev)
   curr = curr.replace(/(<br\s*\/?>\s*){3,}/gi, '<br><br>')
-  return trimEdgeWhitespaceHtml(curr)
+  return trimEdgeWhitespaceHtml(stripTrailingBlankBlocksRegex(curr))
 }
 
 /** Санитизация HTML для мессенджера — строгий whitelist тегов.

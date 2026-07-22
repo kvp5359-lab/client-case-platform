@@ -1,6 +1,6 @@
 import type { ForwardBufferItem, ForwardBufferAttachment } from '@/store/sidePanelStore'
 import type { ForwardedAttachment } from '@/services/api/messenger/messengerService'
-import { escapeHtml } from '@/utils/format/messengerHtml'
+import { escapeHtml, trimTrailingBlankHtml } from '@/utils/format/messengerHtml'
 
 /** Формат вставки пересылаемого сообщения. */
 export type ForwardMode = 'quote' | 'original'
@@ -16,9 +16,13 @@ export type ForwardMode = 'quote' | 'original'
  */
 export function buildForwardContent(item: ForwardBufferItem, mode: ForwardMode): string {
   if (item.kind === 'file') return ''
-  if (mode === 'original') return item.content
+  // Хвостовую пустоту срезаем так же, как её срезает бабл (sanitizeMessengerHtml):
+  // иначе пересылка «Оригинал» вставит в редактор пустые строки, которых в баббле
+  // не видно — ровно то расхождение, которое чинили 2026-07-16.
+  const content = trimTrailingBlankHtml(item.content)
+  if (mode === 'original') return content
   const author = escapeHtml(item.fromAuthorName || 'сообщение')
-  return `<blockquote><p>Переслано от <strong>${author}</strong></p>${item.content}</blockquote>`
+  return `<blockquote><p>Переслано от <strong>${author}</strong></p>${content}</blockquote>`
 }
 
 /**
