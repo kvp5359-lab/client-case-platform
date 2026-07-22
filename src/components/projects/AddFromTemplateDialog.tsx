@@ -28,8 +28,7 @@ import { Button } from '@/components/ui/button'
 import { TemplateItemsList } from './create-project/TemplateItemsList'
 import { useProjectTemplateContent } from './create-project/useProjectTemplateContent'
 import { seedProjectContent } from '@/services/projects/createProjectFromTemplate'
-import { invalidateAfterSeed } from '@/services/projects/invalidateAfterSeed'
-import { addFromTemplateKeys } from '@/hooks/queryKeys'
+import { addFromTemplateKeys, invalidateAfterSeed } from '@/hooks/queryKeys'
 
 type Props = {
   open: boolean

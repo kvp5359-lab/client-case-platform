@@ -3,6 +3,11 @@
  * финансовые транзакции, AI-кэш, дневник, кастомные поля).
  */
 
+import { planKeys, taskGroupKeys } from './plan'
+import { documentKitKeys, folderSlotKeys } from './documents'
+import { formKitKeys } from './forms'
+import { workspaceThreadKeys } from './workspace'
+
 export const projectKeys = {
   all: ['projects'] as const,
   detail: (projectId: string) => ['projects', projectId] as const,
@@ -230,4 +235,33 @@ export const projectsWithActivityKeys = {
   byWorkspace: (workspaceId: string) => ['projects-with-activity', workspaceId] as const,
   byWorkspaceForPeriod: (workspaceId: string, periodStart: string, periodEnd: string) =>
     ['projects-with-activity', workspaceId, periodStart, periodEnd] as const,
+}
+
+// ── Инвалидация после посева контента шаблона ────────────────────────────────
+
+/**
+ * Единая инвалидация после посева контента шаблона в проект
+ * (`seedProjectContent`) — общая точка для СОЗДАНИЯ проекта и для кнопки
+ * «Добавить из шаблона» (оба окна зовут её).
+ *
+ * Зачем одним хелпером: посев трогает сразу пять срезов данных (задачи, группы
+ * задач, план, наборы документов, анкеты). Когда список ключей держали в окнах
+ * по отдельности, они разъезжались — после «Добавить из шаблона» группы задач
+ * приезжали в базу, но список оставался плоским до перезагрузки: ключи групп
+ * никто не сбрасывал. Появился новый срез данных у посева — добавлять ключ
+ * СЮДА (паттерн — invalidateAfterThreadMove в messenger.ts).
+ */
+export function invalidateAfterSeed(
+  queryClient: { invalidateQueries: (opts: { queryKey: readonly unknown[] }) => void },
+  { workspaceId, projectId }: { workspaceId: string; projectId: string },
+): void {
+  queryClient.invalidateQueries({ queryKey: planKeys.byProject(projectId) })
+  queryClient.invalidateQueries({ queryKey: documentKitKeys.byProject(projectId) })
+  queryClient.invalidateQueries({ queryKey: folderSlotKeys.byProject(projectId) })
+  queryClient.invalidateQueries({ queryKey: formKitKeys.byProject(projectId) })
+  queryClient.invalidateQueries({ queryKey: workspaceThreadKeys.workspace(workspaceId) })
+  // Группы задач и привязка «задача → группа»: без них список задач
+  // отрисуется плоским, хотя в базе группы уже есть.
+  queryClient.invalidateQueries({ queryKey: taskGroupKeys.byProject(projectId) })
+  queryClient.invalidateQueries({ queryKey: taskGroupKeys.membership(projectId) })
 }

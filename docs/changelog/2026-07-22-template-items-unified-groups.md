@@ -53,3 +53,21 @@ UI-компонент списка уже был общий (`TemplateItemsList`
 - `src/services/projects/invalidateAfterSeed.ts` (новый)
 - `src/services/projects/createProjectFromTemplate.ts`
 - `src/components/projects/AddFromTemplateDialog.tsx`
+
+---
+
+## Правки по ревью (до пуша)
+
+- `invalidateAfterSeed` переехал из `services/projects/` в фабрику ключей
+  `hooks/queryKeys/projects.ts` — сервисный слой не должен импортировать из
+  hooks (паттерн — `invalidateAfterThreadMove` в messenger.ts). `taskGroupKeys`
+  для этого перенесены в `queryKeys/plan.ts` (реэкспорт из
+  `useProjectTaskGroups` сохранён).
+- Хелпер теперь зовут ОБА окна: `CreateProjectDialog` тоже сбрасывает кэш
+  после создания (списки задач воркспейса могли быть уже загружены).
+- Append-режим больше не создаёт пустые группы: создаются только группы,
+  к которым относится хоть один выбранный элемент (включая legacy-путь
+  «группа на task-блоке плана»). При дублях имён групп в проекте
+  детерминированно выбирается самая ранняя.
+- Стухший комментарий у `TEAM_GRAY` в messageStyles обновлён (команда в
+  клиентских чатах теперь на настраиваемом TEAM_INCOMING).

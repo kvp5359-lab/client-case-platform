@@ -9,15 +9,14 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { planKeys, workspaceThreadKeys } from '@/hooks/queryKeys'
+import { planKeys, taskGroupKeys, workspaceThreadKeys } from '@/hooks/queryKeys'
 import type { TaskGroupRow, TaskGroupUpdate } from '@/types/taskGroups'
 
 const TABLE = 'project_task_groups' as const
 
-export const taskGroupKeys = {
-  byProject: (projectId: string) => ['task-groups', projectId] as const,
-  membership: (projectId: string) => ['task-group-membership', projectId] as const,
-}
+// Ключи переехали в фабрику (@/hooks/queryKeys/plan.ts) — их использует и
+// invalidateAfterSeed. Реэкспорт сохраняет прежние импорты.
+export { taskGroupKeys }
 
 /**
  * Карта «задача → группа» по проекту, лёгким запросом (id, task_group_id).

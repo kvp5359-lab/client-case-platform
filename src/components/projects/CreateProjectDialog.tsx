@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext'
 import { useWorkspaceLimitStatus } from '@/hooks/useWorkspaceUsage'
@@ -18,7 +18,7 @@ import { useProjectTemplateContent } from './create-project/useProjectTemplateCo
 import { ParticipantsPicker } from '@/components/participants/ParticipantsPicker'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
 import { SYSTEM_PROJECT_ROLES } from '@/types/permissions'
-import { projectTemplateKeys } from '@/hooks/queryKeys'
+import { projectTemplateKeys, invalidateAfterSeed } from '@/hooks/queryKeys'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 
 type CreateProjectDialogProps = {
@@ -49,6 +49,7 @@ export function CreateProjectDialog({
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set())
   const { workspaceId: currentWorkspaceId } = useWorkspaceContext()
+  const queryClient = useQueryClient()
   const { atLimit } = useWorkspaceLimitStatus(currentWorkspaceId)
   // Участники воркспейса для пикера «Исполнители» (тот же формат PickerParticipant).
   const { data: workspaceParticipants = [] } = useWorkspaceParticipants(currentWorkspaceId)
@@ -212,6 +213,9 @@ export function CreateProjectDialog({
       if (kitFormFailures > 0) {
         toast.warning(`Проект создан, но ${kitFormFailures} набор(ов) не удалось создать`)
       }
+      // Тот же пакет инвалидаций, что у «Добавить из шаблона», — списки задач
+      // воркспейса уже могли быть загружены и должны увидеть новые треды.
+      invalidateAfterSeed(queryClient, { workspaceId: currentWorkspaceId, projectId })
       // Исполнители — вторым шагом: createProjectFromTemplate участников не создаёт.
       // Новый проект пуст, поэтому просто insert выбранных с ролью «Исполнитель».
       if (assigneeIds.length > 0) {

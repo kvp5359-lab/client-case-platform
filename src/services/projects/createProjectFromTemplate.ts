@@ -372,21 +372,48 @@ export async function seedProjectContent(
         .order('sort_order', { ascending: true })
       const tGroups = tmplGroups ?? []
 
-      // Аппенд: группа шаблона может уже существовать в проекте (её создало
+      // Аппенд: (1) группа шаблона может уже существовать в проекте (её создало
       // предыдущее добавление или создание проекта) — переиспользуем по имени,
-      // иначе каждое нажатие «Добавить из шаблона» плодило бы копии групп.
+      // иначе каждое нажатие «Добавить из шаблона» плодило бы копии групп;
+      // (2) создаём только группы, к которым относится хоть один выбранный
+      // элемент, — иначе добавление одной анкеты приносило бы пустые группы.
       const existingGroupByName = new Map<string, string>()
+      let neededGroups = tGroups
       if (appendMode) {
         const { data: projGroups } = await supabase
           .from('project_task_groups')
           .select('id, name')
           .eq('project_id', projectId)
+          .order('created_at', { ascending: true })
         for (const g of projGroups ?? []) {
-          existingGroupByName.set((g.name ?? '').trim().toLowerCase(), g.id)
+          // При дублях имени побеждает САМАЯ РАННЯЯ группа (перезапись выключена).
+          const key = (g.name ?? '').trim().toLowerCase()
+          if (!existingGroupByName.has(key)) existingGroupByName.set(key, g.id)
         }
+        const usedGroupIds = new Set<string>()
+        const selectedTemplateIds = new Set(selectedThreadTemplates.map((t) => t.id))
+        for (const t of selectedThreadTemplates) {
+          if (t.task_group_id) usedGroupIds.add(t.task_group_id)
+        }
+        for (const b of contentBlocks) {
+          if (b.group_id) usedGroupIds.add(b.group_id)
+        }
+        // Legacy-путь: группа задана на task-блоке плана, а не на шаблоне задачи
+        // (зеркало fallback'а в pushUpdate ниже).
+        for (const b of allBlocks) {
+          if (
+            b.block_type === 'task' &&
+            b.group_id &&
+            b.thread_template_id &&
+            selectedTemplateIds.has(b.thread_template_id)
+          ) {
+            usedGroupIds.add(b.group_id)
+          }
+        }
+        neededGroups = tGroups.filter((g) => usedGroupIds.has(g.id))
       }
 
-      for (const g of tGroups) {
+      for (const g of neededGroups) {
         const reused = existingGroupByName.get((g.name ?? '').trim().toLowerCase())
         if (reused) {
           groupMap.set(g.id, reused)

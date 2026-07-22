@@ -6,10 +6,9 @@ import type { MessageVisibility } from '@/services/api/messenger/messengerServic
 export type MessengerAccent = AccentSlug | 'dark'
 
 /**
- * Светло-серый — ЕДИНЫЙ источник. Используется в двух местах:
- *  1) «светлая версия чёрного акцента» — incoming у тёмной темы (slate/dark);
- *  2) маркер сообщений «Команде»/«Заметка» во входящих КЛИЕНТСКИХ тредов.
- * Меняешь оттенок здесь — меняется в обоих местах одновременно.
+ * Светло-серый incoming тёмной темы (slate/dark). Командные сообщения в
+ * клиентских чатах на нём больше НЕ держатся — они на настраиваемом
+ * TEAM_INCOMING (палитра, слаг `team`) ниже.
  */
 export const TEAM_GRAY = 'bg-stone-200/50 text-gray-900'
 
