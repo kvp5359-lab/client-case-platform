@@ -371,7 +371,27 @@ export async function seedProjectContent(
         .eq('project_template_id', templateId)
         .order('sort_order', { ascending: true })
       const tGroups = tmplGroups ?? []
+
+      // Аппенд: группа шаблона может уже существовать в проекте (её создало
+      // предыдущее добавление или создание проекта) — переиспользуем по имени,
+      // иначе каждое нажатие «Добавить из шаблона» плодило бы копии групп.
+      const existingGroupByName = new Map<string, string>()
+      if (appendMode) {
+        const { data: projGroups } = await supabase
+          .from('project_task_groups')
+          .select('id, name')
+          .eq('project_id', projectId)
+        for (const g of projGroups ?? []) {
+          existingGroupByName.set((g.name ?? '').trim().toLowerCase(), g.id)
+        }
+      }
+
       for (const g of tGroups) {
+        const reused = existingGroupByName.get((g.name ?? '').trim().toLowerCase())
+        if (reused) {
+          groupMap.set(g.id, reused)
+          continue
+        }
         const { data: newGroup } = await supabase
           .from('project_task_groups')
           .insert({

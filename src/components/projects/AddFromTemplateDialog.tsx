@@ -28,14 +28,8 @@ import { Button } from '@/components/ui/button'
 import { TemplateItemsList } from './create-project/TemplateItemsList'
 import { useProjectTemplateContent } from './create-project/useProjectTemplateContent'
 import { seedProjectContent } from '@/services/projects/createProjectFromTemplate'
-import {
-  planKeys,
-  documentKitKeys,
-  formKitKeys,
-  workspaceThreadKeys,
-  folderSlotKeys,
-  addFromTemplateKeys,
-} from '@/hooks/queryKeys'
+import { invalidateAfterSeed } from '@/services/projects/invalidateAfterSeed'
+import { addFromTemplateKeys } from '@/hooks/queryKeys'
 
 type Props = {
   open: boolean
@@ -135,11 +129,7 @@ export function AddFromTemplateDialog({
         selectedBlockIds,
       })
 
-      queryClient.invalidateQueries({ queryKey: planKeys.byProject(projectId) })
-      queryClient.invalidateQueries({ queryKey: documentKitKeys.byProject(projectId) })
-      queryClient.invalidateQueries({ queryKey: folderSlotKeys.byProject(projectId) })
-      queryClient.invalidateQueries({ queryKey: formKitKeys.byProject(projectId) })
-      queryClient.invalidateQueries({ queryKey: workspaceThreadKeys.workspace(workspaceId) })
+      invalidateAfterSeed(queryClient, { workspaceId, projectId })
 
       if (kitFormFailures > 0) {
         toast.warning(`Добавлено, но ${kitFormFailures} наборов/анкет не создалось`)

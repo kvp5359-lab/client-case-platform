@@ -27,3 +27,29 @@ UI-компонент списка уже был общий (`TemplateItemsList`
 - `src/components/projects/create-project/useProjectTemplateContent.ts`
 - `src/components/projects/AddFromTemplateDialog.tsx`
 - `src/components/projects/CreateProjectDialog.tsx`
+
+---
+
+## Продолжение: группы не появлялись в списке задач после добавления
+
+**Замер (не догадка):** в базе после добавления всё верно — группа
+`project_task_groups` создана, у задач проставлен `task_group_id`. То есть
+движок посева (`seedProjectContent`) отработал одинаково для обоих путей.
+
+**Причина была в кэше экрана.** Список задач берёт группы из отдельных
+запросов (`task-groups`, `task-group-membership`), а окно «Добавить из шаблона»
+сбрасывало только план/наборы/анкеты/треды. Группы приезжали лишь после
+перезагрузки страницы.
+
+**Решение:** список ключей, которые надо сбросить после посева, вынесен в один
+модуль `services/projects/invalidateAfterSeed.ts` рядом с самим движком. Новый
+срез данных у посева — добавляется туда, а не по окнам.
+
+**Заодно:** в режиме добавления группы шаблона теперь переиспользуются по
+имени, а не создаются заново — иначе повторное «Добавить из шаблона» плодило
+бы копии одной и той же группы.
+
+## Файлы (продолжение)
+- `src/services/projects/invalidateAfterSeed.ts` (новый)
+- `src/services/projects/createProjectFromTemplate.ts`
+- `src/components/projects/AddFromTemplateDialog.tsx`
