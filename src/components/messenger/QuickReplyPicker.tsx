@@ -53,12 +53,14 @@ export function QuickReplyPicker({
   // НЕ является container-query контейнером, поэтому `bottom-full` встаёт над
   // ВСЕМ композером (поле ввода + тулбар), а не над кнопкой внутри тулбара.
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
-  useEffect(() => {
-    if (open) {
-      setPortalTarget(
-        (containerRef.current?.closest('[data-composer-root]') as HTMLElement | null) ?? null,
-      )
-    }
+  // Резолвим цель СРАЗУ на маунте (не по open): иначе первое открытие рисует
+  // попап инлайном, следующим рендером он переезжает в портал, инпут поиска
+  // пересоздаётся и автофокус слетает. Повторный вызов с тем же значением React
+  // гасит сам (bail out).
+  useLayoutEffect(() => {
+    setPortalTarget(
+      (containerRef.current?.closest('[data-composer-root]') as HTMLElement | null) ?? null,
+    )
   }, [open])
 
   const setOpen = (val: boolean) => {
@@ -100,12 +102,13 @@ export function QuickReplyPicker({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [open])
 
-  // Автофокус на поиск при открытии
+  // Автофокус на поиск при открытии. portalTarget в зависимостях — если попап
+  // всё же перемонтируется (смена цели портала), фокус возвращаем.
   useEffect(() => {
     if (open) {
       requestAnimationFrame(() => searchInputRef.current?.focus())
     }
-  }, [open])
+  }, [open, portalTarget])
 
   // Личный тред (без проекта) не имеет вкладок статей/документов/внешних —
   // если активна была проектная вкладка, вернуться к «Быстрым ответам».
