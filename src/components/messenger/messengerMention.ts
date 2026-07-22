@@ -20,7 +20,13 @@ import { MentionPickerPopup } from './MentionPickerPopup'
 // suggestion в том же цикле (флажок ещё поднят), затем setTimeout(0) снимает.
 let pasteInProgress = false
 
-export type MentionItem = { id: string; label: string; avatarUrl?: string | null }
+export type MentionItem = {
+  id: string
+  label: string
+  avatarUrl?: string | null
+  /** Группа в пикере: связанные с задачей / остальные сотрудники воркспейса. */
+  group?: 'related' | 'staff'
+}
 
 /** Извлекает participant_id всех @-упоминаний из текущего документа редактора. */
 export function extractMentionIds(editor: Editor): string[] {

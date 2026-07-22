@@ -22,7 +22,7 @@ import {
   type MessageVisibility,
   type ForwardedAttachment,
 } from '@/services/api/messenger/messengerService'
-import { messengerKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
+import { messengerKeys, invalidateMessengerCaches, projectThreadKeys } from '@/hooks/queryKeys'
 import { useEmailAccounts } from '@/hooks/email/useEmailAccounts'
 import { patchCachesForMarkRead } from './useUnreadCount'
 import { dismissProjectToasts } from './useMessageToastPayload'
@@ -346,6 +346,13 @@ export function useSendMessage(
 
       // Dismiss toast notifications for this project
       if (projectId) dismissProjectToasts(projectId)
+
+      // Упоминание могло выдать доступ (триггер добавляет упомянутого в
+      // project_thread_members) — обновляем «Кто видит задачу» и related-группу
+      // в пикере @, не дожидаясь протухания кэша.
+      if (variables.mentions && variables.mentions.length > 0) {
+        queryClient.invalidateQueries({ queryKey: projectThreadKeys.members(threadId) })
+      }
 
       // Отправка сообщения = прочитал чат. Оптимистично патчим inbox-кэш
       // (источник «прочитано» для кнопки/бейджа) сразу — как ручная кнопка

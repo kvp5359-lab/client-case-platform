@@ -1,17 +1,19 @@
 /**
  * Список кандидатов для @-упоминаний в треде + id исполнителей.
- * Вынесено из MengerTabContent (распил оркестратора) — логика не менялась.
  *
- * Кандидаты = ТОЛЬКО люди, связанные с задачей: участники проекта ∪ участники
- * задачи (thread members) ∪ исполнители. Только с аккаунтом (user_id) — telegram-
- * контакты упоминать бессмысленно (не видят ЛК). Себя исключаем.
+ * Вся логика отбора/порядка — в чистой `buildMentionItems`
+ * (src/lib/messenger/mentionCandidates.ts, там же правила и тесты).
+ * Здесь только сбор данных: участники проекта ∪ участники задачи ∪
+ * исполнители → relatedIds; общий список сотрудников — только в тредах
+ * проекта (в личных диалогах упоминание раздавало бы доступ к переписке).
  */
 import { useMemo } from 'react'
 import { useProjectParticipants, useThreadMembers } from './useChatSettingsData'
 import { useTaskAssigneeIds } from '@/components/tasks/useTaskAssignees'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
+import { buildMentionItems, type MentionItem } from '@/lib/messenger/mentionCandidates'
 
-export type MentionItem = { id: string; label: string; avatarUrl: string | null }
+export type { MentionItem }
 
 export function useMentionItems(params: {
   threadId: string
@@ -28,23 +30,24 @@ export function useMentionItems(params: {
   const { data: workspaceParticipants = [] } = useWorkspaceParticipants(workspaceId)
 
   const mentionItems = useMemo<MentionItem[]>(() => {
-    const allowed = new Set<string>()
-    for (const p of projectParticipants) allowed.add(p.id)
-    if (threadMemberIds) for (const id of threadMemberIds) allowed.add(id)
-    for (const id of assigneeIds) allowed.add(id)
-    return workspaceParticipants
-      .filter(
-        (p) =>
-          p.user_id && // только с аккаунтом (без telegram-контактов)
-          p.user_id !== currentUserId && // себя не упоминаем
-          allowed.has(p.id),
-      )
-      .map((p) => ({
-        id: p.id,
-        label: [p.name, p.last_name].filter(Boolean).join(' '),
-        avatarUrl: p.avatar_url,
-      }))
-  }, [workspaceParticipants, projectParticipants, threadMemberIds, assigneeIds, currentUserId])
+    const relatedIds = new Set<string>()
+    for (const p of projectParticipants) relatedIds.add(p.id)
+    if (threadMemberIds) for (const id of threadMemberIds) relatedIds.add(id)
+    for (const id of assigneeIds) relatedIds.add(id)
+    return buildMentionItems({
+      participants: workspaceParticipants,
+      relatedIds,
+      currentUserId,
+      includeWorkspaceStaff: !!threadProjectId,
+    })
+  }, [
+    workspaceParticipants,
+    projectParticipants,
+    threadMemberIds,
+    assigneeIds,
+    currentUserId,
+    threadProjectId,
+  ])
 
   return { mentionItems, assigneeIds }
 }

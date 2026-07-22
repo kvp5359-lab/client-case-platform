@@ -32,6 +32,14 @@ export function MentionPickerPopup({
   const filtered = items.filter((i) => !query || i.label.toLowerCase().includes(query))
   // Активный индекс держим в границах на чтении (без эффекта-клампинга).
   const active = filtered.length ? Math.min(activeIndex, filtered.length - 1) : 0
+  // Заголовки групп показываем, только когда в списке есть ОБЕ группы —
+  // иначе одинокий заголовок над однородным списком лишь шумит.
+  const showGroupHeaders =
+    filtered.some((i) => i.group === 'related') && filtered.some((i) => i.group === 'staff')
+  const GROUP_LABELS: Record<string, string> = {
+    related: 'По задаче',
+    staff: 'Все сотрудники',
+  }
 
   // Подскроллить активную строку в зону видимости.
   useEffect(() => {
@@ -99,8 +107,13 @@ export function MentionPickerPopup({
             <div className="px-3 py-2 text-xs text-muted-foreground">Никого не найдено</div>
           )}
           {filtered.map((it, idx) => (
+            <div key={it.id}>
+              {showGroupHeaders && it.group && filtered[idx - 1]?.group !== it.group && (
+                <div className="px-3 pt-2 pb-1 text-[11px] font-medium text-muted-foreground select-none">
+                  {GROUP_LABELS[it.group]}
+                </div>
+              )}
             <button
-              key={it.id}
               type="button"
               data-idx={idx}
               onMouseDown={keepFocus}
@@ -126,6 +139,7 @@ export function MentionPickerPopup({
               )}
               <span className="text-sm truncate flex-1">{it.label}</span>
             </button>
+            </div>
           ))}
         </div>
       </div>
