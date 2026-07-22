@@ -14,14 +14,15 @@ export interface StorageFileInfo {
 /**
  * Resolve the actual bucket and storage path for a document file.
  * If `fileId` is provided, looks up the `files` table for the real location.
- * Falls back to `document-files` bucket with the original `filePath`.
+ * Falls back to `fallbackBucket` (default `document-files`) with `filePath`.
  */
 export async function resolveFileLocation(
   supabase: SupabaseClient,
   filePath: string,
   fileId?: string | null,
+  fallbackBucket = "document-files",
 ): Promise<StorageFileInfo> {
-  let bucket = "document-files";
+  let bucket = fallbackBucket;
   let storagePath = filePath;
 
   if (fileId) {
@@ -38,6 +39,28 @@ export async function resolveFileLocation(
   }
 
   return { bucket, storagePath };
+}
+
+/**
+ * Где физически лежит ВЛОЖЕНИЕ мессенджера (`message_attachments`).
+ *
+ * Источник правды — реестр `files` (там и бакет, и путь). Но часть строк его
+ * не имеет: приём личного Telegram (mtproto-service) исторически писал файл в
+ * `message-attachments` без записи в реестр (620 строк на 2026-07-22). Отсюда
+ * fallback именно на `message-attachments`, а НЕ на `files`.
+ *
+ * 🪤 Хардкод бакета `files` в отправляющей функции = тихая потеря вложения:
+ * скачивание падает 404, файл молча не уходит клиенту (инцидент 2026-07-22 —
+ * из письма ушёл 1 файл из 14). Любой новый путь отправки вложения обязан
+ * резолвить место через эту функцию. Зеркало фронтового
+ * `src/services/files/resolveFileLocation.ts`.
+ */
+export function resolveAttachmentLocation(
+  supabase: SupabaseClient,
+  storagePath: string,
+  fileId?: string | null,
+): Promise<StorageFileInfo> {
+  return resolveFileLocation(supabase, storagePath, fileId, "message-attachments");
 }
 
 /**

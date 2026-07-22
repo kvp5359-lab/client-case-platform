@@ -96,12 +96,40 @@ export async function downloadAndStoreMedia(args: {
     throw new Error(`Storage upload failed: ${uploadError.message}`)
   }
 
+  const fileSize = args.info.fileSize > 0 ? args.info.fileSize : buffer.length
+
+  // Регистрируем файл в общем реестре `files` — там бакет и путь. Без этой
+  // записи вложение «невидимо» для отправляющих функций: они резолвят место
+  // через реестр, а fallback у части из них был на бакет `files`, где файла
+  // нет → пересланный файл молча не уходил клиенту (инцидент 2026-07-22,
+  // из письма ушёл 1 файл из 14). Все остальные каналы приёма пишут в реестр
+  // через общий `_shared/storeAttachment.ts`; здесь свой рантайм (Node на VPS),
+  // поэтому дублируем ровно этот шаг.
+  const { data: fileRow, error: fileError } = await supabase
+    .from("files")
+    .insert({
+      workspace_id: args.workspaceId,
+      bucket: STORAGE_BUCKETS.messageAttachments,
+      storage_path: storagePath,
+      file_name: args.info.fileName,
+      file_size: fileSize,
+      mime_type: args.info.mimeType,
+    })
+    .select("id")
+    .single()
+  // Реестр не критичен для показа вложения в сервисе (фронт умеет и без него),
+  // поэтому сбой не роняет приём — файл сохранится, просто без file_id.
+  if (fileError) {
+    console.error("[mtproto] files insert failed:", fileError.message)
+  }
+
   const { error: insertError } = await supabase.from("message_attachments").insert({
     message_id: args.messageId,
     file_name: args.info.fileName,
-    file_size: args.info.fileSize > 0 ? args.info.fileSize : buffer.length,
+    file_size: fileSize,
     mime_type: args.info.mimeType,
     storage_path: storagePath,
+    file_id: fileRow?.id ?? null,
   })
   if (insertError) {
     throw new Error(`message_attachments insert failed: ${insertError.message}`)

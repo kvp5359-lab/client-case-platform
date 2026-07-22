@@ -30,8 +30,21 @@ Deno.serve(async (req) => {
   if (!payload) return new Response("forbidden", { status: 403 });
 
   const service = getServiceClient();
-  const { data: blob, error } = await storageDownload(service, STORAGE_BUCKETS.files, payload.p);
-  if (error || !blob) return new Response("not found", { status: 404 });
+  // Бакет берём из токена. Старые токены (выпущены до 2026-07-22, живут 1ч) его
+  // не несут — для них перебираем оба: вложения лежат либо в `files` (приём через
+  // бота/почту), либо в `message-attachments` (приём личного Telegram).
+  const buckets = payload.b
+    ? [payload.b]
+    : [STORAGE_BUCKETS.files, STORAGE_BUCKETS.messageAttachments];
+  let blob: Blob | null = null;
+  for (const bucket of buckets) {
+    const { data } = await storageDownload(service, bucket, payload.p);
+    if (data) {
+      blob = data as Blob;
+      break;
+    }
+  }
+  if (!blob) return new Response("not found", { status: 404 });
 
   const headers = new Headers();
   headers.set("Content-Type", payload.ct || (blob as Blob).type || "application/octet-stream");

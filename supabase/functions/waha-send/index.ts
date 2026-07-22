@@ -11,7 +11,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { htmlToWhatsApp } from "../_shared/htmlFormatting.ts";
-import { STORAGE_BUCKETS, storageDownload } from "../_shared/storage.ts";
+import { storageDownload } from "../_shared/storage.ts";
+import { resolveAttachmentLocation } from "../_shared/storageHelpers.ts";
 import { wahaMsgCore } from "../_shared/whatsappThread.ts";
 import { resolveSenderName } from "../_shared/senderPrefix.ts";
 
@@ -161,7 +162,7 @@ Deno.serve(async (req: Request) => {
   // ── Вложения ──────────────────────────────────────────────────────────────
   if (body.attachments_only) {
     const { data: atts } = await service.from("message_attachments")
-      .select("file_name, mime_type, storage_path").eq("message_id", messageId);
+      .select("file_name, mime_type, storage_path, file_id").eq("message_id", messageId);
     if (!atts || atts.length === 0) {
       await markSent(service, messageId, null);
       return new Response(JSON.stringify({ ok: true, skipped: "no_attachments" }), { status: 200 });
@@ -178,8 +179,13 @@ Deno.serve(async (req: Request) => {
     for (let i = 0; i < atts.length; i++) {
       const att = atts[i];
       try {
+        // Бакет — через реестр `files` (fallback message-attachments): хардкод
+        // `files` терял вложения из личного Telegram (см. 2026-07-22).
+        const loc = await resolveAttachmentLocation(
+          service, att.storage_path as string, (att.file_id as string | null) ?? null,
+        );
         const { data: blob, error: dlErr } = await storageDownload(
-          service, STORAGE_BUCKETS.files, att.storage_path as string,
+          service, loc.bucket, loc.storagePath,
         );
         if (dlErr || !blob) { failed.push(att.file_name as string); continue; }
         const data = toBase64(await blob.arrayBuffer());

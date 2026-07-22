@@ -26,6 +26,7 @@ import {
 import { markMessageSent, markMessageFailed } from "../_shared/messageSendStatus.ts";
 import { stripHtmlBasic } from "../_shared/channelText.ts";
 import { signAttachmentToken } from "../_shared/attachmentToken.ts";
+import { resolveAttachmentLocation } from "../_shared/storageHelpers.ts";
 import { resolveSenderName } from "../_shared/senderPrefix.ts";
 
 type SenderRow = { name?: string | null; last_name?: string | null; messenger_name?: string | null };
@@ -150,7 +151,7 @@ Deno.serve(async (req: Request) => {
   if (msg.has_attachments) {
     const { data: attachments } = await service
       .from("message_attachments")
-      .select("id, file_name, mime_type, storage_path")
+      .select("id, file_name, mime_type, storage_path, file_id")
       .eq("message_id", msg.id);
 
     if (!attachments || attachments.length === 0) {
@@ -179,8 +180,16 @@ Deno.serve(async (req: Request) => {
       // Wazzup сам скачивает файл по contentUri. R2 presigned-ссылку его
       // content-store забрать не может (много query-параметров подписи), поэтому
       // отдаём ссылку на attachment-proxy — токен в пути, файл отдаётся из R2.
+      // Бакет резолвим через реестр `files` (fallback message-attachments) и
+      // кладём в токен: прокси не должен гадать, где лежит файл.
+      const loc = await resolveAttachmentLocation(
+        service,
+        att.storage_path as string,
+        (att.file_id as string | null) ?? null,
+      );
       const token = await signAttachmentToken({
-        p: att.storage_path as string,
+        p: loc.storagePath,
+        b: loc.bucket,
         ct: (att.mime_type as string | null) ?? undefined,
         fn: (att.file_name as string | null) ?? undefined,
         exp: Math.floor(Date.now() / 1000) + 60 * 60,

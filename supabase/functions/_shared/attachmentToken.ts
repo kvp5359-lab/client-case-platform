@@ -27,8 +27,15 @@ async function hmac(msg: string): Promise<string> {
 }
 
 export interface AttachmentTokenPayload {
-  /** storage_path в бакете files */
+  /** storage_path внутри бакета `b` */
   p: string;
+  /**
+   * Бакет. Необязателен ради совместимости со «старыми» токенами (живут 1ч):
+   * без него потребитель перебирает files → message-attachments. Выпускающий
+   * ОБЯЗАН его класть (резолв через resolveAttachmentLocation) — иначе вложения
+   * из личного Telegram не находятся (инцидент 2026-07-22).
+   */
+  b?: string;
   /** content-type */
   ct?: string;
   /** имя файла */
