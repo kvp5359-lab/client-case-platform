@@ -4,7 +4,9 @@ import type { AccentSlug } from '@/lib/accentPalette'
 // Единый источник палитры — src/lib/accentPalette.ts (ACCENT_SLUGS/AccentSlug).
 // Добавление цвета туда автоматически расширит этот тип → Record<ThreadAccentColor>-
 // карты потребуют новый ключ (tsc). Не дублировать список слагов здесь вручную.
-export type ThreadAccentColor = AccentSlug
+// `team` исключён: это не цвет треда, а служебный цвет внутренних сообщений в
+// клиентских чатах (настраивается отдельной строкой в «Палитре цветов»).
+export type ThreadAccentColor = Exclude<AccentSlug, 'team'>
 
 export type ProjectThread = {
   id: string

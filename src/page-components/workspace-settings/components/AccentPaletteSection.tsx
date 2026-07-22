@@ -18,7 +18,12 @@ import { supabase } from '@/lib/supabase'
 import { useWorkspace } from '@/hooks/useWorkspace'
 import { workspaceKeys } from '@/hooks/queryKeys'
 import { ACCENT_COLORS } from '@/components/messenger/threadConstants'
-import { bubbleStyles } from '@/components/messenger/utils/messageStyles'
+import {
+  bubbleStyles,
+  TEAM_OWN,
+  TEAM_INCOMING,
+  TEAM_NOTE_OWN,
+} from '@/components/messenger/utils/messageStyles'
 import {
   resolveAccentHex,
   resolveAccentLabel,
@@ -29,6 +34,9 @@ import {
 type Props = { workspaceId: string }
 
 const VISIBLE = ACCENT_COLORS.filter((c) => !c.hidden)
+
+/** Служебный «цвет» внутренних сообщений в клиентских чатах (не цвет треда). */
+const TEAM_SLUG: AccentSlug = 'team'
 
 /** Тестовые бабблы одного цвета: исходящий (тёмный) + входящий (светлый) + реакция. */
 function PreviewBubbles({ slug }: { slug: AccentSlug }) {
@@ -76,6 +84,10 @@ export function AccentPaletteSection({ workspaceId }: Props) {
     const next: AccentOverrides = { ...overrides, [slug]: entry }
     saveMutation.mutate(next)
   }
+
+  const teamHex = resolveAccentHex(TEAM_SLUG, overrides)
+  const teamOv = overrides[TEAM_SLUG]
+  const teamOverridden = !!teamOv?.main || !!teamOv?.light
 
   const resetSlug = (slug: AccentSlug) => {
     const next: AccentOverrides = { ...overrides }
@@ -148,6 +160,59 @@ export function AccentPaletteSection({ workspaceId }: Props) {
           Название можно переименовать. Левый квадрат — основной (тёмный) тон, правый — светлый.
           Цвет текста на тёмном баббле подбирается автоматически по яркости.
         </p>
+
+        {/* Служебный цвет: сообщения команде внутри клиентских чатов. В пикер
+            цвета треда не входит, поэтому отдельным блоком. */}
+        <div className="mt-6 pt-5 border-t">
+          <h3 className="text-sm font-medium mb-1">Сообщения команде в клиентских чатах</h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            Внутренние сообщения («Команде» и «Заметка») клиент не видит, поэтому они окрашены
+            отдельно от цвета самого чата. Основной тон — исходящее, светлый — входящее;
+            «Заметка» — приглушённый вариант основного.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2 sm:w-80 shrink-0">
+              <span className="flex-1 min-w-0 text-sm px-2">Команде</span>
+              <input
+                type="color"
+                value={teamHex.main}
+                onChange={(e) => setTone(TEAM_SLUG, 'main', e.target.value)}
+                title="Основной тон — исходящее сообщение команде"
+                className="w-7 h-7 shrink-0 rounded cursor-pointer border border-border bg-transparent p-0"
+              />
+              <input
+                type="color"
+                value={teamHex.light}
+                onChange={(e) => setTone(TEAM_SLUG, 'light', e.target.value)}
+                title="Светлый тон — входящее сообщение команде"
+                className="w-7 h-7 shrink-0 rounded cursor-pointer border border-border bg-transparent p-0"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0"
+                disabled={!teamOverridden}
+                title={teamOverridden ? 'Сбросить к стандартному' : 'Стандартный цвет'}
+                onClick={() => resetSlug(TEAM_SLUG)}
+                aria-label={teamOverridden ? 'Сбросить к стандартному' : 'Стандартный цвет'}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <div className="flex flex-1 min-w-0 flex-wrap items-center gap-1.5">
+              <span className={cn('rounded-2xl rounded-br-sm px-2.5 py-1 text-xs', TEAM_OWN)}>
+                Исходящее
+              </span>
+              <span className={cn('rounded-2xl rounded-bl-sm px-2.5 py-1 text-xs', TEAM_INCOMING)}>
+                Входящее
+              </span>
+              <span className={cn('rounded-2xl rounded-br-sm px-2.5 py-1 text-xs', TEAM_NOTE_OWN)}>
+                Заметка
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

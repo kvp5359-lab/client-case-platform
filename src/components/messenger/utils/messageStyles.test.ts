@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { resolveBubbleAppearance, TEAM_GRAY, type BubbleAppearanceInput } from './messageStyles'
+import {
+  resolveBubbleAppearance,
+  TEAM_OWN,
+  TEAM_INCOMING,
+  TEAM_NOTE_OWN,
+  type BubbleAppearanceInput,
+} from './messageStyles'
 
 const base: BubbleAppearanceInput = {
   accent: 'emerald',
@@ -23,21 +29,28 @@ describe('resolveBubbleAppearance — плашка времени повторя
   // времени оставалась цвета треда (считалась от сырого акцента).
   it('входящее «Команде» в клиентском треде: плашка серая, как бабл, а не акцент', () => {
     const a = at({ visibility: 'team', isOwn: false })
-    expect(a.incomingBubbleClass).toBe(TEAM_GRAY)
-    expect(a.timestampPillBg).toBe(bg(TEAM_GRAY))
+    expect(a.incomingBubbleClass).toBe(TEAM_INCOMING)
+    expect(a.timestampPillBg).toBe(bg(TEAM_INCOMING))
     expect(a.timestampPillBg).not.toContain('emerald')
   })
 
-  it('своё «Команде» в клиентском треде: плашка чёрная, как бабл', () => {
+  it('своё «Команде» в клиентском треде: плашка в командный цвет, как бабл', () => {
     const a = at({ visibility: 'team', isOwn: true })
-    expect(a.ownBubbleClass).toContain('bg-neutral-900')
-    expect(a.timestampPillBg).toBe('bg-neutral-900')
+    expect(a.ownBubbleClass).toBe(TEAM_OWN)
+    expect(a.timestampPillBg).toBe(bg(TEAM_OWN))
   })
 
-  it('своё «Заметка» (team + тихо): плашка тёмно-серая, как бабл', () => {
+  it('своё «Заметка» (team + тихо): плашка в приглушённый командный тон', () => {
     const a = at({ visibility: 'team', notifySubscribers: false, isOwn: true })
-    expect(a.ownBubbleClass).toContain('bg-neutral-600')
-    expect(a.timestampPillBg).toBe('bg-neutral-600')
+    expect(a.ownBubbleClass).toBe(TEAM_NOTE_OWN)
+    expect(a.timestampPillBg).toBe(bg(TEAM_NOTE_OWN))
+  })
+
+  // Командный цвет — настраиваемый (переменная палитры), а не жёсткий neutral.
+  it('командные цвета берутся из палитры (--acc-team-*)', () => {
+    expect(TEAM_OWN).toContain('--acc-team-main')
+    expect(TEAM_INCOMING).toContain('--acc-team-light')
+    expect(TEAM_NOTE_OWN).toContain('--acc-team-mid')
   })
 
   it('своё «Только я»: плашка жёлтая, как бабл', () => {

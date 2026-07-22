@@ -36,6 +36,11 @@ export type AccentSlug =
   | 'red'
   | 'black'
   | 'graphite'
+  /** Служебный «цвет» сообщений команде внутри КЛИЕНТСКИХ чатов. В пикер цвета
+   *  треда не попадает (его нет в ACCENT_COLORS) — настраивается отдельной
+   *  строкой в «Палитре цветов». main = своё исходящее, light = входящее,
+   *  производный mid = «Заметка». */
+  | 'team'
 
 /** Базовые цвета: main (солид) + light (бледный фон) = текущие значения. */
 export const DEFAULT_ACCENT_HEX: Record<AccentSlug, { main: string; light: string }> = {
@@ -56,6 +61,9 @@ export const DEFAULT_ACCENT_HEX: Record<AccentSlug, { main: string; light: strin
   red: { main: '#b91c1c', light: '#fee2e2' },
   black: { main: '#171717', light: '#e5e5e5' },
   graphite: { main: '#525252', light: '#f5f5f5' },
+  // Команде в клиентском чате: чёрный бабл (neutral-900) + светло-серый входящий
+  // (это тот же тон, что даёт stone-200/50 поверх белого).
+  team: { main: '#171717', light: '#f3f2f1' },
 }
 
 export const ACCENT_SLUGS = Object.keys(DEFAULT_ACCENT_HEX) as AccentSlug[]
@@ -103,6 +111,7 @@ export function deriveAccentTones(main: string, light: string) {
     onlight: TEXT_ON_LIGHT, // текст на светлом (входящий бабл)
     soft: mixWithWhite(main, 0.12), // очень бледный (фон чипа реакции ~ -50)
     border: mixWithWhite(main, 0.3), // бледная рамка (~ -200)
+    mid: mixWithWhite(main, 0.72), // приглушённый солид («Заметка» ~ neutral-600)
   }
 }
 
@@ -130,6 +139,7 @@ export const acc = {
   bgMain: (s: AccentSlug) => `bg-[${cssVar(s, 'main')}]`,
   bgLight: (s: AccentSlug) => `bg-[${cssVar(s, 'light')}]`,
   bgSoft: (s: AccentSlug) => `bg-[${cssVar(s, 'soft')}]`,
+  bgMid: (s: AccentSlug) => `bg-[${cssVar(s, 'mid')}]`,
   textOn: (s: AccentSlug) => `text-[${cssVar(s, 'on')}]`,
   textOnLight: (s: AccentSlug) => `text-[${cssVar(s, 'onlight')}]`,
   textMain: (s: AccentSlug) => `text-[${cssVar(s, 'main')}]`,

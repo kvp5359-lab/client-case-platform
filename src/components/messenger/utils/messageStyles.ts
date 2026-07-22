@@ -13,6 +13,17 @@ export type MessengerAccent = AccentSlug | 'dark'
  */
 export const TEAM_GRAY = 'bg-stone-200/50 text-gray-900'
 
+/**
+ * Цвета сообщений команде внутри КЛИЕНТСКИХ чатов — настраиваются в
+ * «Палитре цветов» как служебный акцент `team` (main = своё исходящее,
+ * light = входящее, производный mid = «Заметка»). Фолбэки в переменных
+ * повторяют прежние neutral-900 / neutral-600 / stone-200/50, поэтому пока
+ * воркспейс не переопределил цвет, вид не меняется.
+ */
+export const TEAM_OWN = `${acc.bgMain('team')} ${acc.textOn('team')}`
+export const TEAM_NOTE_OWN = `${acc.bgMid('team')} ${acc.textOn('team')}`
+export const TEAM_INCOMING = `${acc.bgLight('team')} ${acc.textOnLight('team')}`
+
 type BubbleStyle = {
   own: string
   /** Своя «Заметка» во ВНУТРЕННЕМ треде — акцент чуть засветлённый (opacity). */
@@ -123,26 +134,22 @@ export function resolveBubbleAppearance(i: BubbleAppearanceInput): BubbleAppeara
     ? 'bg-amber-200 text-amber-950'
     : clientThread
       ? isNoteVis
-        ? 'bg-neutral-600 text-neutral-50' // заметка в клиентском треде — тёмно-серый
+        ? TEAM_NOTE_OWN // заметка в клиентском треде — приглушённый командный тон
         : isTeamVis
-          ? 'bg-neutral-900 text-neutral-50' // команде в клиентском треде — чёрный
+          ? TEAM_OWN // команде в клиентском треде — командный цвет
           : colors.own // всем — акцент
       : isNoteVis
         ? colors.ownNote // заметка во внутреннем — акцент засветлённый
         : colors.own // всем/команде во внутреннем — акцент
 
-  const incomingBubbleClass = clientThread && isTeamVis ? TEAM_GRAY : colors.incoming
+  const incomingBubbleClass = clientThread && isTeamVis ? TEAM_INCOMING : colors.incoming
 
-  const staffRingColor = isNoteVis
-    ? 'ring-neutral-600'
-    : isTeamVis
-      ? 'ring-neutral-900'
-      : colors.staffRing
-  const staffBorderColor = isNoteVis
-    ? 'border-neutral-600'
-    : isTeamVis
-      ? 'border-neutral-900'
-      : colors.staffBorder
+  // Кольцо/полоса сотрудника у командного сообщения — в командный цвет.
+  // «Заметка» отдельного оттенка тут не имеет: разница в 1 шаг серого на
+  // двухпиксельной полоске не читалась, а тонов пришлось бы держать вдвое больше.
+  const teamMark = isNoteVis || isTeamVis
+  const staffRingColor = teamMark ? acc.ringMain('team') : colors.staffRing
+  const staffBorderColor = teamMark ? acc.borderMain('team') : colors.staffBorder
 
   // Плашка времени берёт фон У БАБЛА (ownBubbleClass/incomingBubbleClass), а не
   // сырой акцент треда: иначе у сообщения «Команде» в клиентском чате бабл серый,
