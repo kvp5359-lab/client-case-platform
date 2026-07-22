@@ -42,7 +42,6 @@ import { formatSize } from '@/utils/files/formatSize'
 import { buildGoogleDriveFolderUrl } from '@/utils/googleDrive'
 import { GoogleDriveIcon } from '@/components/shared/GoogleDriveIcon'
 import { ShareDriveFolderDialog } from './ShareDriveFolderDialog'
-import { ConnectDriveSourceDialog } from './ConnectDriveSourceDialog'
 import { FolderCard } from './FolderCard'
 import { KitSourceFileRow } from './KitSourceFileRow'
 import { useDocumentsContext } from './DocumentsContext'
@@ -192,8 +191,6 @@ export const KitDocuments = memo(function KitDocuments({
 
   // Диалог «Открыть доступ к папке Drive» (только когда набор привязан к Drive).
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
-  // Диалог «Подключить папку Drive как источник» (когда привязки ещё нет).
-  const [connectDialogOpen, setConnectDialogOpen] = useState(false)
 
   // Синхронизация файлов набора из папки-источника Google Drive.
   const syncKitSource = useSyncKitSourceMutation()
@@ -350,16 +347,16 @@ export const KitDocuments = memo(function KitDocuments({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : (
+          ) : onCreateDriveFolders ? (
             <button
               type="button"
               title="Подключить папку Google Drive как источник"
-              onClick={() => setConnectDialogOpen(true)}
+              onClick={() => onCreateDriveFolders(kit)}
               className="shrink-0 p-1 rounded-md grayscale opacity-40 hover:grayscale-0 hover:opacity-100 hover:bg-muted/50 transition-all"
             >
               <GoogleDriveIcon className="h-4 w-4" />
             </button>
-          )}
+          ) : null}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -459,19 +456,6 @@ export const KitDocuments = memo(function KitDocuments({
           </div>
         )}
       </div>
-      {!kit.drive_folder_id && (
-        <ConnectDriveSourceDialog
-          open={connectDialogOpen}
-          onOpenChange={setConnectDialogOpen}
-          kitId={kit.id}
-          projectId={kit.project_id}
-          workspaceId={kit.workspace_id}
-          kitName={kitName}
-          onCreateDriveFolders={
-            onCreateDriveFolders ? () => onCreateDriveFolders(kit) : undefined
-          }
-        />
-      )}
       {kit.drive_folder_id && (
         <ShareDriveFolderDialog
           open={shareDialogOpen}
