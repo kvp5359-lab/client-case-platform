@@ -140,3 +140,65 @@ export async function createDocumentKitFromDriveFolder(params: {
 
   return kit.id
 }
+
+/**
+ * Привязывает СУЩЕСТВУЮЩИЙ набор к произвольной папке Google Drive как
+ * источнику файлов. Папки набора без своей Drive-привязки сопоставляются
+ * с подпапками первого уровня по имени (без учёта регистра) — их файлы
+ * лягут в «лоток» одноимённой папки, остальные — в корень набора.
+ */
+export async function connectDriveSourceToKit(params: {
+  link: string
+  kitId: string
+  projectId: string
+  workspaceId: string
+}): Promise<void> {
+  const { link, kitId, projectId, workspaceId } = params
+
+  const folderId = extractGoogleDriveFolderId(link)
+  if (!folderId) {
+    throw new DocumentKitError('Некорректная ссылка на папку Google Drive')
+  }
+
+  // Проверяем доступность папки (и что это папка) + читаем подпапки для маппинга.
+  const structure = await fetchDriveFolderStructure(folderId, workspaceId)
+
+  const { error: kitError } = await supabase
+    .from('document_kits')
+    .update({ drive_folder_id: folderId })
+    .eq('id', kitId)
+  if (kitError) {
+    throw new DocumentKitError('Не удалось привязать папку к набору', kitError)
+  }
+
+  // Сопоставление папок набора с Drive-подпапками по имени — только для папок
+  // БЕЗ существующей привязки (чужие drive_folder_id не перетираем).
+  if (structure.folders.length > 0) {
+    const { data: kitFolders } = await supabase
+      .from('folders')
+      .select('id, name, drive_folder_id')
+      .eq('document_kit_id', kitId)
+    const byName = new Map(structure.folders.map((f) => [f.name.trim().toLowerCase(), f.id]))
+    for (const folder of kitFolders ?? []) {
+      if (folder.drive_folder_id) continue
+      const driveId = byName.get((folder.name ?? '').trim().toLowerCase())
+      if (!driveId) continue
+      await supabase.from('folders').update({ drive_folder_id: driveId }).eq('id', folder.id)
+    }
+  }
+
+  // Файлы источника — best-effort: привязка уже выполнена, файлы можно
+  // подтянуть повторной синхронизацией («Обновить файлы из источника»).
+  try {
+    await syncSourceDocumentsFromDrive({
+      projectId,
+      workspaceId,
+      sourceFolderId: folderId,
+      documentKitId: kitId,
+      sourceName: structure.folderName?.trim() || null,
+      groupByTopLevel: true,
+    })
+  } catch (error) {
+    logger.error('Папка привязана, но не удалось загрузить файлы из источника:', error)
+  }
+}
