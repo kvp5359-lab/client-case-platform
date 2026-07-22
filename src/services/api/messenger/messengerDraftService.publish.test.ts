@@ -31,7 +31,14 @@ vi.mock('./messengerService.helpers', async (orig) => ({
 
 import { publishDraftMessage } from './messengerDraftService'
 
-function setup(opts: { visibility?: string; withAttachment?: boolean; emailThread?: boolean }) {
+function setup(opts: {
+  visibility?: string
+  withAttachment?: boolean
+  emailThread?: boolean
+  /** В треде есть входящее письмо — сервер считает такой тред почтовым даже
+   *  без привязки Gmail-аккаунта (миграция 20260721140000). */
+  hasIncomingEmail?: boolean
+}) {
   rpcMock.mockResolvedValue({ error: null })
   invokeMock.mockResolvedValue({ data: null, error: null })
   getSessionMock.mockResolvedValue({ data: { session: null } })
@@ -47,7 +54,16 @@ function setup(opts: { visibility?: string; withAttachment?: boolean; emailThrea
     if (table === 'project_messages') {
       return {
         update: () => ({ eq: () => Promise.resolve({ error: null }) }),
-        select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: messageRow, error: null }) }) }),
+        select: (_cols: string, opts2?: { count?: string; head?: boolean }) =>
+          opts2?.count
+            ? // count-запрос «есть ли входящее письмо» (isEmailChannelThread)
+              {
+                eq: () => ({
+                  eq: () =>
+                    Promise.resolve({ count: opts.hasIncomingEmail ? 1 : 0, error: null }),
+                }),
+              }
+            : { eq: () => ({ single: () => Promise.resolve({ data: messageRow, error: null }) }) },
       }
     }
     // project_threads
@@ -86,5 +102,14 @@ describe('publishDraftMessage — доставка через deliver_message + 
     setup({ withAttachment: true, emailThread: false, visibility: 'client' })
     await publishDraftMessage('m1')
     expect(invokeMock).not.toHaveBeenCalled()
+  })
+
+  // Регрессия 2026-07-22: тред без привязки Gmail-аккаунта, но с входящим
+  // письмом, сервер считает почтовым — а фронт раньше нет, и вложения такого
+  // письма молча не доезжали (ни при отправке, ни при повторе).
+  it('тред без привязки, но с входящим письмом → email-invoke зовётся', async () => {
+    setup({ withAttachment: true, emailThread: false, hasIncomingEmail: true, visibility: 'client' })
+    await publishDraftMessage('m1')
+    expect(invokeMock).toHaveBeenCalledWith('email-internal-send', expect.anything())
   })
 })

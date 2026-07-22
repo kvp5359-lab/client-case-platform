@@ -5,9 +5,9 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import {
-  resolveThreadChannel,
-  type ThreadChannelSignals,
-} from '@/services/api/messenger/resolveThreadChannel'
+  deliverEmailAttachments,
+  isEmailChannelThread,
+} from '@/services/api/messenger/deliverEmailAttachments'
 import { messengerKeys } from '@/hooks/queryKeys'
 
 /**
@@ -50,21 +50,33 @@ export function useRetryTelegramSend(threadId: string) {
       // добиваем фронт-invoke'ом, симметрично первичной отправке.
       const hasAttachments = (params.message.attachments?.length ?? 0) > 0
       if (!hasAttachments || !params.message.thread_id) return
+      if (!(await isEmailChannelThread(params.message.thread_id))) return
 
-      const { data: t } = await supabase
-        .from('project_threads')
-        .select(
-          'type, email_send_account_id, wazzup_channel_id, wazzup_chat_id, mtproto_session_user_id, mtproto_client_tg_user_id, business_connection_id',
-        )
-        .eq('id', params.message.thread_id)
-        .maybeSingle()
-      if (resolveThreadChannel((t as ThreadChannelSignals) ?? {}) !== 'email') return
-
-      await supabase.auth.getSession()
-      const { error: invokeError } = await supabase.functions.invoke('email-internal-send', {
-        body: { message_id: params.message.id },
+      const result = await deliverEmailAttachments({
+        messageId: params.message.id,
+        workspaceId: params.message.workspace_id,
+        projectId: params.message.project_id ?? null,
+        threadId: params.message.thread_id,
+        senderParticipantId: params.message.sender_participant_id ?? null,
+        content: params.message.content ?? null,
+        attachmentNames: (params.message.attachments ?? []).map((a) => a.file_name),
       })
-      if (invokeError) throw invokeError
+      if (!result.ok) {
+        // 🔴 Обязательно вернуть строку в failed: этот путь идёт мимо
+        // серверного диспетчера, а значит и мимо watchdog `scan_dispatch_failures`
+        // (он сверяет только записи `message_send_dispatch`). Оставленный
+        // `pending` завис бы навсегда — и кнопки «Повторить» у него уже нет,
+        // она показывается только для `failed`.
+        await supabase
+          .from('project_messages')
+          .update({
+            send_status: 'failed',
+            send_failed_reason:
+              result.error instanceof Error ? result.error.message.slice(0, 500) : 'email send failed',
+          })
+          .eq('id', params.message.id)
+        throw result.error instanceof Error ? result.error : new Error('email send failed')
+      }
     },
 
     // Оптимистично: локально сразу гасим красный бейдж, ставим pending.

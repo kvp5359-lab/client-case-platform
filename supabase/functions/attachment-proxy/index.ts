@@ -29,13 +29,20 @@ Deno.serve(async (req) => {
   const payload = await verifyAttachmentToken(token);
   if (!payload) return new Response("forbidden", { status: 403 });
 
+  // Прокси отдаёт файл наружу без JWT, поэтому бакет из токена — только из
+  // белого списка вложений. Подделать `b` нельзя (он внутри HMAC-подписи), но
+  // эмитентов токена может стать больше, и ни один из них не должен уметь
+  // превратить прокси в читалку произвольного бакета (аватары, docbuilder,
+  // шаблоны документов).
+  const ALLOWED_BUCKETS: string[] = [STORAGE_BUCKETS.files, STORAGE_BUCKETS.messageAttachments];
+  if (payload.b && !ALLOWED_BUCKETS.includes(payload.b)) {
+    return new Response("forbidden", { status: 403 });
+  }
+  // Токен без `b` — выпущен до 2026-07-22 (живёт максимум 1ч). Ветку можно
+  // удалить после 2026-07-23, тогда `b` станет обязательным.
+  const buckets = payload.b ? [payload.b] : ALLOWED_BUCKETS;
+
   const service = getServiceClient();
-  // Бакет берём из токена. Старые токены (выпущены до 2026-07-22, живут 1ч) его
-  // не несут — для них перебираем оба: вложения лежат либо в `files` (приём через
-  // бота/почту), либо в `message-attachments` (приём личного Telegram).
-  const buckets = payload.b
-    ? [payload.b]
-    : [STORAGE_BUCKETS.files, STORAGE_BUCKETS.messageAttachments];
   let blob: Blob | null = null;
   for (const bucket of buckets) {
     const { data } = await storageDownload(service, bucket, payload.p);

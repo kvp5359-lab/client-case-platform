@@ -12,6 +12,7 @@ import { corsHeadersFor } from "../_shared/edge.ts";
 import { safeErrorResponse, checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 import { isValidUUID } from "../_shared/validation.ts";
 import { storageDownload } from "../_shared/storage.ts";
+import { resolveAttachmentLocation } from "../_shared/storageHelpers.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -201,20 +202,13 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Скачиваем файл из Storage (определяем бакет через file_id)
-    let bucket = "message-attachments";
-    let storagePath = attachment.storage_path;
-    if (attachment.file_id) {
-      const { data: fileRecord } = await serviceClient
-        .from("files")
-        .select("bucket, storage_path")
-        .eq("id", attachment.file_id)
-        .single();
-      if (fileRecord) {
-        bucket = fileRecord.bucket;
-        storagePath = fileRecord.storage_path;
-      }
-    }
+    // Где лежит файл — общий резолвер (реестр `files`, fallback
+    // `message-attachments`), а не своя копия: расхождение = «файл не найден».
+    const { bucket, storagePath } = await resolveAttachmentLocation(
+      serviceClient,
+      attachment.storage_path,
+      attachment.file_id,
+    );
     const { data: fileData, error: downloadError } = await storageDownload(serviceClient, bucket, storagePath);
 
     if (downloadError || !fileData) {

@@ -1,15 +1,19 @@
 /**
  * Shared Supabase Storage helpers.
- * Used by: compress-document, check-document, google-drive-export-documents, export-to-drive.
+ * Используют: compress-document, check-document, google-drive-export-documents,
+ * export-to-drive (документы) + отправляющие функции мессенджера (вложения).
+ *
+ * Имена бакетов — только через STORAGE_BUCKETS (правило `storage.ts`).
  */
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { storageDownload, storageUpload } from "./storage.ts";
+import { STORAGE_BUCKETS, type StorageFileInfo } from "./buckets.ts";
 
-export interface StorageFileInfo {
-  bucket: string;
-  storagePath: string;
-}
+export type { StorageFileInfo } from "./buckets.ts";
+// Чистый резолв по embed'у (без запроса) — в client-free `buckets.ts`,
+// реэкспорт здесь, чтобы у потребителей была одна точка входа.
+export { attachmentLocationFromRow, type AttachmentRowWithFile } from "./buckets.ts";
 
 /**
  * Resolve the actual bucket and storage path for a document file.
@@ -20,7 +24,7 @@ export async function resolveFileLocation(
   supabase: SupabaseClient,
   filePath: string,
   fileId?: string | null,
-  fallbackBucket = "document-files",
+  fallbackBucket: string = STORAGE_BUCKETS.documentFiles,
 ): Promise<StorageFileInfo> {
   let bucket = fallbackBucket;
   let storagePath = filePath;
@@ -45,22 +49,23 @@ export async function resolveFileLocation(
  * Где физически лежит ВЛОЖЕНИЕ мессенджера (`message_attachments`).
  *
  * Источник правды — реестр `files` (там и бакет, и путь). Но часть строк его
- * не имеет: приём личного Telegram (mtproto-service) исторически писал файл в
- * `message-attachments` без записи в реестр (620 строк на 2026-07-22). Отсюда
- * fallback именно на `message-attachments`, а НЕ на `files`.
+ * не имеет: приём личного Telegram писал файл в `message-attachments` без
+ * записи в реестр. Отсюда fallback именно на `message-attachments`, а НЕ на
+ * `files`. Подробности инцидента — ledger 2026-07-22 (4).
  *
- * 🪤 Хардкод бакета `files` в отправляющей функции = тихая потеря вложения:
- * скачивание падает 404, файл молча не уходит клиенту (инцидент 2026-07-22 —
- * из письма ушёл 1 файл из 14). Любой новый путь отправки вложения обязан
- * резолвить место через эту функцию. Зеркало фронтового
- * `src/services/files/resolveFileLocation.ts`.
+ * 🪤 Хардкод бакета в отправляющей функции = тихая потеря вложения (404 →
+ * файл молча не уходит клиенту). Любой путь отправки вложения обязан резолвить
+ * место здесь. Зеркало фронтового `src/services/files/resolveFileLocation.ts`.
+ *
+ * Для нескольких вложений одного сообщения — `attachmentLocationFromRow`
+ * (один запрос вместо N, см. ниже).
  */
 export function resolveAttachmentLocation(
   supabase: SupabaseClient,
   storagePath: string,
   fileId?: string | null,
 ): Promise<StorageFileInfo> {
-  return resolveFileLocation(supabase, storagePath, fileId, "message-attachments");
+  return resolveFileLocation(supabase, storagePath, fileId, STORAGE_BUCKETS.messageAttachments);
 }
 
 /**

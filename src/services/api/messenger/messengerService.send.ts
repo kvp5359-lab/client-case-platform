@@ -10,7 +10,7 @@ import { isClientVisibleForDelivery } from '@/lib/messenger/visibility'
 import { ConversationError } from '@/services/errors/AppError'
 import { logger } from '@/utils/logger'
 import { uploadAttachments } from './messengerAttachmentService'
-import { resolveThreadChannel, type ThreadChannelSignals } from './resolveThreadChannel'
+import { deliverEmailAttachments, isEmailChannelThread } from './deliverEmailAttachments'
 import { logSendFailure } from './logSendFailure'
 import {
   MESSAGE_SELECT,
@@ -243,38 +243,16 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
     //
     // Email — только фронт-invoke: диспетчер email-вложения пропускает (иначе
     // двойная отправка с draft-путём, из-за исторической гонки загрузки файлов).
-    const { data: extThread } = await supabase
-      .from('project_threads')
-      .select(
-        'type, email_send_account_id, wazzup_channel_id, wazzup_chat_id, waha_session_id, waha_chat_id, mtproto_session_user_id, mtproto_client_tg_user_id, business_connection_id',
-      )
-      .eq('id', params.threadId)
-      .maybeSingle()
-    const isEmailChannel =
-      resolveThreadChannel((extThread as ThreadChannelSignals) ?? {}) === 'email'
-
-    if (isEmailChannel) {
-      void supabase.auth.getSession().catch(() => {})
-      try {
-        const { error } = await supabase.functions.invoke('email-internal-send', {
-          body: { message_id: message.id },
-        })
-        if (error) throw error
-      } catch (err) {
-        logger.error('Failed to send email with attachments:', err)
-        void logSendFailure({
-          workspace_id: params.workspaceId,
-          project_id: params.projectId ?? null,
-          thread_id: params.threadId,
-          participant_id: params.senderParticipantId,
-          content: params.content ?? null,
-          attachment_names: (params.attachments ?? []).map((f) => f.name),
-          error_text: err instanceof Error ? err.message : String(err),
-          error_code: 'email_send_invoke_failed',
-          source: 'email',
-          metadata: { stage: 'email_internal_send_invoke' },
-        })
-      }
+    if (await isEmailChannelThread(params.threadId)) {
+      await deliverEmailAttachments({
+        messageId: message.id,
+        workspaceId: params.workspaceId,
+        projectId: params.projectId ?? null,
+        threadId: params.threadId,
+        senderParticipantId: params.senderParticipantId,
+        content: params.content ?? null,
+        attachmentNames: (params.attachments ?? []).map((f) => f.name),
+      })
     } else {
       await supabase.auth.getSession().catch(() => {})
       const { error } = await supabase.rpc('deliver_message', { p_message_id: message.id })

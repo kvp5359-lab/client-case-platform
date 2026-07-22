@@ -5,9 +5,8 @@
 
 import { supabase } from '@/lib/supabase'
 import { ConversationError } from '@/services/errors/AppError'
-import { logger } from '@/utils/logger'
 import { uploadAttachments, deleteAttachmentFileIfOrphaned } from './messengerAttachmentService'
-import { resolveThreadChannel, type ThreadChannelSignals } from './resolveThreadChannel'
+import { deliverEmailAttachments, isEmailChannelThread } from './deliverEmailAttachments'
 import { isClientVisibleForDelivery } from '@/lib/messenger/visibility'
 import {
   MESSAGE_SELECT,
@@ -204,20 +203,16 @@ export async function publishDraftMessage(
   const hasAttachments = !!message.attachments && message.attachments.length > 0
   const isClientVisible = isClientVisibleForDelivery(message.visibility as string | undefined)
   if (hasAttachments && isClientVisible && message.thread_id) {
-    const { data: t } = await supabase
-      .from('project_threads')
-      .select(
-        'type, email_send_account_id, wazzup_channel_id, wazzup_chat_id, mtproto_session_user_id, mtproto_client_tg_user_id, business_connection_id',
-      )
-      .eq('id', message.thread_id)
-      .maybeSingle()
-    if (resolveThreadChannel((t as ThreadChannelSignals) ?? {}) === 'email') {
-      await supabase.auth.getSession()
-      supabase.functions
-        .invoke('email-internal-send', { body: { message_id: messageId } })
-        .catch((err) => {
-          logger.error('Failed to send published email draft attachments:', err)
-        })
+    if (await isEmailChannelThread(message.thread_id)) {
+      await deliverEmailAttachments({
+        messageId,
+        workspaceId: message.workspace_id,
+        projectId: message.project_id ?? null,
+        threadId: message.thread_id,
+        senderParticipantId: message.sender_participant_id ?? null,
+        content: message.content ?? null,
+        attachmentNames: (message.attachments ?? []).map((a) => a.file_name),
+      })
     }
   }
 

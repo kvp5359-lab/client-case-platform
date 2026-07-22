@@ -11,7 +11,8 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { escapeHtmlEntities } from "../_shared/htmlFormatting.ts";
 import { resolveBotToken } from "../_shared/telegramBotToken.ts";
 import { isTelegramPhotoMime } from "./helpers.ts";
-import { storageCreateSignedUrl } from "../_shared/storage.ts";
+import { STORAGE_BUCKETS, storageCreateSignedUrl } from "../_shared/storage.ts";
+import { resolveAttachmentLocation } from "../_shared/storageHelpers.ts";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -50,22 +51,23 @@ export async function resolveAttachment(
   att: Record<string, unknown>,
   supabaseClient: ReturnType<typeof createClient>,
 ): Promise<{ blob: Blob; fileName: string; mimeType: string | null } | null> {
-  let bucket = "message-attachments";
-  let storagePath = att.storage_path as string;
+  // Где лежит файл — через общий резолвер (реестр `files`, fallback
+  // `message-attachments`). Инлайн-копия жила здесь исторически; держать её
+  // отдельно опасно — расхождение = тихая потеря вложения (см. ledger 2026-07-22).
+  let bucket: string;
+  let storagePath: string;
   try {
-    if (att.file_id) {
-      const { data: fileRecord } = await supabaseClient
-        .from("files")
-        .select("bucket, storage_path")
-        .eq("id", att.file_id)
-        .single();
-      if (fileRecord) {
-        bucket = fileRecord.bucket;
-        storagePath = fileRecord.storage_path;
-      }
-    }
+    const loc = await resolveAttachmentLocation(
+      supabaseClient,
+      att.storage_path as string,
+      (att.file_id as string | null) ?? null,
+    );
+    bucket = loc.bucket;
+    storagePath = loc.storagePath;
   } catch (err) {
     console.error("resolveAttachment: file lookup failed for", att.file_name, ":", err);
+    bucket = STORAGE_BUCKETS.messageAttachments;
+    storagePath = att.storage_path as string;
   }
 
   // Retry до 3 раз с экспоненциальной задержкой: транзиентные сбои Storage/CDN

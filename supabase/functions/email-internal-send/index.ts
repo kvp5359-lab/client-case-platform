@@ -26,7 +26,7 @@ import {
 import { uint8ArrayToBase64 } from "../_shared/encoding.ts";
 import { markMessageSent, markMessageFailed } from "../_shared/messageSendStatus.ts";
 import { storageDownload } from "../_shared/storage.ts";
-import { resolveAttachmentLocation } from "../_shared/storageHelpers.ts";
+import { attachmentLocationFromRow, type AttachmentRowWithFile } from "../_shared/storageHelpers.ts";
 import { wrapPlainAsHtmlIfNeeded, wrapEmailHtml, htmlToPlainText } from "./email-format.ts";
 import type {
   MessageRow, ThreadRow, WorkspaceRow, OutboundAttachment, OutboundEmailCtx,
@@ -292,29 +292,26 @@ Deno.serve(async (req: Request) => {
     // 20260521_email_attachments_race_fix.sql). Эту функцию зовёт сам
     // фронт после uploadAttachments — данные в message_attachments уже
     // гарантированно записаны, polling не нужен.
+    // Место каждого файла (бакет+путь) приезжает embed'ом из реестра `files` —
+    // одним запросом, без N лукапов на письмо с десятком вложений.
     const { data } = await service
       .from("message_attachments")
-      .select("file_name, mime_type, storage_path, file_id")
+      .select("file_name, mime_type, storage_path, file:files(bucket, storage_path)")
       .eq("message_id", m.id);
-    const rows = (data ?? []) as Array<{
-      file_name: string;
-      mime_type: string;
-      storage_path: string;
-      file_id: string | null;
-    }>;
+    const rows = (data ?? []) as unknown as Array<
+      AttachmentRowWithFile & { file_name: string; mime_type: string }
+    >;
 
     // Параллельная загрузка: вместо последовательного цикла гоняем все
     // downloads через Promise.all. На 9 файлах из Storage экономит секунды
     // wall-time и снижает риск WORKER_RESOURCE_LIMIT по таймауту.
     const downloaded = await Promise.all(
       rows.map(async (row) => {
-        // Бакет резолвим через реестр `files` с fallback на message-attachments:
-        // хардкод `files` терял вложения из личного Telegram (см. 2026-07-22).
-        const { bucket, storagePath } = await resolveAttachmentLocation(service, row.storage_path, row.file_id);
+        const { bucket, storagePath } = attachmentLocationFromRow(row);
         const { data: blob, error: dlErr } = await storageDownload(service, bucket, storagePath);
         if (dlErr || !blob) {
           console.error("[email-internal-send] attachment download failed:", bucket, storagePath, dlErr);
-          return null;
+          return { failed: `${row.file_name} (${bucket}/${storagePath})` };
         }
         const buf = new Uint8Array(await blob.arrayBuffer());
         return {
@@ -328,14 +325,21 @@ Deno.serve(async (req: Request) => {
     // Не отправляем письмо «наполовину»: если хоть один файл не скачался,
     // валим отправку с понятной причиной. Раньше сбой глотался в console —
     // клиент получал письмо без части вложений, и никто об этом не узнавал.
-    const missing = rows.filter((_, i) => !downloaded[i]).map((r) => r.file_name);
+    // Где именно искали — в metadata: консоль edge живёт недолго, а по этой
+    // записи потом видно, битая ссылка на реестр или пропал сам объект.
+    const missing = downloaded.filter((r): r is { failed: string } => "failed" in r);
     if (missing.length > 0) {
-      const reason = `attachments_unavailable: ${missing.join(", ")}`;
-      await markMessageFailed(service, m.id, reason, { failureSource: "email-internal-send" });
+      const names = missing.map((r) => r.failed.split(" (")[0]);
+      const reason = `attachments_unavailable: ${names.join(", ")}`;
+      await markMessageFailed(service, m.id, reason, {
+        failureSource: "email-internal-send",
+        failureCode: "attachments_unavailable",
+        failureMetadata: { missing: missing.map((r) => r.failed) },
+      });
       return jsonRes({ ok: false, error: reason }, 200, req);
     }
     for (const a of downloaded) {
-      if (a) attachments.push(a);
+      if (!("failed" in a)) attachments.push(a);
     }
   }
 

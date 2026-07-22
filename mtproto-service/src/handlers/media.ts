@@ -132,6 +132,12 @@ export async function downloadAndStoreMedia(args: {
     file_id: fileRow?.id ?? null,
   })
   if (insertError) {
+    // Две вставки не в одной транзакции: если вложение не записалось, строка в
+    // реестре осталась бы сиротой (объект в Storage и так не чистится — cleanup
+    // нет нигде). Убираем хотя бы её, чтобы реестр не мусорился.
+    if (fileRow?.id) {
+      await supabase.from("files").delete().eq("id", fileRow.id)
+    }
     throw new Error(`message_attachments insert failed: ${insertError.message}`)
   }
 }

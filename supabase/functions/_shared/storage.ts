@@ -24,19 +24,12 @@ import {
   r2List,
 } from "./r2.ts";
 
-export const STORAGE_BUCKETS = {
-  files: "files",
-  documentFiles: "document-files",
-  documentTemplates: "document-templates",
-  messageAttachments: "message-attachments",
-  participantAvatars: "participant-avatars",
-  docbuilder: "docbuilder",
-  docbuilderScreenshots: "docbuilder-screenshots",
-  docbuilderCovers: "docbuilder-covers",
-} as const;
-
-export type StorageBucket = (typeof STORAGE_BUCKETS)[keyof typeof STORAGE_BUCKETS];
-export type BucketRef = StorageBucket | (string & {});
+// Константы бакетов живут в client-free `buckets.ts` (его можно импортировать
+// из тестов — этот модуль тянет aws4fetch по https). Реэкспорт — чтобы все
+// существующие импортёры `STORAGE_BUCKETS` из `storage.ts` продолжали работать.
+import type { BucketRef } from "./buckets.ts";
+export { STORAGE_BUCKETS } from "./buckets.ts";
+export type { StorageBucket, BucketRef } from "./buckets.ts";
 
 interface UploadOptions {
   cacheControl?: string;
