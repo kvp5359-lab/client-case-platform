@@ -12,7 +12,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Check } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
 import {
@@ -52,6 +52,9 @@ type DrivePermissionEntry = {
   role: string
   emailAddress: string | null
 }
+
+/** Роли, которые нельзя снять через permissions.delete. */
+const OWNER_ROLES = new Set(['owner', 'organizer'])
 
 const ROLE_LABELS: Record<string, string> = {
   owner: 'Владелец',
@@ -138,6 +141,7 @@ export function ShareDriveFolderDialog({
   const [extraEmail, setExtraEmail] = useState('')
   const [role, setRole] = useState<ShareRole>('reader')
   const [submitting, setSubmitting] = useState(false)
+  const [revokingId, setRevokingId] = useState<string | null>(null)
 
   const { data: participants = [], isLoading: participantsLoading } = useProjectEmailParticipants(
     projectId,
@@ -149,11 +153,13 @@ export function ShareDriveFolderDialog({
     error: permissionsError,
   } = useDriveFolderPermissions(workspaceId, driveFolderId, open)
 
-  // email (lowercase) → роль на Drive
+  // email (lowercase) → доступ на Drive (роль + id permission для отзыва)
   const accessByEmail = useMemo(() => {
-    const map = new Map<string, string>()
+    const map = new Map<string, { role: string; permissionId: string }>()
     for (const p of permissions) {
-      if (p.emailAddress) map.set(p.emailAddress.toLowerCase(), p.role)
+      if (p.emailAddress) {
+        map.set(p.emailAddress.toLowerCase(), { role: p.role, permissionId: p.id })
+      }
     }
     return map
   }, [permissions])
@@ -197,6 +203,30 @@ export function ShareDriveFolderDialog({
       setExtraEmail('')
     }
     onOpenChange(nextOpen)
+  }
+
+  // Отзыв доступа (кнопка «×» при наведении). Владельца снять нельзя — Drive
+  // не позволяет, кнопка для роли owner/organizer не показывается.
+  const handleRevoke = async (permissionId: string, email: string) => {
+    if (revokingId) return
+    setRevokingId(permissionId)
+    try {
+      const { data, error } = await supabase.functions.invoke('google-drive-share-folder', {
+        body: { action: 'revoke', workspaceId, folderId: driveFolderId, permissionId },
+      })
+      if (error) throw error
+      if (data?.error) {
+        toast.error(humanizeShareError(data.error))
+        return
+      }
+      toast.success(`Доступ отключён: ${email}`)
+      await queryClient.invalidateQueries({ queryKey: ['drive-folder-permissions', driveFolderId] })
+    } catch (err) {
+      logger.error('Failed to revoke Drive folder access', err)
+      toast.error('Не удалось отключить доступ')
+    } finally {
+      setRevokingId(null)
+    }
   }
 
   const handleShare = async () => {
@@ -256,12 +286,13 @@ export function ShareDriveFolderDialog({
               <div className="max-h-56 overflow-y-auto rounded-md border divide-y">
                 {participants.map((p) => {
                   const key = p.email.toLowerCase()
-                  const existingRole = accessByEmail.get(key)
+                  const existing = accessByEmail.get(key)
                   const checked = selected.has(key)
+                  const canRevoke = !!existing && !OWNER_ROLES.has(existing.role)
                   return (
                     <label
                       key={p.id}
-                      className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-muted/40"
+                      className="group flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-muted/40"
                     >
                       <Checkbox checked={checked} onCheckedChange={() => toggle(p.email)} />
                       <span className="min-w-0 flex-1">
@@ -270,11 +301,18 @@ export function ShareDriveFolderDialog({
                           {p.email}
                         </span>
                       </span>
-                      {existingRole && (
+                      {existing && (
                         <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[11px] font-medium">
                           <Check className="h-3 w-3" />
-                          {ROLE_LABELS[existingRole] ?? 'Есть доступ'}
+                          {ROLE_LABELS[existing.role] ?? 'Есть доступ'}
                         </span>
+                      )}
+                      {canRevoke && (
+                        <RevokeButton
+                          disabled={revokingId !== null}
+                          pending={revokingId === existing.permissionId}
+                          onRevoke={() => handleRevoke(existing.permissionId, p.email)}
+                        />
                       )}
                     </label>
                   )
@@ -295,11 +333,18 @@ export function ShareDriveFolderDialog({
               <Label>Также имеют доступ</Label>
               <div className="max-h-40 overflow-y-auto rounded-md border divide-y">
                 {externalAccess.map((p) => (
-                  <div key={p.id} className="flex items-center gap-2.5 px-3 py-1.5">
+                  <div key={p.id} className="group flex items-center gap-2.5 px-3 py-1.5">
                     <span className="min-w-0 flex-1 text-sm truncate">{p.emailAddress}</span>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {ROLE_LABELS[p.role] ?? p.role}
                     </span>
+                    {!OWNER_ROLES.has(p.role) && (
+                      <RevokeButton
+                        disabled={revokingId !== null}
+                        pending={revokingId === p.id}
+                        onRevoke={() => handleRevoke(p.id, p.emailAddress ?? '')}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
@@ -349,6 +394,40 @@ export function ShareDriveFolderDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/**
+ * Кнопка «×» отзыва доступа — видна при наведении на строку (на мобиле всегда).
+ * Внутри <label> гасит default/propagation, чтобы клик не переключал чекбокс.
+ */
+function RevokeButton({
+  disabled,
+  pending,
+  onRevoke,
+}: {
+  disabled: boolean
+  pending: boolean
+  onRevoke: () => void
+}) {
+  return (
+    <button
+      type="button"
+      title="Отключить доступ"
+      disabled={disabled}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        onRevoke()
+      }}
+      className={
+        'shrink-0 p-1 rounded-md text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 ' +
+        'transition-opacity opacity-100 md:opacity-0 md:group-hover:opacity-100 disabled:pointer-events-none ' +
+        (pending ? 'md:opacity-100 animate-pulse' : '')
+      }
+    >
+      <X className="h-3.5 w-3.5" />
+    </button>
   )
 }
 

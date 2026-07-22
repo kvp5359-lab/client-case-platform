@@ -204,6 +204,30 @@ export async function grantFilePermission(
   return data.id as string;
 }
 
+/** Revoke a permission on a file/folder (Drive permissions.delete). */
+export async function deleteFilePermission(
+  fileId: string,
+  permissionId: string,
+  accessToken: string,
+): Promise<void> {
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}/permissions/${permissionId}?supportsAllDrives=true`,
+    {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
+  );
+
+  // 404 — permission уже снят (или папка недоступна): считаем цель достигнутой.
+  if (!response.ok && response.status !== 404) {
+    const text = await response.text();
+    if (response.status === 403 && /insufficient|cannotDelete|cannotModify/i.test(text)) {
+      throw new Error("insufficient_permissions");
+    }
+    throw new Error(`Failed to delete permission ${permissionId} on ${fileId}: ${text}`);
+  }
+}
+
 export interface DriveFilePermission {
   id: string;
   type: string;

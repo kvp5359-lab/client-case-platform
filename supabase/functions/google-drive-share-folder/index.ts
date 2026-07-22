@@ -3,6 +3,7 @@
  *
  * Actions:
  * - "list": вернуть текущие доступы папки (permissions.list) — кто уже имеет доступ
+ * - "revoke": снять доступ по permissionId (permissions.delete)
  * - default: выдать доступ к папке списку email (permissions.create, type=user,
  *   БЕЗ письма-уведомления от Google — sendNotificationEmail=false)
  *
@@ -17,7 +18,11 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeadersFor } from "../_shared/edge.ts";
 import { getValidAccessTokenForUser } from "../_shared/googleDriveToken.ts";
-import { grantFilePermission, listFilePermissions } from "../_shared/googleDriveHelpers.ts";
+import {
+  grantFilePermission,
+  listFilePermissions,
+  deleteFilePermission,
+} from "../_shared/googleDriveHelpers.ts";
 import { isValidUUID, isValidGoogleDriveId } from "../_shared/validation.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 
@@ -89,6 +94,19 @@ Deno.serve(async (req) => {
     if (action === "list") {
       const permissions = await listFilePermissions(folderId, accessToken);
       return json({ permissions }, 200, req);
+    }
+
+    // =========================================================================
+    // ACTION: revoke — снять доступ по permissionId
+    // =========================================================================
+    if (action === "revoke") {
+      const { permissionId } = body ?? {};
+      if (typeof permissionId !== "string" || !/^[\w-]{1,128}$/.test(permissionId)) {
+        return json({ error: "Invalid permissionId" }, 400, req);
+      }
+      await deleteFilePermission(folderId, permissionId, accessToken);
+      console.log(`${LOG_PREFIX} Revoked permission ${permissionId} on ${folderId}`);
+      return json({ success: true }, 200, req);
     }
 
     // =========================================================================
