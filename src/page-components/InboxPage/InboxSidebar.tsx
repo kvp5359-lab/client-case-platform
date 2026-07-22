@@ -42,6 +42,8 @@ type InboxSidebarProps = {
   onLoadMore?: () => void
   /** Имя текущего пользователя — для замены своего имени отправителя на «Я». */
   selfSenderName?: string | null
+  /** Воркспейс — для href строк (средний клик открывает тред в новой вкладке). */
+  workspaceId?: string
   /** Доп. классы корня (управление шириной на мобиле). */
   className?: string
   /** Узкая полоска (мобила, открыт чат): шапка списка скрыта, видны аватары. */
@@ -71,6 +73,7 @@ export const InboxSidebar = memo(function InboxSidebar({
   isFetchingNextPage = false,
   onLoadMore,
   selfSenderName,
+  workspaceId,
   className,
   narrow = false,
 }: InboxSidebarProps) {
@@ -286,6 +289,7 @@ export const InboxSidebar = memo(function InboxSidebar({
                 deliveryStatus={deliveryStatuses?.get(chat.thread_id)}
                 selfSenderName={selfSenderName}
                 mutedBadge={filter === 'muted'}
+                workspaceId={workspaceId}
               />
             ))}
             {hasNextPage && (

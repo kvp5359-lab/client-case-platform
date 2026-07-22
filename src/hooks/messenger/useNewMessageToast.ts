@@ -27,6 +27,7 @@ import { subscribeInboxBroadcast } from './inboxBroadcastBus'
 import { useNotificationMute } from '@/hooks/useNotificationMute'
 import { threadUserNameKeys } from '@/hooks/useThreadUserNames'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
+import { threadHref } from '@/lib/entityLinks'
 import type { TaskItem } from '@/components/tasks/types'
 
 /** Поля строки project_threads из realtime-payload, нужные для тоста «Новый диалог». */
@@ -382,6 +383,11 @@ export function useNewMessageToast(workspaceId: string | undefined) {
                 dismissGroup,
                 accentColor,
                 threadIcon,
+                // Ссылка на тред: средний клик / Cmd+клик по тосту открывают его
+                // в новой вкладке (обычный клик — в панели, как раньше).
+                workspaceId && msg.thread_id
+                  ? threadHref(workspaceId, msg.thread_id, msg.project_id)
+                  : null,
               ),
             {
               id: groupKey,

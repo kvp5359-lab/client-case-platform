@@ -300,6 +300,7 @@ export function BoardInboxList({
                 }}
                 onMarkAsRead={() => markReadMutation.mutate(chat)}
                 onMarkAsUnread={() => markUnreadMutation.mutate(chat)}
+                workspaceId={workspaceId}
                 deliveryStatus={deliveryStatuses.get(chat.thread_id)}
                 selfSenderName={selfSenderName}
                 mutedBadge={filter === 'muted'}

@@ -10,6 +10,7 @@ import { getInitials, getAvatarColor } from '@/utils/avatarHelpers'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 import { COLOR_TEXT } from '@/components/messenger/threadConstants'
 import type { ThreadAccentColor } from '@/hooks/messenger/useProjectThreads.types'
+import { entityLinkClickHandlers } from '@/lib/entityLinks'
 
 // SVG icons (inline, no lucide dependency in module scope)
 const iconClose = createElement(
@@ -128,6 +129,10 @@ export function buildToastContent(
   onDismiss: () => void,
   accentColor?: string | null,
   threadIcon?: string | null,
+  /** Ссылка на тред. Задана → корень тоста рендерится как <a href>, и средний
+   *  клик / Cmd+клик открывают тред в новой вкладке. Обычный клик — как раньше
+   *  (открыть в панели). */
+  href?: string | null,
 ) {
   const borderColor = accentColor
     ? (ACCENT_BORDER[accentColor as ThreadAccentColor] ?? 'border-blue-400')
@@ -135,13 +140,17 @@ export function buildToastContent(
       ? 'border-gray-800'
       : 'border-blue-400'
   return createElement(
-    'div',
+    href ? 'a' : 'div',
     {
-      className: `relative flex items-start gap-3 bg-white rounded-lg shadow-lg border-2 ${borderColor} px-4 py-3 text-foreground cursor-pointer`,
+      ...(href ? { href } : {}),
+      className: `relative flex items-start gap-3 bg-white rounded-lg shadow-lg border-2 ${borderColor} px-4 py-3 text-foreground cursor-pointer no-underline`,
       // Десктоп — 420px; на узком экране ужимаемся по ширине вьюпорта, иначе
       // фикс-420 вылезает за край мобильного экрана.
       style: { width: 'min(420px, calc(100vw - 24px))' },
-      onClick: onOpen,
+      // Средний клик / Cmd+клик отдаём браузеру, обычный — открываем в панели.
+      // Гард по кнопкам тоста («прочитано», крестик) — внутри хелпера, в фазе
+      // перехвата, поэтому их stopPropagation ему не мешает.
+      ...(href ? entityLinkClickHandlers(onOpen) : { onClick: onOpen }),
     },
     buildAvatar(senderName, avatarUrl, threadIcon, accentColor),
     (() => {

@@ -18,6 +18,7 @@ import {
 import { resolveInboxPreview } from './resolveInboxPreview'
 import { InboxItemPreview } from './InboxItemPreview'
 import { useThreadNameResolver } from '@/hooks/useThreadUserNames'
+import { threadHref, entityLinkClickHandlers } from '@/lib/entityLinks'
 
 type InboxChatItemProps = {
   chat: InboxThreadEntry
@@ -35,6 +36,9 @@ type InboxChatItemProps = {
   /** Тред заглушён (вкладка «Заглушённые») — бейдж непрочитанного светло-серый
    *  (как архив в Telegram), а не в акцент треда. */
   mutedBadge?: boolean
+  /** Воркспейс — для href строки (средний клик / Cmd+клик открывают тред в новой
+   *  вкладке). Без него строка остаётся кликабельной, но не ссылкой. */
+  workspaceId?: string
 }
 
 export const InboxChatItem = memo(function InboxChatItem({
@@ -47,6 +51,7 @@ export const InboxChatItem = memo(function InboxChatItem({
   deliveryStatus,
   selfSenderName,
   mutedBadge = false,
+  workspaceId,
 }: InboxChatItemProps) {
   const prefetchMessages = usePrefetchThreadMessages()
   const resolveThreadName = useThreadNameResolver()
@@ -75,12 +80,19 @@ export const InboxChatItem = memo(function InboxChatItem({
   const ChannelIcon = iconByThreadIcon[chat.thread_icon] ?? channelIcons[chat.channel_type] ?? MessageSquare
   const channelColor = accent.text
 
+  // Рендерим <a href> вместо <button>: средний клик / Cmd+клик открывают тред в
+  // новой вкладке нативно. Обычный левый клик гасим и открываем в панели (SPA).
+  // href без workspaceId НЕ подставляем: '#' сделал бы средний клик открытием
+  // бесполезной вкладки текущей страницы, а без атрибута это просто не ссылка.
+  const href = workspaceId ? threadHref(workspaceId, chat.thread_id, chat.project_id) : undefined
+
   return (
-    <button
-      onClick={onClick}
+    <a
+      href={href}
+      {...entityLinkClickHandlers(onClick)}
       onMouseEnter={() => prefetchMessages(chat.thread_id, chat.project_id)}
       className={cn(
-        'group/chat w-full flex items-start gap-3 px-4 py-3 text-left transition-colors',
+        'group/chat w-full flex items-start gap-3 px-4 py-3 text-left transition-colors no-underline text-inherit',
         isSelected
           ? 'bg-blue-100'
           : hasUnreadIndicator
@@ -254,6 +266,6 @@ export const InboxChatItem = memo(function InboxChatItem({
           )}
         </div>
       </div>
-    </button>
+    </a>
   )
 })

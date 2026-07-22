@@ -135,6 +135,7 @@ export function HistoryTabContent({ projectId, workspaceId }: HistoryTabContentP
                       }}
                       hideProjectName
                       selfSenderName={selfSenderName}
+                      workspaceId={workspaceId}
                     />
                   )
                 })}

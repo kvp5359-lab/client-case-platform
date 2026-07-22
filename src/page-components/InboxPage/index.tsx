@@ -314,6 +314,7 @@ export default function InboxPage() {
               сжимается в узкую полоску слева (как фон под правой панелью),
               иначе на весь экран. Десктоп — колонка 35%. */}
           <InboxSidebar
+            workspaceId={workspaceId}
             className={activeChat ? 'w-[28px] md:w-[35%]' : undefined}
             narrow={!!activeChat}
             filter={filter}

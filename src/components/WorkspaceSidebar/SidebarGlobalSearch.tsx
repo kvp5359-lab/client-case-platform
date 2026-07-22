@@ -27,7 +27,7 @@ import {
 import { useDebounce } from '@/hooks/shared/useDebounce'
 import { supabase } from '@/lib/supabase'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
-import { knowledgeArticleHref, projectHref, threadHref } from '@/lib/entityLinks'
+import { knowledgeArticleHref, projectHref, threadHref, entityLinkClickHandlers } from '@/lib/entityLinks'
 import { useThreadNameResolver } from '@/hooks/useThreadUserNames'
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
@@ -231,12 +231,8 @@ export function SidebarGlobalSearch({
       return (
         <li key={row.key}>
           <a
-            href={href ?? '#'}
-            onClick={(e) => {
-              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
-              e.preventDefault()
-              handlePick(row)
-            }}
+            href={href ?? undefined}
+            {...entityLinkClickHandlers(() => handlePick(row))}
             className="w-full text-left px-3 py-1.5 flex items-start gap-2 hover:bg-gray-100 transition-colors no-underline text-inherit"
           >
             <div className="pt-0.5">

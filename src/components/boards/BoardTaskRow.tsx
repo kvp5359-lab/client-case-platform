@@ -2,6 +2,7 @@
 
 import { Fragment, useMemo } from 'react'
 import { cn } from '@/lib/utils'
+import { threadHref, entityLinkClickHandlers } from '@/lib/entityLinks'
 import { safeCssColor } from '@/utils/isValidCssColor'
 import { StatusDropdown, type StatusOption } from '@/components/common/status-dropdown'
 import { ParticipantAvatars, type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
@@ -280,9 +281,13 @@ export function BoardTaskRow({
     : undefined
 
   return (
-    <div
+    // <a href> вместо div: средний клик / Cmd+клик открывают тред в новой вкладке.
+    // draggable={false} — иначе браузер тащит ссылку и мешает сортировке dnd-kit.
+    <a
+      href={threadHref(workspaceId, task.id, task.project_id)}
+      draggable={false}
       className={cn(
-        'group/board-row relative cursor-pointer overflow-hidden transition-colors',
+        'group/board-row relative cursor-pointer overflow-hidden transition-colors no-underline text-inherit block',
         isCards
           ? cn(
               'rounded-md border px-2.5 py-1 hover:shadow-sm',
@@ -294,9 +299,7 @@ export function BoardTaskRow({
             ),
       )}
       style={selectedStyle}
-      role="button"
-      tabIndex={0}
-      onClick={handleClick}
+      {...entityLinkClickHandlers(handleClick)}
       onKeyDown={handleKeyDown}
     >
       {rows.map((row, i) => {
@@ -333,6 +336,6 @@ export function BoardTaskRow({
           </div>
         )
       })}
-    </div>
+    </a>
   )
 }

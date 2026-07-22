@@ -7,6 +7,7 @@
 import { useMemo, createElement, forwardRef } from 'react'
 import { CheckSquare, GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { threadHref, entityLinkClickHandlers } from '@/lib/entityLinks'
 import { StatusDropdown, type StatusOption } from '@/components/common/status-dropdown'
 import { type AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 import type { DraggableAttributes } from '@dnd-kit/core'
@@ -128,18 +129,21 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
         <CheckSquare className="w-4 h-4 shrink-0 text-muted-foreground" />
       )}
 
-      {/* Кликабельная область — открывает карточку задачи */}
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onOpen}
+      {/* Кликабельная область — открывает карточку задачи. Это <a href>, чтобы
+          средний клик / Cmd+клик открывали тред в новой вкладке; обычный левый
+          клик гасим и открываем в панели. draggable={false} — иначе браузер
+          начинает нативный drag ссылки и мешает сортировке dnd-kit. */}
+      <a
+        href={threadHref(workspaceId, task.id, task.project_id)}
+        draggable={false}
+        {...entityLinkClickHandlers(onOpen)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault()
             onOpen()
           }
         }}
-        className="flex-1 flex items-center gap-2 min-w-0 text-left cursor-pointer"
+        className="flex-1 flex items-center gap-2 min-w-0 text-left cursor-pointer no-underline text-inherit"
       >
         <span
           className={cn('text-sm font-medium truncate', isOverdue && 'text-red-600')}
@@ -220,7 +224,7 @@ export const TaskRow = forwardRef<HTMLDivElement, TaskRowProps>(function TaskRow
           onRequestDelete={canDeleteTask(task.created_by) ? onRequestDelete : undefined}
           triggerClassName="md:opacity-0 md:group-hover/row:opacity-100"
         />
-      </div>
+      </a>
     </div>
   )
 })
