@@ -17,7 +17,6 @@ import { TemplateItemsList } from './create-project/TemplateItemsList'
 import { useProjectTemplateContent } from './create-project/useProjectTemplateContent'
 import { ParticipantsPicker } from '@/components/participants/ParticipantsPicker'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
-import { useTemplateTaskGroups } from '@/hooks/plan/useTemplateTaskGroups'
 import { SYSTEM_PROJECT_ROLES } from '@/types/permissions'
 import { projectTemplateKeys } from '@/hooks/queryKeys'
 import type { ThreadTemplate } from '@/types/threadTemplate'
@@ -79,12 +78,15 @@ export function CreateProjectDialog({
     [projectTemplatesRaw],
   )
 
-  const { docKitTemplates, formTemplates, scopedThreadTemplates, planContentBlocks } =
-    useProjectTemplateContent(activeTemplateId, currentWorkspaceId, open)
-
-  // Группы задач шаблона — чтобы в списке «Задачи и чаты» показывать группы,
-  // как в редакторе шаблона (а не плоским списком).
-  const { groups: templateTaskGroups } = useTemplateTaskGroups(activeTemplateId, currentWorkspaceId)
+  // Состав шаблона (включая группы задач) — общий хук с AddFromTemplateDialog,
+  // чтобы список задач в обоих окнах был одинаковым.
+  const {
+    docKitTemplates,
+    formTemplates,
+    scopedThreadTemplates,
+    planContentBlocks,
+    taskGroups: templateTaskGroups,
+  } = useProjectTemplateContent(activeTemplateId, currentWorkspaceId, open)
 
   // Массово отметить/снять все задачи, чаты и блоки состава шаблона.
   const toggleAllTasks = (select: boolean) => {

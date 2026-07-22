@@ -2,9 +2,11 @@
 
 /**
  * Загрузка контента шаблона проекта (наборы документов, анкеты, шаблоны тредов,
- * структурные блоки плана) для выбранного project_template. Общий источник для
- * CreateProjectDialog (создание проекта) и AddFromTemplateDialog (добавление в
- * существующий проект) — чтобы не дублировать 4 запроса + нормализацию.
+ * группы задач, структурные блоки плана) для выбранного project_template.
+ * Общий источник для CreateProjectDialog (создание проекта) и
+ * AddFromTemplateDialog (добавление в существующий проект) — чтобы не
+ * дублировать запросы + нормализацию и чтобы список задач в обоих окнах был
+ * ОДИНАКОВЫМ (включая группировку).
  */
 
 import { useMemo } from 'react'
@@ -13,6 +15,7 @@ import { supabase } from '@/lib/supabase'
 import { projectTemplateKeys } from '@/hooks/queryKeys'
 import { useThreadTemplatesByProjectTemplate } from '@/hooks/messenger/useThreadTemplates'
 import { useTemplatePlan } from '@/hooks/plan/useTemplatePlan'
+import { useTemplateTaskGroups } from '@/hooks/plan/useTemplateTaskGroups'
 
 export type SimpleTemplate = { id: string; name: string }
 
@@ -53,6 +56,9 @@ export function useProjectTemplateContent(
     enabled: !!activeTemplateId && enabled,
   })
 
+  // Группы задач шаблона — чтобы список задач группировался одинаково в обоих окнах.
+  const { groups: taskGroups } = useTemplateTaskGroups(activeTemplateId, workspaceId)
+
   const { blocks: templatePlanBlocks } = useTemplatePlan(activeTemplateId, workspaceId)
   const planContentBlocks = useMemo(
     () => templatePlanBlocks.filter((b) => b.block_type === 'heading' || b.block_type === 'text'),
@@ -83,5 +89,5 @@ export function useProjectTemplateContent(
     [linkedForms],
   )
 
-  return { docKitTemplates, formTemplates, scopedThreadTemplates, planContentBlocks }
+  return { docKitTemplates, formTemplates, scopedThreadTemplates, planContentBlocks, taskGroups }
 }

@@ -59,7 +59,7 @@ export function AddFromTemplateDialog({
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set())
   const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set())
 
-  const { docKitTemplates, formTemplates, scopedThreadTemplates, planContentBlocks } =
+  const { docKitTemplates, formTemplates, scopedThreadTemplates, planContentBlocks, taskGroups } =
     useProjectTemplateContent(templateId, workspaceId, open)
 
   // Уже добавленные в проект шаблоны тредов — чтобы скрыть их из списка.
@@ -180,6 +180,7 @@ export function AddFromTemplateDialog({
             formTemplates={formTemplates}
             threads={availableThreads}
             planBlocks={planContentBlocks}
+            taskGroups={taskGroups}
             selectedDocKitIds={selectedDocKitIds}
             selectedFormIds={selectedFormIds}
             selectedThreadIds={selectedTaskIds}
@@ -188,6 +189,10 @@ export function AddFromTemplateDialog({
             onToggleForm={toggle(setSelectedFormIds)}
             onToggleThread={toggle(setSelectedTaskIds)}
             onToggleBlock={toggle(setSelectedBlockIds)}
+            onToggleAllTasks={(select) => {
+              setSelectedTaskIds(new Set(select ? availableThreads.map((t) => t.id) : []))
+              setSelectedBlockIds(new Set(select ? planContentBlocks.map((b) => b.id) : []))
+            }}
             disabled={saving}
           />
         )}
