@@ -307,12 +307,18 @@ export function ShareDriveFolderDialog({
                           {ROLE_LABELS[existing.role] ?? 'Есть доступ'}
                         </span>
                       )}
-                      {canRevoke && (
-                        <RevokeButton
-                          disabled={revokingId !== null}
-                          pending={revokingId === existing.permissionId}
-                          onRevoke={() => handleRevoke(existing.permissionId, p.email)}
-                        />
+                      {/* Слот фиксированной ширины под «×» — чтобы бейджи не съезжали
+                          между строками (у владельца кнопки нет). */}
+                      {existing && (
+                        <span className="w-6 shrink-0 flex items-center justify-center">
+                          {canRevoke && (
+                            <RevokeButton
+                              disabled={revokingId !== null}
+                              pending={revokingId === existing.permissionId}
+                              onRevoke={() => handleRevoke(existing.permissionId, p.email)}
+                            />
+                          )}
+                        </span>
                       )}
                     </label>
                   )
@@ -338,13 +344,15 @@ export function ShareDriveFolderDialog({
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {ROLE_LABELS[p.role] ?? p.role}
                     </span>
-                    {!OWNER_ROLES.has(p.role) && (
-                      <RevokeButton
-                        disabled={revokingId !== null}
-                        pending={revokingId === p.id}
-                        onRevoke={() => handleRevoke(p.id, p.emailAddress ?? '')}
-                      />
-                    )}
+                    <span className="w-6 shrink-0 flex items-center justify-center">
+                      {!OWNER_ROLES.has(p.role) && (
+                        <RevokeButton
+                          disabled={revokingId !== null}
+                          pending={revokingId === p.id}
+                          onRevoke={() => handleRevoke(p.id, p.emailAddress ?? '')}
+                        />
+                      )}
+                    </span>
                   </div>
                 ))}
               </div>

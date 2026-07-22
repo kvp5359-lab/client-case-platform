@@ -19,6 +19,7 @@ import {
   Cloud,
   CloudDownload,
   UserPlus,
+  ExternalLink,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -308,18 +309,54 @@ export const KitDocuments = memo(function KitDocuments({
             </h3>
             <ChevronRight className="h-4 w-4 text-muted-foreground/70 transition-transform rotate-90" />
           </button>
-          {kit.drive_folder_id && (
-            <a
-              href={buildGoogleDriveFolderUrl(kit.drive_folder_id)}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Открыть папку на Google Drive"
-              className="shrink-0 p-1 rounded-md opacity-70 hover:opacity-100 hover:bg-muted/50 transition-opacity"
-              onClick={(e) => e.stopPropagation()}
+          {kit.drive_folder_id ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  title="Google Drive"
+                  className="shrink-0 p-1 rounded-md opacity-80 hover:opacity-100 hover:bg-muted/50 transition-opacity"
+                >
+                  <GoogleDriveIcon className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem asChild>
+                  <a
+                    href={buildGoogleDriveFolderUrl(kit.drive_folder_id)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Открыть на Google Drive
+                  </a>
+                </DropdownMenuItem>
+                {onCreateDriveFolders && (
+                  <DropdownMenuItem onClick={() => onCreateDriveFolders(kit)}>
+                    <HardDrive className="h-4 w-4 mr-2" />
+                    Создать папки на Google Drive
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={handleSyncKitSource}>
+                  <CloudDownload className="h-4 w-4 mr-2" />
+                  Обновить файлы из источника
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShareDialogOpen(true)}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Доступ к папке Drive по email
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : onCreateDriveFolders ? (
+            <button
+              type="button"
+              title="Подключить папку Google Drive как источник"
+              onClick={() => onCreateDriveFolders(kit)}
+              className="shrink-0 p-1 rounded-md grayscale opacity-40 hover:grayscale-0 hover:opacity-100 hover:bg-muted/50 transition-all"
             >
               <GoogleDriveIcon className="h-4 w-4" />
-            </a>
-          )}
+            </button>
+          ) : null}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -342,24 +379,6 @@ export const KitDocuments = memo(function KitDocuments({
                 <Download className="h-4 w-4 mr-2" />
                 Скачать документы
               </DropdownMenuItem>
-              {onCreateDriveFolders && (
-                <DropdownMenuItem onClick={() => onCreateDriveFolders(kit)}>
-                  <HardDrive className="h-4 w-4 mr-2" />
-                  Создать папки на Google Drive
-                </DropdownMenuItem>
-              )}
-              {kit.drive_folder_id && (
-                <DropdownMenuItem onClick={handleSyncKitSource}>
-                  <CloudDownload className="h-4 w-4 mr-2" />
-                  Обновить файлы из источника
-                </DropdownMenuItem>
-              )}
-              {kit.drive_folder_id && (
-                <DropdownMenuItem onClick={() => setShareDialogOpen(true)}>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Доступ к папке Drive по email
-                </DropdownMenuItem>
-              )}
               {kit.template_id && (
                 <DropdownMenuItem onClick={() => onSyncKit(kit)}>
                   <RefreshCw className="h-4 w-4 mr-2" />
