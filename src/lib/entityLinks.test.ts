@@ -10,6 +10,7 @@ function clickEvent(
     shiftKey: boolean
     altKey: boolean
     button: number
+    currentTarget: Element | null
   }> = {},
 ) {
   return {
@@ -19,6 +20,8 @@ function clickEvent(
     altKey: false,
     button: 0,
     target,
+    // По умолчанию граница поиска контролов — сам якорь строки.
+    currentTarget: target?.closest('a') ?? null,
     preventDefault: vi.fn(),
     ...overrides,
   }
@@ -26,7 +29,12 @@ function clickEvent(
 
 /** <a><span>текст</span><button>…</button></a> — строка-ссылка со своим контролом. */
 function buildRow() {
+  // dnd-kit спредит на обёртку строки свои attributes, среди них role="button".
+  const dndWrapper = document.createElement('div')
+  dndWrapper.setAttribute('role', 'button')
+  document.body.appendChild(dndWrapper)
   const anchor = document.createElement('a')
+  dndWrapper.appendChild(anchor)
   const text = document.createElement('span')
   const control = document.createElement('button')
   const roleControl = document.createElement('div')
@@ -34,7 +42,7 @@ function buildRow() {
   const insideControl = document.createElement('span') // иконка ВНУТРИ кнопки
   control.appendChild(insideControl)
   anchor.append(text, control, roleControl)
-  return { anchor, text, control, roleControl, insideControl }
+  return { anchor, text, control, roleControl, insideControl, dndWrapper }
 }
 
 describe('isModifiedClick', () => {
@@ -103,6 +111,18 @@ describe('entityLinkClickHandlers', () => {
     const e = clickEvent(text)
     entityLinkClickHandlers(onOpen).onClickCapture(e)
     expect(e.preventDefault).not.toHaveBeenCalled()
+  })
+
+  it('🔴 регресс: role="button" на DnD-ОБЁРТКЕ (предке якоря) не ломает обычный клик', () => {
+    // dnd-kit вешает role="button" на обёртку строки. closest() уходил выше
+    // якоря, находил её, и КАЖДЫЙ клик считался кликом по контролу — тред
+    // переставал открываться. Поиск обязан останавливаться на якоре.
+    const onOpen = vi.fn()
+    const { text, anchor } = buildRow()
+    const e = clickEvent(text, { currentTarget: anchor })
+    entityLinkClickHandlers(onOpen).onClick(e)
+    expect(onOpen).toHaveBeenCalledTimes(1)
+    expect(e.preventDefault).toHaveBeenCalled()
   })
 
   it('onClick по контролу не открывает панель (двойного действия нет)', () => {

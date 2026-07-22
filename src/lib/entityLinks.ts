@@ -49,7 +49,26 @@ type LinkMouseEvent = {
   altKey: boolean
   button: number
   target: EventTarget | null
+  /** Сам якорь — граница поиска контролов (см. isControlInsideLink). */
+  currentTarget: EventTarget | null
   preventDefault: () => void
+}
+
+/**
+ * Есть ли между целью клика и якорём интерактивный элемент.
+ *
+ * 🪤 Идём вверх ВРУЧНУЮ до якоря, а не `closest()`: closest уходит выше якоря и
+ * находит предков. Строку на доске dnd-kit оборачивает div'ом со своими
+ * `attributes`, а там `role="button"` — closest матчил обёртку, и КАЖДЫЙ клик по
+ * строке считался кликом по контролу (тред переставал открываться).
+ */
+function isControlInsideLink(target: EventTarget | null, anchor: EventTarget | null): boolean {
+  let node = target instanceof Element ? target : null
+  while (node && node !== anchor) {
+    if (node.matches(INTERACTIVE_INSIDE_LINK)) return true
+    node = node.parentElement
+  }
+  return false
 }
 
 /** Клик «в новую вкладку/окно» — отдаём браузеру, ничего не перехватываем. */
@@ -73,12 +92,10 @@ export function isModifiedClick(
 export function entityLinkClickHandlers(onOpen: () => void) {
   return {
     onClickCapture: (e: LinkMouseEvent) => {
-      const el = e.target instanceof Element ? e.target : null
-      if (el?.closest(INTERACTIVE_INSIDE_LINK)) e.preventDefault()
+      if (isControlInsideLink(e.target, e.currentTarget)) e.preventDefault()
     },
     onClick: (e: LinkMouseEvent) => {
-      const el = e.target instanceof Element ? e.target : null
-      if (el?.closest(INTERACTIVE_INSIDE_LINK)) return
+      if (isControlInsideLink(e.target, e.currentTarget)) return
       if (isModifiedClick(e)) return
       e.preventDefault()
       onOpen()
