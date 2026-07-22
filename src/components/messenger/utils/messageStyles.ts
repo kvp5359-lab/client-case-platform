@@ -144,13 +144,16 @@ export function resolveBubbleAppearance(i: BubbleAppearanceInput): BubbleAppeara
       ? 'border-neutral-900'
       : colors.staffBorder
 
+  // Плашка времени берёт фон У БАБЛА (ownBubbleClass/incomingBubbleClass), а не
+  // сырой акцент треда: иначе у сообщения «Команде» в клиентском чате бабл серый,
+  // а плашка времени остаётся цвета треда (ловили на вложении в WhatsApp-треде).
   const timestampPillBg = i.isDraft
     ? 'bg-white'
     : i.isOwn
       ? i.deliveryFailed
         ? 'bg-white'
-        : bgClassOf(colors.own)
-      : bgClassOf(colors.incoming)
+        : bgClassOf(ownBubbleClass)
+      : bgClassOf(incomingBubbleClass)
 
   return {
     ownBubbleClass,
