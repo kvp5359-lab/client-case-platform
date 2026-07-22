@@ -4642,7 +4642,7 @@
     {
       "args": "p_workspace_id uuid, p_user_id uuid",
       "name": "get_inbox_unread_threads_impl",
-      "body_md5": "4c74282df3d3097d96a5f685e3256496"
+      "body_md5": "bd6404880dc81f04c2ff27d9dbd7995d"
     },
     {
       "args": "p_workspace_id uuid",

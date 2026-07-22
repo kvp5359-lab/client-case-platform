@@ -9,9 +9,10 @@
  * Используется в: сайдбаре, PanelTabs, InboxPage, FloatingPanelButtons, favicon.
  */
 
-import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMemo, useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import { subscribeDraftChanges } from '@/components/messenger/hooks/draftChangeBus'
 import { useAuth } from '@/contexts/AuthContext'
 import { calcThreadUnread, calcTotalUnread, countInboxSegments, getAggregateBadgeDisplay, type BadgeDisplay } from '@/utils/inboxUnread'
 import { canAccessThread, type ThreadAccessInfo } from '@/utils/threadAccess'
@@ -238,6 +239,7 @@ export function useFilteredInbox(workspaceId: string) {
  */
 export function useFilteredInboxUnread(workspaceId: string) {
   const { user } = useAuth()
+  const queryClient = useQueryClient()
 
   const { data: rawUnread = [], ...queryRest } = useQuery({
     queryKey: inboxKeys.unread(workspaceId),
@@ -245,6 +247,15 @@ export function useFilteredInboxUnread(workspaceId: string) {
     enabled: !!workspaceId && !!user,
     staleTime: STALE_TIME.SHORT,
   })
+
+  // Вкладка показывает и треды с начатым черновиком. Черновик пишется в этой же
+  // вкладке браузера, а localStorage/сеть о таком не уведомляют — поэтому
+  // слушаем свою шину и перезапрашиваем список.
+  useEffect(() => {
+    return subscribeDraftChanges(() => {
+      void queryClient.invalidateQueries({ queryKey: inboxKeys.unread(workspaceId) })
+    })
+  }, [queryClient, workspaceId])
 
   const data = useAccessFilter(rawUnread, workspaceId)
   return { data, ...queryRest }
