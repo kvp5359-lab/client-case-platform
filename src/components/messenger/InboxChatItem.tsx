@@ -65,8 +65,11 @@ export const InboxChatItem = memo(function InboxChatItem({
   // Флага нет в строке инбокса (v3_for его не несёт) — берём из кэша агрегатов.
   const mixedUnread = useThreadMixedUnread(workspaceId, chat.thread_id)
 
-  // Черновик из localStorage
-  const draftHtml = localStorage.getItem(`msg_draft:${chat.project_id}:${chat.thread_id}`)
+  // Черновик из localStorage. Ключ — РОВНО тот, что пишет композер
+  // (MessageInput: `msg_draft:{threadId}`). Раньше читался
+  // `msg_draft:{project_id}:{thread_id}` — такой ключ для тредов никогда не
+  // пишется, поэтому пометка «Черновик» в списке не появлялась вообще.
+  const draftHtml = localStorage.getItem(`msg_draft:${chat.thread_id}`)
   const draftText = draftHtml ? stripHtml(draftHtml).trim() || null : null
 
   const badge = getBadgeDisplay(chat)
