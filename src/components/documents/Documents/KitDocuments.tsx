@@ -442,6 +442,7 @@ export const KitDocuments = memo(function KitDocuments({
           open={shareDialogOpen}
           onOpenChange={setShareDialogOpen}
           workspaceId={kit.workspace_id}
+          projectId={kit.project_id}
           driveFolderId={kit.drive_folder_id}
           folderName={kitName}
         />

@@ -1,33 +1,43 @@
 /**
  * Edge Function: google-drive-share-folder
  *
- * Выдаёт доступ к папке Google Drive конкретному email (Drive API
- * permissions.create, type=user). Google сам шлёт письмо-приглашение.
+ * Actions:
+ * - "list": вернуть текущие доступы папки (permissions.list) — кто уже имеет доступ
+ * - default: выдать доступ к папке списку email (permissions.create, type=user,
+ *   БЕЗ письма-уведомления от Google — sendNotificationEmail=false)
  *
  * Auth: verify_jwt=true (только фронт) → getUser → членство в воркспейсе →
  * Google-токен вызывающего из google_drive_tokens. Делиться может только
  * аккаунт, у которого есть право шарить папку (обычно владелец/создатель).
  *
- * Body: { workspaceId, folderId, email, role: "reader" | "writer" }
+ * Body: { workspaceId, folderId, action?: "list", emails?: string[], role?: "reader" | "writer" }
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeadersFor } from "../_shared/edge.ts";
 import { getValidAccessTokenForUser } from "../_shared/googleDriveToken.ts";
-import { grantFilePermission } from "../_shared/googleDriveHelpers.ts";
+import { grantFilePermission, listFilePermissions } from "../_shared/googleDriveHelpers.ts";
 import { isValidUUID, isValidGoogleDriveId } from "../_shared/validation.ts";
 import { checkWorkspaceMembership } from "../_shared/safeErrorResponse.ts";
 
 const LOG_PREFIX = "[google-drive-share-folder]";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ALLOWED_ROLES = new Set(["reader", "writer"]);
+const MAX_EMAILS = 50;
 
 function json(payload: unknown, status: number, req: Request): Response {
   return new Response(JSON.stringify(payload), {
     status,
     headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
   });
+}
+
+const KNOWN_ERRORS = ["Google Drive not connected", "insufficient_permissions", "folder_not_found"];
+
+function errorCode(error: unknown): string {
+  const raw = error instanceof Error ? error.message : "";
+  return KNOWN_ERRORS.includes(raw) ? raw : "internal_error";
 }
 
 Deno.serve(async (req) => {
@@ -57,19 +67,13 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { workspaceId, folderId, email, role } = body ?? {};
+    const { workspaceId, folderId, action } = body ?? {};
 
     if (!workspaceId || !isValidUUID(workspaceId)) {
       return json({ error: "workspaceId is required" }, 400, req);
     }
     if (!folderId || !isValidGoogleDriveId(folderId)) {
       return json({ error: "Invalid folderId" }, 400, req);
-    }
-    if (typeof email !== "string" || !EMAIL_RE.test(email.trim())) {
-      return json({ error: "Invalid email" }, 400, req);
-    }
-    if (typeof role !== "string" || !ALLOWED_ROLES.has(role)) {
-      return json({ error: "Invalid role" }, 400, req);
     }
 
     const isMember = await checkWorkspaceMembership(supabaseAdmin, user.id, workspaceId);
@@ -79,26 +83,59 @@ Deno.serve(async (req) => {
 
     const accessToken = await getValidAccessTokenForUser(supabaseAdmin, user.id);
 
-    const permissionId = await grantFilePermission(
-      folderId,
-      email.trim(),
-      role as "reader" | "writer",
-      accessToken,
-    );
+    // =========================================================================
+    // ACTION: list — текущие доступы папки
+    // =========================================================================
+    if (action === "list") {
+      const permissions = await listFilePermissions(folderId, accessToken);
+      return json({ permissions }, 200, req);
+    }
 
-    console.log(`${LOG_PREFIX} Granted ${role} on ${folderId} (permission ${permissionId})`);
+    // =========================================================================
+    // DEFAULT: выдать доступ списку email (без письма-уведомления)
+    // =========================================================================
+    const { emails, role } = body ?? {};
 
-    return json({ success: true, permissionId }, 200, req);
+    if (!Array.isArray(emails) || emails.length === 0 || emails.length > MAX_EMAILS) {
+      return json({ error: "emails must be a non-empty array" }, 400, req);
+    }
+    const cleaned = emails
+      .filter((e: unknown): e is string => typeof e === "string")
+      .map((e: string) => e.trim())
+      .filter((e: string) => EMAIL_RE.test(e));
+    if (cleaned.length === 0) {
+      return json({ error: "No valid emails" }, 400, req);
+    }
+    if (typeof role !== "string" || !ALLOWED_ROLES.has(role)) {
+      return json({ error: "Invalid role" }, 400, req);
+    }
+
+    const granted: string[] = [];
+    const failed: Array<{ email: string; error: string }> = [];
+
+    // Последовательно — уважая rate limits Drive API (как batch в create-folder).
+    for (const email of cleaned) {
+      try {
+        await grantFilePermission(folderId, email, role as "reader" | "writer", accessToken);
+        granted.push(email);
+      } catch (err) {
+        console.error(`${LOG_PREFIX} Failed to grant to ${email}:`, err);
+        failed.push({ email, error: errorCode(err) });
+      }
+    }
+
+    console.log(`${LOG_PREFIX} Granted ${role} on ${folderId}: ok=${granted.length} fail=${failed.length}`);
+
+    return json({ success: failed.length === 0, granted, failed }, 200, req);
   } catch (error) {
     console.error(`${LOG_PREFIX} Error:`, error);
 
-    const raw = error instanceof Error ? error.message : "";
-    const known = ["Google Drive not connected", "insufficient_permissions", "folder_not_found"];
+    const code = errorCode(error);
     // Известные ошибки отдаём 200 { error } — supabase.functions.invoke на
     // non-2xx прячет тело ответа, а фронту нужен код для человеческого текста.
-    const message = known.includes(raw) ? raw : "Internal server error";
-    const status = message === "Internal server error" ? 500 : 200;
-
-    return json({ error: message }, status, req);
+    if (code !== "internal_error") {
+      return json({ error: code }, 200, req);
+    }
+    return json({ error: "Internal server error" }, 500, req);
   }
 });

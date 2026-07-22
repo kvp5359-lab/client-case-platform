@@ -168,7 +168,7 @@ export async function createDriveFolder(
 
 /**
  * Grant permission on a file/folder to a specific email (Drive permissions.create).
- * Google sends the invitation email itself (sendNotificationEmail=true).
+ * Без письма-уведомления от Google (sendNotificationEmail=false).
  * Throws with codes the caller maps to human messages:
  * - "insufficient_permissions" — token's account cannot share this file
  * - "folder_not_found" — file not visible to the token (deleted or no access)
@@ -180,7 +180,7 @@ export async function grantFilePermission(
   accessToken: string,
 ): Promise<string> {
   const response = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true&sendNotificationEmail=true`,
+    `https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true&sendNotificationEmail=false`,
     {
       method: "POST",
       headers: {
@@ -202,6 +202,53 @@ export async function grantFilePermission(
 
   const data = await response.json();
   return data.id as string;
+}
+
+export interface DriveFilePermission {
+  id: string;
+  type: string;
+  role: string;
+  emailAddress: string | null;
+}
+
+/** List current permissions of a file/folder (who has access). */
+export async function listFilePermissions(
+  fileId: string,
+  accessToken: string,
+): Promise<DriveFilePermission[]> {
+  const permissions: DriveFilePermission[] = [];
+  let pageToken: string | null = null;
+
+  do {
+    const url: string =
+      `https://www.googleapis.com/drive/v3/files/${fileId}/permissions` +
+      `?supportsAllDrives=true&fields=permissions(id,type,role,emailAddress),nextPageToken` +
+      (pageToken ? `&pageToken=${pageToken}` : "");
+    const response: Response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) throw new Error("folder_not_found");
+      throw new Error(`Failed to list permissions on ${fileId}: ${await response.text()}`);
+    }
+
+    const data: {
+      permissions?: Array<{ id: string; type: string; role: string; emailAddress?: string | null }>;
+      nextPageToken?: string | null;
+    } = await response.json();
+    for (const p of data.permissions ?? []) {
+      permissions.push({
+        id: p.id,
+        type: p.type,
+        role: p.role,
+        emailAddress: p.emailAddress ?? null,
+      });
+    }
+    pageToken = data.nextPageToken ?? null;
+  } while (pageToken);
+
+  return permissions;
 }
 
 /** Move a file/folder from one parent to another. */
