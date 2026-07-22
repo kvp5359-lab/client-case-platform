@@ -291,8 +291,8 @@ function SortableFolder({
             первую цифру своих слотов — поэтому правится. */}
         {numbered && (
           <NumberBadge
-            value={numberOf(docFolderKey(folder.folder_id))}
-            onCommit={(v) => onSetNumber(docFolderKey(folder.folder_id), v)}
+            value={numberOf(folderKey)}
+            onCommit={(v) => onSetNumber(folderKey, v)}
           />
         )}
         <button

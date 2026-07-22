@@ -135,28 +135,40 @@ export async function regenerateArticleShareLink(
  */
 const PUBLIC_SHARE_ORIGIN = 'https://my.clientcase.app'
 
-/** Хосты, с которых НЕЛЬЗЯ строить ссылку клиенту (адрес машины разработчика). */
-function isLocalOrigin(hostname: string): boolean {
+/**
+ * Origin, с которого НЕЛЬЗЯ строить ссылку клиенту (адрес машины разработчика).
+ *
+ * Главный признак — протокол: прод всегда за https (см. src/proxy.ts — все
+ * редиректы только на https), локальный dev — http. Это закрывает и localhost,
+ * и LAN-IP (`http://192.168.x.x:8080` — dev, открытый с телефона), и IPv6.
+ * Явный список хостов оставлен на случай https на локалке (self-signed).
+ */
+export function isLocalShareOrigin(location: { protocol: string; hostname: string }): boolean {
+  if (location.protocol !== 'https:') return true
+  const h = location.hostname
   return (
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1' ||
-    hostname === '0.0.0.0' ||
-    hostname.endsWith('.localhost') ||
-    hostname.endsWith('.local')
+    h === 'localhost' ||
+    h === '127.0.0.1' ||
+    h === '0.0.0.0' ||
+    h === '[::1]' ||
+    h.endsWith('.localhost') ||
+    h.endsWith('.local')
   )
 }
 
 /**
  * Построить полный публичный URL по токену — на текущем host'е воркспейса.
+ * Вне браузера (SSR) — сразу канонический публичный origin (не относительный
+ * путь, как раньше: ссылка предназначена для копирования/отправки наружу).
  *
  * 🪤 На локальном dev адрес вкладки — localhost, а БД общая с продом: ссылка
  * `http://localhost:8080/a/…` реально уходила клиенту в Telegram (который её
  * молча выбрасывает — оставался голый текст) и в любом случае не открылась бы
- * (инцидент 2026-07-22, список документов «молнией»). Для локальных хостов
- * подставляем канонический публичный origin.
+ * (инцидент 2026-07-22, список документов «молнией»). Для локальных origin'ов
+ * подставляем канонический публичный.
  */
 export function buildShareUrl(token: string): string {
   if (typeof window === 'undefined') return `${PUBLIC_SHARE_ORIGIN}/a/${token}`
-  const { origin, hostname } = window.location
-  return `${isLocalOrigin(hostname) ? PUBLIC_SHARE_ORIGIN : origin}/a/${token}`
+  const loc = window.location
+  return `${isLocalShareOrigin(loc) ? PUBLIC_SHARE_ORIGIN : loc.origin}/a/${token}`
 }
