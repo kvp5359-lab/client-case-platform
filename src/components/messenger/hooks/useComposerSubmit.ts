@@ -3,6 +3,7 @@ import type { Editor } from '@tiptap/react'
 import { ATTACHMENT_PLACEHOLDER } from '@/lib/messenger/attachmentPlaceholder'
 import { MODE_VISIBILITY, type ComposerMode } from '../ComposerVisibilitySwitch'
 import { extractMentionIds } from '../messengerMention'
+import { hasComposerPayload } from '@/lib/messenger/composerContent'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
 import type { ComposerTranslation } from './useComposerTranslation'
 import type { MessageInputProps } from '../MessageInput.types'
@@ -24,6 +25,14 @@ export function useComposerSubmit(deps: {
   isPending: boolean
   files: File[]
   existingAttachments: ExistingAttachment[]
+  /**
+   * Сколько вложений пришло из буфера пересылки. Сами объекты композеру не
+   * нужны — их к отправке подмешивает `useMessengerHandlers` из своего
+   * состояния, здесь достаточно количества. Без него отправка ОДНОГО
+   * пересланного файла без текста молча не срабатывала: кнопка активна
+   * (`hasContent` их учитывает), а гард ниже видел пустой текст и пустой `files`.
+   */
+  forwardedCount: number
   threadId?: string
   replyTo: ProjectMessage | null
   composerMode: ComposerMode
@@ -57,6 +66,7 @@ export function useComposerSubmit(deps: {
     isPending,
     files,
     existingAttachments,
+    forwardedCount,
     threadId,
     replyTo,
     composerMode,
@@ -113,7 +123,11 @@ export function useComposerSubmit(deps: {
     // disabled, но Enter идёт мимо неё).
     if (sendBlockedReason) return
 
-    const hasMessageContent = !!textContent || files.length > 0
+    const hasMessageContent = hasComposerPayload({
+      hasText: !!textContent,
+      fileCount: files.length,
+      forwardedCount,
+    })
     const hasPendingStatus = !!(isTaskThread && threadId && effectivePendingStatusId)
     if (!hasMessageContent && !hasPendingStatus) return
 
@@ -177,6 +191,7 @@ export function useComposerSubmit(deps: {
   }, [
     files,
     existingAttachments,
+    forwardedCount,
     isPending,
     onSend,
     replyTo,

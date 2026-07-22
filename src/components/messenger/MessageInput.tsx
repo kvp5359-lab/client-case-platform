@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import type { Editor } from '@tiptap/react'
 import { MinimalTiptapEditor } from './MinimalTiptapEditor'
 import { EditingBanner, ReplyBanner, TranslationBanner } from './MessageInputBanners'
+import { hasComposerPayload } from '@/lib/messenger/composerContent'
 import { MessageAttachmentsRow } from './MessageAttachmentsRow'
 import { MessageInputToolbar } from './MessageInputToolbar'
 import { composerSendButtonClass } from './ComposerVisibilitySwitch'
@@ -161,6 +162,7 @@ export function MessageInput({
     isPending,
     files,
     existingAttachments,
+    forwardedCount: forwardedAttachments.length,
     threadId,
     replyTo,
     composerMode,
@@ -189,7 +191,17 @@ export function MessageInput({
   // В задачах кнопка отправки активна даже без текста/файлов, если в пикере
   // статуса выбран новый статус — тогда отправка просто применит его.
   const hasPendingStatus = !!(isTaskThread && effectivePendingStatusId)
-  const hasContent = hasText || hasAnyFiles || hasPendingStatus
+  // Общая с handleSend формула «есть что отправить» (иначе кнопка и обработчик
+  // разъезжаются — так пропала отправка одиночного пересланного файла).
+  // Плюс своё: вложения редактируемого черновика и выбранный статус.
+  const hasContent =
+    hasComposerPayload({
+      hasText,
+      fileCount: files.length,
+      forwardedCount: forwardedAttachments.length,
+    }) ||
+    existingAttachments.length > 0 ||
+    hasPendingStatus
 
   return (
     <div
