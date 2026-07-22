@@ -29,6 +29,9 @@ export const participantKeys = {
   /** Участники проекта сгруппированные по ролям — для хедера страницы проекта. */
   projectHeader: (projectId: string | undefined) =>
     ['project-header-participants', projectId] as const,
+  /** Участники проекта с заполненным email — диалог доступа к папке Drive. */
+  projectWithEmail: (projectId: string | undefined) =>
+    ['project-email-participants', projectId] as const,
 }
 
 /** Каналы связи участника (telegram/email/phone и т.д.). */

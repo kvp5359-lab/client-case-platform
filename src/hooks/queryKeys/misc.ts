@@ -31,6 +31,9 @@ export const googleDriveKeys = {
   sourceDocumentsAll: () => ['google-drive', 'source-documents'] as const,
   kitSourceDocuments: (kitId: string) =>
     ['google-drive', 'kit-source-documents', kitId] as const,
+  /** Текущие доступы (permissions) папки Drive — диалог «Доступ к папке». */
+  folderPermissions: (folderId: string) =>
+    ['google-drive', 'folder-permissions', folderId] as const,
   /** Broad-префикс для сброса лотков всех наборов проекта. */
   kitSourceDocumentsAll: () => ['google-drive', 'kit-source-documents'] as const,
   /** Лента файлов из источников по всему воркспейсу («Обновления источников»). */

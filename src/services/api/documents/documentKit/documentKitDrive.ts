@@ -183,7 +183,14 @@ export async function connectDriveSourceToKit(params: {
       if (folder.drive_folder_id) continue
       const driveId = byName.get((folder.name ?? '').trim().toLowerCase())
       if (!driveId) continue
-      await supabase.from('folders').update({ drive_folder_id: driveId }).eq('id', folder.id)
+      const { error: mapError } = await supabase
+        .from('folders')
+        .update({ drive_folder_id: driveId })
+        .eq('id', folder.id)
+      // Best-effort: без привязки файлы подпапки лягут в корень набора.
+      if (mapError) {
+        logger.error(`Не удалось привязать папку набора «${folder.name}» к Drive-подпапке:`, mapError)
+      }
     }
   }
 

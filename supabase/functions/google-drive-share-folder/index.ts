@@ -16,7 +16,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { corsHeadersFor } from "../_shared/edge.ts";
+import { corsHeadersFor, jsonRes } from "../_shared/edge.ts";
 import { getValidAccessTokenForUser } from "../_shared/googleDriveToken.ts";
 import {
   grantFilePermission,
@@ -30,13 +30,6 @@ const LOG_PREFIX = "[google-drive-share-folder]";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ALLOWED_ROLES = new Set(["reader", "writer"]);
 const MAX_EMAILS = 50;
-
-function json(payload: unknown, status: number, req: Request): Response {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
-  });
-}
 
 const KNOWN_ERRORS = ["Google Drive not connected", "insufficient_permissions", "folder_not_found"];
 
@@ -53,7 +46,7 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return json({ error: "Missing authorization header" }, 401, req);
+      return jsonRes({ error: "Missing authorization header" }, 401, req);
     }
 
     const supabaseClient = createClient(
@@ -68,22 +61,22 @@ Deno.serve(async (req) => {
 
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) {
-      return json({ error: "Unauthorized" }, 401, req);
+      return jsonRes({ error: "Unauthorized" }, 401, req);
     }
 
     const body = await req.json();
     const { workspaceId, folderId, action } = body ?? {};
 
     if (!workspaceId || !isValidUUID(workspaceId)) {
-      return json({ error: "workspaceId is required" }, 400, req);
+      return jsonRes({ error: "workspaceId is required" }, 400, req);
     }
     if (!folderId || !isValidGoogleDriveId(folderId)) {
-      return json({ error: "Invalid folderId" }, 400, req);
+      return jsonRes({ error: "Invalid folderId" }, 400, req);
     }
 
     const isMember = await checkWorkspaceMembership(supabaseAdmin, user.id, workspaceId);
     if (!isMember) {
-      return json({ error: "Access denied" }, 403, req);
+      return jsonRes({ error: "Access denied" }, 403, req);
     }
 
     const accessToken = await getValidAccessTokenForUser(supabaseAdmin, user.id);
@@ -93,7 +86,7 @@ Deno.serve(async (req) => {
     // =========================================================================
     if (action === "list") {
       const permissions = await listFilePermissions(folderId, accessToken);
-      return json({ permissions }, 200, req);
+      return jsonRes({ permissions }, 200, req);
     }
 
     // =========================================================================
@@ -102,11 +95,11 @@ Deno.serve(async (req) => {
     if (action === "revoke") {
       const { permissionId } = body ?? {};
       if (typeof permissionId !== "string" || !/^[\w-]{1,128}$/.test(permissionId)) {
-        return json({ error: "Invalid permissionId" }, 400, req);
+        return jsonRes({ error: "Invalid permissionId" }, 400, req);
       }
       await deleteFilePermission(folderId, permissionId, accessToken);
       console.log(`${LOG_PREFIX} Revoked permission ${permissionId} on ${folderId}`);
-      return json({ success: true }, 200, req);
+      return jsonRes({ success: true }, 200, req);
     }
 
     // =========================================================================
@@ -115,17 +108,17 @@ Deno.serve(async (req) => {
     const { emails, role } = body ?? {};
 
     if (!Array.isArray(emails) || emails.length === 0 || emails.length > MAX_EMAILS) {
-      return json({ error: "emails must be a non-empty array" }, 400, req);
+      return jsonRes({ error: "emails must be a non-empty array" }, 400, req);
     }
     const cleaned = emails
       .filter((e: unknown): e is string => typeof e === "string")
       .map((e: string) => e.trim())
       .filter((e: string) => EMAIL_RE.test(e));
     if (cleaned.length === 0) {
-      return json({ error: "No valid emails" }, 400, req);
+      return jsonRes({ error: "No valid emails" }, 400, req);
     }
     if (typeof role !== "string" || !ALLOWED_ROLES.has(role)) {
-      return json({ error: "Invalid role" }, 400, req);
+      return jsonRes({ error: "Invalid role" }, 400, req);
     }
 
     const granted: string[] = [];
@@ -144,7 +137,7 @@ Deno.serve(async (req) => {
 
     console.log(`${LOG_PREFIX} Granted ${role} on ${folderId}: ok=${granted.length} fail=${failed.length}`);
 
-    return json({ success: failed.length === 0, granted, failed }, 200, req);
+    return jsonRes({ success: failed.length === 0, granted, failed }, 200, req);
   } catch (error) {
     console.error(`${LOG_PREFIX} Error:`, error);
 
@@ -152,8 +145,8 @@ Deno.serve(async (req) => {
     // Известные ошибки отдаём 200 { error } — supabase.functions.invoke на
     // non-2xx прячет тело ответа, а фронту нужен код для человеческого текста.
     if (code !== "internal_error") {
-      return json({ error: code }, 200, req);
+      return jsonRes({ error: code }, 200, req);
     }
-    return json({ error: "Internal server error" }, 500, req);
+    return jsonRes({ error: "Internal server error" }, 500, req);
   }
 });

@@ -48,3 +48,52 @@ export async function getParticipantName(userId: string): Promise<string | null>
   )
   return (data as { name: string } | null)?.name ?? null
 }
+
+/** Участник проекта с заполненным email (для выдачи доступа к папке Drive). */
+export type ProjectEmailParticipant = {
+  id: string
+  name: string
+  email: string
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/**
+ * Участники проекта, у которых в карточке заполнен корректный email.
+ * Дубли по адресу (без учёта регистра) схлопываются.
+ */
+export async function getProjectParticipantsWithEmail(
+  projectId: string,
+): Promise<ProjectEmailParticipant[]> {
+  const data = await safeFetchOrThrow(
+    supabase
+      .from('project_participants')
+      .select('participants!inner(id, name, last_name, email, is_deleted)')
+      .eq('project_id', projectId),
+    'Не удалось загрузить участников проекта',
+    ParticipantError,
+  )
+  const seen = new Set<string>()
+  const result: ProjectEmailParticipant[] = []
+  for (const row of data ?? []) {
+    // PostgREST отдаёт many-to-one embed объектом (типы иногда врут массивом).
+    const p = row.participants as unknown as {
+      id: string
+      name: string | null
+      last_name: string | null
+      email: string | null
+      is_deleted: boolean | null
+    }
+    const email = (p.email ?? '').trim()
+    if (p.is_deleted || !EMAIL_RE.test(email)) continue
+    const key = email.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    result.push({
+      id: p.id,
+      name: [p.name, p.last_name].filter(Boolean).join(' ').trim() || email,
+      email,
+    })
+  }
+  return result
+}

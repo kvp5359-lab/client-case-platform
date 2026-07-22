@@ -15,6 +15,8 @@ import { toast } from 'sonner'
 import { Check, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/utils/logger'
+import { participantKeys, googleDriveKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { getProjectParticipantsWithEmail } from '@/services/api/participantService'
 import {
   Dialog,
   DialogContent,
@@ -39,12 +41,6 @@ import { GoogleDriveIcon } from '@/components/shared/GoogleDriveIcon'
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type ShareRole = 'reader' | 'writer'
-
-type ProjectEmailParticipant = {
-  id: string
-  name: string
-  email: string
-}
 
 type DrivePermissionEntry = {
   id: string
@@ -78,44 +74,18 @@ export type ShareDriveFolderDialogProps = {
 /** Участники проекта, у которых в карточке заполнен email. */
 function useProjectEmailParticipants(projectId: string, enabled: boolean) {
   return useQuery({
-    queryKey: ['project-email-participants', projectId],
-    queryFn: async (): Promise<ProjectEmailParticipant[]> => {
-      const { data, error } = await supabase
-        .from('project_participants')
-        .select('participants!inner(id, name, last_name, email, is_deleted)')
-        .eq('project_id', projectId)
-      if (error) throw error
-      const seen = new Set<string>()
-      const result: ProjectEmailParticipant[] = []
-      for (const row of data ?? []) {
-        const p = row.participants as unknown as {
-          id: string
-          name: string | null
-          last_name: string | null
-          email: string | null
-          is_deleted: boolean | null
-        }
-        const email = (p.email ?? '').trim()
-        if (p.is_deleted || !EMAIL_RE.test(email)) continue
-        const key = email.toLowerCase()
-        if (seen.has(key)) continue
-        seen.add(key)
-        result.push({
-          id: p.id,
-          name: [p.name, p.last_name].filter(Boolean).join(' ').trim() || email,
-          email,
-        })
-      }
-      return result
-    },
+    queryKey: participantKeys.projectWithEmail(projectId),
+    queryFn: () => getProjectParticipantsWithEmail(projectId),
     enabled,
+    staleTime: STALE_TIME.STANDARD,
   })
 }
 
-/** Текущие доступы папки на Drive (кто уже имеет доступ). */
+/** Текущие доступы папки на Drive (кто уже имеет доступ). Без staleTime —
+ *  список должен быть свежим при каждом открытии диалога. */
 function useDriveFolderPermissions(workspaceId: string, driveFolderId: string, enabled: boolean) {
   return useQuery({
-    queryKey: ['drive-folder-permissions', driveFolderId],
+    queryKey: googleDriveKeys.folderPermissions(driveFolderId),
     queryFn: async (): Promise<DrivePermissionEntry[]> => {
       const { data, error } = await supabase.functions.invoke('google-drive-share-folder', {
         body: { action: 'list', workspaceId, folderId: driveFolderId },
@@ -220,7 +190,7 @@ export function ShareDriveFolderDialog({
         return
       }
       toast.success(`Доступ отключён: ${email}`)
-      await queryClient.invalidateQueries({ queryKey: ['drive-folder-permissions', driveFolderId] })
+      await queryClient.invalidateQueries({ queryKey: googleDriveKeys.folderPermissions(driveFolderId) })
     } catch (err) {
       logger.error('Failed to revoke Drive folder access', err)
       toast.error('Не удалось отключить доступ')
@@ -250,7 +220,7 @@ export function ShareDriveFolderDialog({
         toast.error(`${f.email}: ${humanizeShareError(f.error)}`)
       }
       // Обновить бейджи «есть доступ»
-      await queryClient.invalidateQueries({ queryKey: ['drive-folder-permissions', driveFolderId] })
+      await queryClient.invalidateQueries({ queryKey: googleDriveKeys.folderPermissions(driveFolderId) })
       if (failed.length === 0) resetAndClose(false)
       else setSelected(new Set(failed.map((f) => f.email.toLowerCase())))
     } catch (err) {
