@@ -128,8 +128,35 @@ export async function regenerateArticleShareLink(
   return data as string
 }
 
-/** Построить полный публичный URL по токену на текущем host'е воркспейса. */
+/**
+ * Публичный host для share-ссылок, когда адресу вкладки доверять нельзя.
+ * `/a/<token>` — host-agnostic (см. src/proxy.ts), поэтому портал годится для
+ * любого воркспейса.
+ */
+const PUBLIC_SHARE_ORIGIN = 'https://my.clientcase.app'
+
+/** Хосты, с которых НЕЛЬЗЯ строить ссылку клиенту (адрес машины разработчика). */
+function isLocalOrigin(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '0.0.0.0' ||
+    hostname.endsWith('.localhost') ||
+    hostname.endsWith('.local')
+  )
+}
+
+/**
+ * Построить полный публичный URL по токену — на текущем host'е воркспейса.
+ *
+ * 🪤 На локальном dev адрес вкладки — localhost, а БД общая с продом: ссылка
+ * `http://localhost:8080/a/…` реально уходила клиенту в Telegram (который её
+ * молча выбрасывает — оставался голый текст) и в любом случае не открылась бы
+ * (инцидент 2026-07-22, список документов «молнией»). Для локальных хостов
+ * подставляем канонический публичный origin.
+ */
 export function buildShareUrl(token: string): string {
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  return `${origin}/a/${token}`
+  if (typeof window === 'undefined') return `${PUBLIC_SHARE_ORIGIN}/a/${token}`
+  const { origin, hostname } = window.location
+  return `${isLocalOrigin(hostname) ? PUBLIC_SHARE_ORIGIN : origin}/a/${token}`
 }

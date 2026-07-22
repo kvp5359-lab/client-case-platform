@@ -272,6 +272,9 @@ function SortableFolder({
   const state: boolean | 'indeterminate' =
     selCount === 0 ? false : selCount === keys.length ? true : 'indeterminate'
   const slotIds = folder.slots.map((s) => docSlotKey(s.slot_id))
+  // «Выбрать все» (hover) — только СЛОТЫ, сама папка не трогается: жирный
+  // заголовок в сообщении не нужен, когда хочется просто перечислить документы.
+  const allSlotsSelected = slotIds.length > 0 && slotIds.every((k) => selected.has(k))
 
   return (
     <div
@@ -310,6 +313,15 @@ function SortableFolder({
             {folder.slots.length}
           </span>
         </button>
+        {slotIds.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onSetSelected(slotIds, !allSlotsSelected)}
+            className="shrink-0 rounded px-1.5 py-0.5 text-xs text-muted-foreground opacity-100 transition-opacity hover:bg-accent hover:text-foreground md:opacity-0 md:group-hover/row:opacity-100"
+          >
+            {allSlotsSelected ? 'Снять все' : 'Выбрать все'}
+          </button>
+        )}
         {renderActions(folder.name, folder.article_id, folder.token)}
       </div>
 
