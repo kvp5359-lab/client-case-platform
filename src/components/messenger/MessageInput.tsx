@@ -88,7 +88,7 @@ export function MessageInput({
     // диалог и Radix DropdownMenu возвращают фокус через setTimeout, RAF
     // (16мс) может проиграть. 50мс гарантирует, что наш focus последний.
     setTimeout(() => editorRef.current?.commands.focus('end'), 50)
-  })
+  }, threadId, user?.id, workspaceId)
 
   const { saveDraft, clearDraft, skipDraftRestoreRef } = useDraftMessage(
     draftKey,

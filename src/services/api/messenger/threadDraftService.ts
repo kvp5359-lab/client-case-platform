@@ -192,18 +192,38 @@ export async function removeThreadDraftFile(link: ThreadDraftFile): Promise<void
 }
 
 /**
- * Очистить черновик целиком (после отправки). Файлы НЕ удаляем из хранилища:
- * они переходят в отправленное сообщение как message_attachments на тот же
- * files.id — удаление объекта убило бы вложение уже отправленного сообщения.
+ * Убрать все файлы черновика — вместе с объектами в хранилище.
+ *
+ * Вызывается после отправки/сброса: отправленное сообщение загрузило
+ * СОБСТВЕННЫЕ копии файлов, поэтому черновичные больше не нужны и иначе
+ * остались бы мусором.
  */
-export async function clearThreadDraft(threadId: string, userId: string): Promise<void> {
-  await deleteThreadDraftText(threadId, userId)
+export async function clearThreadDraftFilesWithStorage(
+  threadId: string,
+  userId: string,
+): Promise<void> {
+  const files = await getThreadDraftFiles(threadId, userId)
   const { error } = await supabase
     .from('thread_input_draft_files')
     .delete()
     .eq('thread_id', threadId)
     .eq('user_id', userId)
   if (error) throw error
+  if (files.length === 0) return
+  await supabase
+    .from('files')
+    .delete()
+    .in('id', files.map((f) => f.fileId))
+  await removeFromStorage(
+    STORAGE_BUCKETS.files,
+    files.map((f) => f.storagePath),
+  )
+}
+
+/** Очистить черновик целиком: текст + файлы (с объектами в хранилище). */
+export async function clearThreadDraft(threadId: string, userId: string): Promise<void> {
+  await deleteThreadDraftText(threadId, userId)
+  await clearThreadDraftFilesWithStorage(threadId, userId)
 }
 
 /** Файлы черновика → формат отправки (без повторной загрузки). */
