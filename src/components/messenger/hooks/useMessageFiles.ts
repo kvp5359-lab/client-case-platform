@@ -16,6 +16,16 @@ import { logger } from '@/utils/logger'
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20MB
 
 /**
+ * Ключ соответствия «файл в композере ↔ строка на сервере».
+ *
+ * Имя + размер, а НЕ сам объект File: после перезагрузки страницы файлы
+ * восстанавливаются из IndexedDB новыми объектами, и связь по ссылке теряется —
+ * тогда удаление файла не дошло бы до сервера (черновик остался бы висеть).
+ * `lastModified` в ключ не берём: у серверной строки его нет.
+ */
+const fileKey = (name: string, size: number) => `${name}|${size}`
+
+/**
  * Файлы композера.
  *
  * Локально файлы живут в IndexedDB (мгновенно, офлайн). Когда известны тред и
@@ -41,36 +51,62 @@ export function useMessageFiles(
 ) {
   const [files, setFiles] = useState<File[]>([])
   const syncEnabled = !!threadId && !!userId && !!workspaceId
-  // File → строка серверного черновика. WeakMap, потому что ключ — те же самые
-  // объекты File, что лежат в state; при удалении файла из state запись уходит.
-  const syncedRef = useRef(new WeakMap<File, ThreadDraftFile>())
+  // «имя|размер» → строки серверного черновика (список — на случай двух файлов с
+  // одинаковым именем и размером в одном черновике; берём по одной).
+  const syncedRef = useRef(new Map<string, ThreadDraftFile[]>())
   /** Existing server-side attachments (for draft editing — no re-download needed) */
   const [existingAttachments, setExistingAttachments] = useState<MessageAttachment[]>([])
   const [isDragging, setIsDragging] = useState(false)
 
+  /** Запомнить серверную строку файла. */
+  const putSynced = useCallback((name: string, size: number, row: ThreadDraftFile) => {
+    const key = fileKey(name, size)
+    const list = syncedRef.current.get(key)
+    if (list) list.push(row)
+    else syncedRef.current.set(key, [row])
+  }, [])
+
+  /** Забрать серверную строку файла (одноразово — файл уходит из черновика). */
+  const takeSynced = useCallback((file: File): ThreadDraftFile | undefined => {
+    const key = fileKey(file.name, file.size)
+    const list = syncedRef.current.get(key)
+    const row = list?.pop()
+    if (list && list.length === 0) syncedRef.current.delete(key)
+    return row
+  }, [])
+
   // Restore files from IndexedDB on mount / channel switch
   useEffect(() => {
     let cancelled = false
+    syncedRef.current = new Map()
     loadDraftFiles(draftKey).then(async (saved) => {
       if (cancelled) return
       setFiles(saved.length > 0 ? saved : [])
       // Clear existing attachments when switching channel/project
       setExistingAttachments([])
 
-      // Локально пусто, а на сервере файлы есть → черновик пришёл с другого
-      // устройства: скачиваем и показываем как обычные вложения.
-      if (!syncEnabled || saved.length > 0) return
+      if (!syncEnabled) return
       try {
         const remote = await getThreadDraftFiles(threadId!, userId!)
         if (cancelled || remote.length === 0) return
-        const restored: File[] = []
-        for (const r of remote) {
-          const { data, error } = await downloadFromStorage(STORAGE_BUCKETS.files, r.storagePath)
-          if (error || !data) continue
-          const file = new File([data], r.fileName, { type: r.mimeType })
-          syncedRef.current.set(file, r) // уже на сервере — повторно не заливаем
-          restored.push(file)
-        }
+        // Связь «файл ↔ серверная строка» восстанавливаем ВСЕГДА, даже когда
+        // локальные файлы уже есть: иначе после перезагрузки страницы удаление
+        // файла не дошло бы до сервера и черновик завис бы навсегда.
+        for (const r of remote) putSynced(r.fileName, r.fileSize, r)
+        // Локально пусто, а на сервере файлы есть → черновик пришёл с другого
+        // устройства: скачиваем и показываем как обычные вложения.
+        if (saved.length > 0) return
+        const restored = (
+          await Promise.all(
+            remote.map(async (r) => {
+              const { data, error } = await downloadFromStorage(
+                STORAGE_BUCKETS.files,
+                r.storagePath,
+              )
+              return error || !data ? null : new File([data], r.fileName, { type: r.mimeType })
+            }),
+          )
+        ).filter((f): f is File => !!f)
         if (cancelled || restored.length === 0) return
         setFiles(restored)
         saveDraftFiles(draftKey, restored)
@@ -81,7 +117,7 @@ export function useMessageFiles(
     return () => {
       cancelled = true
     }
-  }, [draftKey, syncEnabled, threadId, userId])
+  }, [draftKey, putSynced, syncEnabled, threadId, userId])
 
   const addFiles = useCallback(
     (newFiles: FileList | File[]) => {
@@ -96,18 +132,18 @@ export function useMessageFiles(
       }
       const arr = all.filter((f) => f.size <= MAX_FILE_SIZE)
       if (arr.length > 0) {
-        setFiles((prev) => {
-          const next = [...prev, ...arr]
-          saveDraftFiles(draftKey, next)
-          return next
-        })
+        // Побочные эффекты (IndexedDB, сеть) держим ВНЕ апдейтера setFiles —
+        // апдейтер обязан быть чистым, иначе в StrictMode он выполнится дважды.
+        const next = [...files, ...arr]
+        setFiles(next)
+        saveDraftFiles(draftKey, next)
         onFilesAdded?.()
         // Зеркалим на сервер — чтобы файл увидели с другого устройства.
         if (syncEnabled) {
           void Promise.all(
             arr.map((file, i) =>
               addThreadDraftFile(file, threadId!, userId!, workspaceId!, i).then((row) =>
-                syncedRef.current.set(file, row),
+                putSynced(file.name, file.size, row),
               ),
             ),
           )
@@ -116,25 +152,24 @@ export function useMessageFiles(
         }
       }
     },
-    [draftKey, onFilesAdded, syncEnabled, threadId, userId, workspaceId],
+    [draftKey, files, onFilesAdded, putSynced, syncEnabled, threadId, userId, workspaceId],
   )
 
   const removeFile = useCallback(
     (index: number) => {
-      setFiles((prev) => {
-        const removed = prev[index]
-        const next = prev.filter((_, i) => i !== index)
-        saveDraftFiles(draftKey, next)
-        const row = removed ? syncedRef.current.get(removed) : undefined
-        if (row) {
-          removeThreadDraftFile(row)
-            .then(() => notifyDraftChanged(threadId ?? undefined))
-            .catch((e) => logger.error('Не удалось удалить файл черновика на сервере:', e))
-        }
-        return next
-      })
+      const removed = files[index]
+      if (!removed) return
+      const next = files.filter((_, i) => i !== index)
+      setFiles(next)
+      saveDraftFiles(draftKey, next)
+      const row = takeSynced(removed)
+      if (row) {
+        removeThreadDraftFile(row)
+          .then(() => notifyDraftChanged(threadId ?? undefined))
+          .catch((e) => logger.error('Не удалось удалить файл черновика на сервере:', e))
+      }
     },
-    [draftKey, threadId],
+    [draftKey, files, takeSynced, threadId],
   )
 
   const removeExistingAttachment = useCallback((index: number) => {
@@ -150,6 +185,7 @@ export function useMessageFiles(
     setFiles([])
     setExistingAttachments([])
     clearDraftFiles(draftKey)
+    syncedRef.current = new Map()
     // Отправили/сбросили — серверная копия черновика больше не нужна. Удаляем и
     // сами объекты: отправленное сообщение загрузило собственные копии.
     if (syncEnabled) {

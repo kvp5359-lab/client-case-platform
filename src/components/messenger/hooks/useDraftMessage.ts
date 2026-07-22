@@ -133,6 +133,10 @@ export function useDraftMessage(
       clearTimeout(draftTimerRef.current)
       draftTimerRef.current = null
     }
+    // Снимок того, что мы сами положили в редактор. Если к моменту ответа сервера
+    // содержимое другое — пользователь успел начать печатать, и подставлять
+    // серверную версию нельзя (затрём набранное).
+    const restoredHtml = editor.getHTML()
 
     // Догоняем серверную версию: если на другом устройстве печатали позже —
     // подставляем её. Локальную версию показали выше сразу (без ожидания сети).
@@ -148,6 +152,8 @@ export function useDraftMessage(
         if (!remoteWins || remote.content === (saved ?? '')) return
         const ed = editorRef.current
         if (!ed) return
+        // Пользователь уже что-то набрал, пока шёл запрос — его текст важнее.
+        if (ed.getHTML() !== restoredHtml) return
         ed.commands.setContent(remote.content)
         localStorage.setItem(draftKey, remote.content)
         localStorage.setItem(tsKeyOf(draftKey), remote.updatedAt)
