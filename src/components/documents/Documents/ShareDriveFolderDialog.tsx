@@ -158,6 +158,15 @@ export function ShareDriveFolderDialog({
     return map
   }, [permissions])
 
+  // Доступы папки у людей ВНЕ списка участников проекта — показываем отдельным
+  // блоком, чтобы был виден полный список «у кого есть доступ» (как в Drive).
+  const externalAccess = useMemo(() => {
+    const participantEmails = new Set(participants.map((p) => p.email.toLowerCase()))
+    return permissions.filter(
+      (p) => p.emailAddress && !participantEmails.has(p.emailAddress.toLowerCase()),
+    )
+  }, [permissions, participants])
+
   const toggle = (email: string) => {
     setSelected((prev) => {
       const next = new Set(prev)
@@ -281,6 +290,21 @@ export function ShareDriveFolderDialog({
               </p>
             )}
           </div>
+          {externalAccess.length > 0 && (
+            <div className="space-y-1.5">
+              <Label>Также имеют доступ</Label>
+              <div className="max-h-40 overflow-y-auto rounded-md border divide-y">
+                {externalAccess.map((p) => (
+                  <div key={p.id} className="flex items-center gap-2.5 px-3 py-1.5">
+                    <span className="min-w-0 flex-1 text-sm truncate">{p.emailAddress}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {ROLE_LABELS[p.role] ?? p.role}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="drive-share-extra-email">Другой email (необязательно)</Label>
             <Input
