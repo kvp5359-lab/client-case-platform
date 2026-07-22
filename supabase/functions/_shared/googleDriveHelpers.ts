@@ -166,6 +166,44 @@ export async function createDriveFolder(
   return data.id;
 }
 
+/**
+ * Grant permission on a file/folder to a specific email (Drive permissions.create).
+ * Google sends the invitation email itself (sendNotificationEmail=true).
+ * Throws with codes the caller maps to human messages:
+ * - "insufficient_permissions" — token's account cannot share this file
+ * - "folder_not_found" — file not visible to the token (deleted or no access)
+ */
+export async function grantFilePermission(
+  fileId: string,
+  email: string,
+  role: "reader" | "writer",
+  accessToken: string,
+): Promise<string> {
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true&sendNotificationEmail=true`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ type: "user", role, emailAddress: email }),
+    },
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+    if (response.status === 404) throw new Error("folder_not_found");
+    if (response.status === 403 && /insufficient|cannotShare|sharingRateLimit/i.test(text)) {
+      throw new Error("insufficient_permissions");
+    }
+    throw new Error(`Failed to grant permission on ${fileId}: ${text}`);
+  }
+
+  const data = await response.json();
+  return data.id as string;
+}
+
 /** Move a file/folder from one parent to another. */
 export async function moveToParent(
   fileId: string,

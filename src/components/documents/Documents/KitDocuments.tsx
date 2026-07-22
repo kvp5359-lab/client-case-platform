@@ -4,7 +4,7 @@
  * Компонент набора документов — заголовок + список папок с документами
  */
 
-import { useMemo, memo } from 'react'
+import { useMemo, useState, memo } from 'react'
 import {
   ChevronRight,
   MoreHorizontal,
@@ -18,6 +18,7 @@ import {
   ArrowDown,
   Cloud,
   CloudDownload,
+  UserPlus,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -37,6 +38,9 @@ import {
 } from '@/hooks/documents/useSourceDocumentsQuery'
 import { getCurrentDocumentFile } from '@/utils/documentUtils'
 import { formatSize } from '@/utils/files/formatSize'
+import { buildGoogleDriveFolderUrl } from '@/utils/googleDrive'
+import { GoogleDriveIcon } from '@/components/shared/GoogleDriveIcon'
+import { ShareDriveFolderDialog } from './ShareDriveFolderDialog'
 import { FolderCard } from './FolderCard'
 import { KitSourceFileRow } from './KitSourceFileRow'
 import { useDocumentsContext } from './DocumentsContext'
@@ -184,6 +188,9 @@ export const KitDocuments = memo(function KitDocuments({
     [sourceByDriveFolderId],
   )
 
+  // Диалог «Открыть доступ к папке Drive» (только когда набор привязан к Drive).
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+
   // Синхронизация файлов набора из папки-источника Google Drive.
   const syncKitSource = useSyncKitSourceMutation()
   const handleSyncKitSource = () => {
@@ -301,6 +308,18 @@ export const KitDocuments = memo(function KitDocuments({
             </h3>
             <ChevronRight className="h-4 w-4 text-muted-foreground/70 transition-transform rotate-90" />
           </button>
+          {kit.drive_folder_id && (
+            <a
+              href={buildGoogleDriveFolderUrl(kit.drive_folder_id)}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Открыть папку на Google Drive"
+              className="shrink-0 p-1 rounded-md opacity-70 hover:opacity-100 hover:bg-muted/50 transition-opacity"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GoogleDriveIcon className="h-4 w-4" />
+            </a>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -333,6 +352,12 @@ export const KitDocuments = memo(function KitDocuments({
                 <DropdownMenuItem onClick={handleSyncKitSource}>
                   <CloudDownload className="h-4 w-4 mr-2" />
                   Обновить файлы из источника
+                </DropdownMenuItem>
+              )}
+              {kit.drive_folder_id && (
+                <DropdownMenuItem onClick={() => setShareDialogOpen(true)}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Доступ к папке Drive по email
                 </DropdownMenuItem>
               )}
               {kit.template_id && (
@@ -412,6 +437,15 @@ export const KitDocuments = memo(function KitDocuments({
           </div>
         )}
       </div>
+      {kit.drive_folder_id && (
+        <ShareDriveFolderDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          workspaceId={kit.workspace_id}
+          driveFolderId={kit.drive_folder_id}
+          folderName={kitName}
+        />
+      )}
     </div>
   )
 })
