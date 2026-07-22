@@ -237,6 +237,55 @@ export function draftFilesToForwarded(files: ThreadDraftFile[]): ForwardedAttach
   }))
 }
 
+export type DraftPreview = {
+  threadId: string
+  /** HTML черновика ('' — черновик только из файлов). */
+  content: string
+  hasFiles: boolean
+}
+
+/**
+ * Мои черновики воркспейса — для пометки «Черновик: …» в списке «Входящие».
+ *
+ * Отдельным запросом, а НЕ полем в резолвере инбокса: там 35 колонок и 7
+ * зависимых функций, добавление поля тянет DROP+CREATE всей цепочки с
+ * восстановлением грантов. Тот же приём уже применён для «смешанного» бейджа.
+ */
+export async function getMyDraftPreviews(
+  workspaceId: string,
+  userId: string,
+): Promise<DraftPreview[]> {
+  const [texts, files] = await Promise.all([
+    supabase
+      .from('thread_input_drafts')
+      .select('thread_id, content, project_threads!inner(workspace_id, is_deleted)')
+      .eq('user_id', userId)
+      .eq('project_threads.workspace_id', workspaceId)
+      .eq('project_threads.is_deleted', false),
+    supabase
+      .from('thread_input_draft_files')
+      .select('thread_id, project_threads!inner(workspace_id, is_deleted)')
+      .eq('user_id', userId)
+      .eq('project_threads.workspace_id', workspaceId)
+      .eq('project_threads.is_deleted', false),
+  ])
+  if (texts.error) throw texts.error
+  if (files.error) throw files.error
+
+  const byThread = new Map<string, DraftPreview>()
+  for (const r of texts.data ?? []) {
+    const id = r.thread_id as string
+    byThread.set(id, { threadId: id, content: (r.content as string) ?? '', hasFiles: false })
+  }
+  for (const r of files.data ?? []) {
+    const id = r.thread_id as string
+    const cur = byThread.get(id)
+    if (cur) cur.hasFiles = true
+    else byThread.set(id, { threadId: id, content: '', hasFiles: true })
+  }
+  return [...byThread.values()]
+}
+
 /** Треды, где у пользователя есть непустой черновик (текст ИЛИ файлы). */
 export async function getMyDraftThreadIds(userId: string): Promise<string[]> {
   const [texts, files] = await Promise.all([

@@ -5,6 +5,7 @@ import { Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { perfOpen } from '@/utils/perfTrace'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
+import { useMyDraftPreviews } from '@/hooks/messenger/useThreadDrafts'
 import {
   useFilteredInbox,
   useFilteredInboxUnread,
@@ -61,6 +62,7 @@ export function BoardInboxList({
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const selfSenderName = useMySenderName(workspaceId)
+  const draftPreviews = useMyDraftPreviews(workspaceId)
 
   // Подписываемся на тот же infinite query, что родитель — получаем
   // hasNextPage/fetchNextPage без drilling props. TanStack Query
@@ -301,6 +303,7 @@ export function BoardInboxList({
                 onMarkAsRead={() => markReadMutation.mutate(chat)}
                 onMarkAsUnread={() => markUnreadMutation.mutate(chat)}
                 workspaceId={workspaceId}
+                serverDraft={draftPreviews.get(chat.thread_id)}
                 deliveryStatus={deliveryStatuses.get(chat.thread_id)}
                 selfSenderName={selfSenderName}
                 mutedBadge={filter === 'muted'}

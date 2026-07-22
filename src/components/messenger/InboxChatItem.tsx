@@ -2,7 +2,6 @@ import { memo } from 'react'
 import Image from 'next/image'
 import { EyeOff, CheckCheck, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { stripHtml } from '@/utils/format/messengerHtml'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { DeliveryStatus } from './DeliveryIndicator'
 import { getBadgeDisplay, formatBadgeCount } from '@/utils/inboxUnread'
@@ -19,6 +18,8 @@ import { resolveInboxPreview } from './resolveInboxPreview'
 import { InboxItemPreview } from './InboxItemPreview'
 import { useThreadNameResolver } from '@/hooks/useThreadUserNames'
 import { threadHref, entityLinkClickHandlers } from '@/lib/entityLinks'
+import { resolveDraftPreview } from '@/hooks/messenger/useThreadDrafts'
+import type { DraftPreview } from '@/services/api/messenger/threadDraftService'
 import { useThreadMixedUnread } from '@/hooks/messenger/useInboxAggregatesCache'
 import { acc } from '@/lib/accentPalette'
 
@@ -45,6 +46,8 @@ type InboxChatItemProps = {
   /** Воркспейс — для href строки (средний клик / Cmd+клик открывают тред в новой
    *  вкладке). Без него строка остаётся кликабельной, но не ссылкой. */
   workspaceId?: string
+  /** Мой черновик этого треда с сервера — пометка «Черновик» на любом устройстве. */
+  serverDraft?: DraftPreview
 }
 
 export const InboxChatItem = memo(function InboxChatItem({
@@ -58,6 +61,7 @@ export const InboxChatItem = memo(function InboxChatItem({
   selfSenderName,
   mutedBadge = false,
   workspaceId,
+  serverDraft,
 }: InboxChatItemProps) {
   const prefetchMessages = usePrefetchThreadMessages()
   const resolveThreadName = useThreadNameResolver()
@@ -65,12 +69,11 @@ export const InboxChatItem = memo(function InboxChatItem({
   // Флага нет в строке инбокса (v3_for его не несёт) — берём из кэша агрегатов.
   const mixedUnread = useThreadMixedUnread(workspaceId, chat.thread_id)
 
-  // Черновик из localStorage. Ключ — РОВНО тот, что пишет композер
-  // (MessageInput: `msg_draft:{threadId}`). Раньше читался
-  // `msg_draft:{project_id}:{thread_id}` — такой ключ для тредов никогда не
-  // пишется, поэтому пометка «Черновик» в списке не появлялась вообще.
+  // Черновик: локальный (этого устройства) приоритетнее, серверный нужен, чтобы
+  // пометка была видна и на другом устройстве. Ключ localStorage — РОВНО тот,
+  // что пишет композер (`msg_draft:{threadId}`).
   const draftHtml = localStorage.getItem(`msg_draft:${chat.thread_id}`)
-  const draftText = draftHtml ? stripHtml(draftHtml).trim() || null : null
+  const draftText = resolveDraftPreview(serverDraft, draftHtml)
 
   const badge = getBadgeDisplay(chat)
   const hasUnreadIndicator = badge.type !== 'none'

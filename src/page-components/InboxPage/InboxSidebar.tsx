@@ -7,6 +7,7 @@ import { Inbox, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RowsSkeleton } from '@/components/ui/loaders'
 import { InboxChatItem } from '@/components/messenger/InboxChatItem'
+import { useMyDraftPreviews } from '@/hooks/messenger/useThreadDrafts'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { DeliveryStatus } from '@/components/messenger/DeliveryIndicator'
 import type { InboxFilter } from './useInboxFilters'
@@ -78,6 +79,7 @@ export const InboxSidebar = memo(function InboxSidebar({
   narrow = false,
 }: InboxSidebarProps) {
   const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const draftPreviews = useMyDraftPreviews(workspaceId)
 
   // IntersectionObserver на «сторожевом» div'е в конце списка — когда юзер
   // прокрутил список так, что sentinel виден, дёргаем onLoadMore.
@@ -290,6 +292,7 @@ export const InboxSidebar = memo(function InboxSidebar({
                 selfSenderName={selfSenderName}
                 mutedBadge={filter === 'muted'}
                 workspaceId={workspaceId}
+                serverDraft={draftPreviews.get(chat.thread_id)}
               />
             ))}
             {hasNextPage && (
