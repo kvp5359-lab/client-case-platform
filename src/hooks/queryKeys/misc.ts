@@ -43,6 +43,9 @@ export const googleDriveKeys = {
     ['google-drive', 'source-updates-unread', workspaceId] as const,
   /** Broad-префикс для сброса непрочитанного обновлений источников. */
   sourceUpdatesUnreadAll: () => ['google-drive', 'source-updates-unread'] as const,
+  /** Мои отметки прочтения + epoch (клиентский фильтр «только непрочитанные»).
+   *  Под префиксом sourceUpdatesUnreadAll — мутации «Прочитать» сбрасывают и его. */
+  sourceUpdateReadMarks: () => ['google-drive', 'source-updates-unread', 'marks'] as const,
   /** Проекты воркспейса, где пользователь — исполнитель (скоуп ленты обновлений). */
   executorProjectIds: (workspaceId: string) =>
     ['google-drive', 'executor-project-ids', workspaceId] as const,

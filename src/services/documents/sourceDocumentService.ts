@@ -111,6 +111,11 @@ export type WorkspaceSourceUpdate = {
   createdTime: string | null
   modifiedTime: string | null
   syncedAt: string | null
+  /** created_at СТРОКИ в БД — момент первого появления файла у нас. Именно по
+   *  нему сервер считает «непрочитанное» (см. get_source_update_unread_projects),
+   *  клиентский фильтр обязан использовать его же, не Drive-даты. NULL (колонка
+   *  nullable) на сервере не проходит сравнение `>` → файл НЕ непрочитан. */
+  createdAtDb: string | null
   webViewLink: string | null
   parentFolderName: string | null
   projectId: string
@@ -131,7 +136,7 @@ export async function getWorkspaceSourceUpdates(
   const { data, error } = await supabase
     .from('source_documents')
     .select(
-      'id, google_drive_file_id, name, mime_type, file_size, created_time, modified_time, synced_at, web_view_link, parent_folder_name, project_id, document_kit_id, source_id, projects!inner(name, is_deleted), document_sources(name)',
+      'id, google_drive_file_id, name, mime_type, file_size, created_time, modified_time, synced_at, created_at, web_view_link, parent_folder_name, project_id, document_kit_id, source_id, projects!inner(name, is_deleted), document_sources(name)',
     )
     .eq('workspace_id', workspaceId)
     .eq('is_hidden', false)
@@ -158,6 +163,7 @@ export async function getWorkspaceSourceUpdates(
       createdTime: row.created_time,
       modifiedTime: row.modified_time,
       syncedAt: row.synced_at,
+      createdAtDb: row.created_at,
       webViewLink: row.web_view_link,
       parentFolderName: row.parent_folder_name,
       projectId: row.project_id,
@@ -187,6 +193,34 @@ export async function getSourceUpdateUnreadProjects(
     throw new DocumentError('Не удалось загрузить непрочитанные обновления', error)
   }
   return (data ?? []).map((r) => ({ projectId: r.project_id, unreadCount: r.unread_count }))
+}
+
+/**
+ * Мои отметки прочтения обновлений + точка отсчёта фичи (epoch).
+ * Нужны клиентскому фильтру «только непрочитанные»: файл непрочитан, если его
+ * `createdAtDb` позже `lastSeenByProject[projectId] ?? epochAt` — ТА ЖЕ формула,
+ * что в RPC get_source_update_unread_projects (менять синхронно).
+ */
+export type SourceReadMarks = {
+  epochAt: string
+  reads: { projectId: string; lastSeenAt: string }[]
+}
+
+export async function getMySourceReadMarks(): Promise<SourceReadMarks> {
+  const [config, reads] = await Promise.all([
+    supabase.from('source_updates_config').select('epoch_at').eq('id', 1).maybeSingle(),
+    // RLS отдаёт только собственные строки пользователя.
+    supabase.from('source_update_reads').select('project_id, last_seen_at'),
+  ])
+  if (config.error) throw new DocumentError('Не удалось загрузить отметки прочтения', config.error)
+  if (reads.error) throw new DocumentError('Не удалось загрузить отметки прочтения', reads.error)
+  return {
+    epochAt: config.data?.epoch_at ?? new Date(0).toISOString(),
+    reads: (reads.data ?? []).map((r) => ({
+      projectId: r.project_id,
+      lastSeenAt: r.last_seen_at,
+    })),
+  }
 }
 
 /** Отметить прочитанными обновления одного проекта. */

@@ -9,7 +9,7 @@
  * синхронизирует все источники воркспейса.
  */
 
-import { Fragment, useMemo } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   FolderSync,
@@ -19,6 +19,8 @@ import {
   ChevronRight,
   Check,
   CheckCheck,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { WorkspaceLayout } from '@/components/WorkspaceLayout'
 import { Button } from '@/components/ui/button'
@@ -28,6 +30,7 @@ import {
   useSyncWorkspaceSources,
   useToggleKitSourceHidden,
   useSourceUpdatesUnread,
+  useSourceReadMarks,
   useMyExecutorProjectIds,
   useMarkSourceUpdatesReadMutation,
   useMarkAllSourceUpdatesReadMutation,
@@ -110,10 +113,24 @@ export default function SourceUpdatesPage() {
   const { run: runSync, isRunning: syncing, progress: syncProgress } = useSyncWorkspaceSources()
   const toggleHidden = useToggleKitSourceHidden()
   const { data: unread = [] } = useSourceUpdatesUnread(workspaceId)
+  const { data: readMarks, isLoading: marksLoading } = useSourceReadMarks()
   const markRead = useMarkSourceUpdatesReadMutation()
   const markAllRead = useMarkAllSourceUpdatesReadMutation()
 
+  // По умолчанию — только непрочитанные; прочитанные включаются тумблером.
+  const [showRead, setShowRead] = useState(false)
+
   const executorIds = useMemo(() => new Set(executorProjectIds), [executorProjectIds])
+
+  // «Файл непрочитан» — зеркало серверной формулы (get_source_update_unread_projects):
+  // created_at строки позже отметки прочтения проекта (или epoch, если отметки нет).
+  const isUnreadFile = useMemo(() => {
+    const lastSeen = new Map((readMarks?.reads ?? []).map((r) => [r.projectId, r.lastSeenAt]))
+    const epoch = readMarks?.epochAt ?? new Date(0).toISOString()
+    return (u: WorkspaceSourceUpdate) =>
+      // NULL created_at на сервере не проходит `>` → файл не считается непрочитанным.
+      !!u.createdAtDb && new Date(u.createdAtDb) > new Date(lastSeen.get(u.projectId) ?? epoch)
+  }, [readMarks])
 
   // Проекты с непрочитанными (RPC уже скоуплен по исполнителю; пересечение —
   // страховка на случай рассинхрона кэшей).
@@ -127,6 +144,7 @@ export default function SourceUpdatesPage() {
   const days = useMemo<DayGroup[]>(() => {
     const sorted = updates
       .filter((u) => executorIds.has(u.projectId))
+      .filter((u) => showRead || isUnreadFile(u))
       .map((u) => ({ u, t: updateTime(u) }))
       .filter((x): x is { u: WorkspaceSourceUpdate; t: string } => !!x.t)
       .sort((a, b) => new Date(b.t).getTime() - new Date(a.t).getTime())
@@ -187,9 +205,9 @@ export default function SourceUpdatesPage() {
         }
       }),
     }))
-  }, [updates, executorIds])
+  }, [updates, executorIds, showRead, isUnreadFile])
 
-  const isLoading = updatesLoading || projectsLoading
+  const isLoading = updatesLoading || projectsLoading || marksLoading
 
   const handleSync = () => {
     if (!workspaceId || syncing) return
@@ -212,6 +230,22 @@ export default function SourceUpdatesPage() {
           <div className="flex items-start justify-between gap-4">
             <h1 className="text-xl font-semibold">Обновления источников</h1>
             <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="ghost"
+                onClick={() => setShowRead((v) => !v)}
+                title={
+                  showRead
+                    ? 'Скрыть прочитанные — оставить только новые файлы'
+                    : 'Показать и уже прочитанные обновления'
+                }
+              >
+                {showRead ? (
+                  <EyeOff className="h-4 w-4 mr-1.5" />
+                ) : (
+                  <Eye className="h-4 w-4 mr-1.5" />
+                )}
+                {showRead ? 'Скрыть прочитанные' : 'Показать прочитанные'}
+              </Button>
               {unreadProjectIds.size > 0 && (
                 <Button
                   variant="ghost"
@@ -233,6 +267,7 @@ export default function SourceUpdatesPage() {
           </div>
           <p className="text-sm text-muted-foreground">
             Файлы из привязанных папок Google Drive по вашим проектам — свежие сверху.
+            {!showRead && ' Показаны только непрочитанные.'}
           </p>
         </div>
 
@@ -253,13 +288,27 @@ export default function SourceUpdatesPage() {
         {isLoading ? (
           <div className="text-sm text-muted-foreground py-10 text-center">Загрузка…</div>
         ) : days.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-center border rounded-lg">
-            <FolderSync className="h-8 w-8 text-muted-foreground/50" />
-            <div className="text-sm text-muted-foreground max-w-md">
-              Пока нет файлов из источников. Привяжите папку Google Drive к проекту или
-              набору документов, затем нажмите «Проверить источники».
+          !showRead && updates.length > 0 ? (
+            /* Файлы есть, но все прочитаны — предлагаем включить прочитанные. */
+            <div className="flex flex-col items-center gap-3 py-16 text-center border rounded-lg">
+              <CheckCheck className="h-8 w-8 text-muted-foreground/50" />
+              <div className="text-sm text-muted-foreground max-w-md">
+                Все обновления прочитаны.
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setShowRead(true)}>
+                <Eye className="h-4 w-4 mr-1.5" />
+                Показать прочитанные
+              </Button>
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-col items-center gap-3 py-16 text-center border rounded-lg">
+              <FolderSync className="h-8 w-8 text-muted-foreground/50" />
+              <div className="text-sm text-muted-foreground max-w-md">
+                Пока нет файлов из источников. Привяжите папку Google Drive к проекту или
+                набору документов, затем нажмите «Проверить источники».
+              </div>
+            </div>
+          )
         ) : (
           <div className="space-y-8">
             {days.map((day) => (

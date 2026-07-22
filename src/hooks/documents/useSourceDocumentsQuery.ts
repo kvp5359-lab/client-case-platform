@@ -17,6 +17,7 @@ import {
   getSyncableSources,
   getWorkspaceSourceUpdates,
   getSourceUpdateUnreadProjects,
+  getMySourceReadMarks,
   getMyExecutorProjectIds,
   markSourceUpdatesReadForProject,
   markAllSourceUpdatesRead,
@@ -395,6 +396,15 @@ export function useSourceUpdatesUnread(workspaceId: string | undefined) {
     queryKey: googleDriveKeys.sourceUpdatesUnread(workspaceId ?? ''),
     queryFn: () => getSourceUpdateUnreadProjects(workspaceId!),
     enabled: !!workspaceId,
+    staleTime: STALE_TIME.MEDIUM,
+  })
+}
+
+/** Мои отметки прочтения обновлений + epoch — для фильтра «только непрочитанные». */
+export function useSourceReadMarks() {
+  return useQuery({
+    queryKey: googleDriveKeys.sourceUpdateReadMarks(),
+    queryFn: getMySourceReadMarks,
     staleTime: STALE_TIME.MEDIUM,
   })
 }
