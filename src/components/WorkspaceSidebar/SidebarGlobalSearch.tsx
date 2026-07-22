@@ -29,6 +29,7 @@ import { supabase } from '@/lib/supabase'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { knowledgeArticleHref, projectHref, threadHref, entityLinkClickHandlers } from '@/lib/entityLinks'
 import { useThreadNameResolver } from '@/hooks/useThreadUserNames'
+import { formatTime } from '@/components/messenger/inboxChatItem.helpers'
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   SearchInputInline,
@@ -71,6 +72,8 @@ type DisplayRow = {
   project_status_id: string | null
   /** Иконка треда (project_threads.icon) — для иконки канала. */
   thread_icon: string | null
+  /** Когда объект открывали (только у «Недавнего»; у поисковых строк null). */
+  opened_at: string | null
 }
 
 /** URL для open-in-new-tab. Возвращает null, если для типа нет осмысленной ссылки. */
@@ -182,6 +185,7 @@ export function SidebarGlobalSearch({
       project_template_id: r.project_template_id,
       project_status_id: r.project_status_id,
       thread_icon: r.thread_icon,
+      opened_at: r.opened_at,
     }))
   }, [recent])
 
@@ -189,7 +193,9 @@ export function SidebarGlobalSearch({
   // плюс группировка остальных по типу.
   const searchSections = useMemo(() => {
     if (!results) return { fromRecent: [] as DisplayRow[], groups: [] as Array<{ type: GlobalSearchEntityType; items: DisplayRow[] }> }
-    const recentKeys = new Set(recentRows.map((r) => r.key))
+    // key → когда открывали: поисковые строки «из недавнего» тоже получают время.
+    const recentOpenedAt = new Map(recentRows.map((r) => [r.key, r.opened_at]))
+    const recentKeys = new Set(recentOpenedAt.keys())
     const rows: DisplayRow[] = results.map((r) => ({
       key: `${r.entity_type}:${r.entity_id}`,
       entity_type: r.entity_type,
@@ -204,6 +210,7 @@ export function SidebarGlobalSearch({
       project_template_id: r.project_template_id,
       project_status_id: r.project_status_id,
       thread_icon: r.thread_icon,
+      opened_at: recentOpenedAt.get(`${r.entity_type}:${r.entity_id}`) ?? null,
     }))
     const fromRecent = rows.filter((r) => recentKeys.has(r.key))
     const rest = rows.filter((r) => !recentKeys.has(r.key))
@@ -270,6 +277,13 @@ export function SidebarGlobalSearch({
                 />
               )}
             </div>
+            {/* Когда открывали (только у «Недавнего») — формат как во «Входящих»:
+                сегодня → ЧЧ:ММ, вчера → «вчера», раньше → короткая дата. */}
+            {row.opened_at && (
+              <span className="shrink-0 pt-0.5 text-[11px] text-gray-400">
+                {formatTime(row.opened_at)}
+              </span>
+            )}
           </a>
         </li>
       )
