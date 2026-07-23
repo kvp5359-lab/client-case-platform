@@ -29,6 +29,7 @@ import {
 } from '@/services/api/inboxService'
 import type { DeliveryStatus } from '@/types/delivery'
 import { inboxKeys, sidebarDataKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { useWorkspacePermissions } from '@/hooks/permissions/useWorkspacePermissions'
 
 type MyProjectRole = {
   project_id: string
@@ -93,6 +94,14 @@ function useAccessFilter<T extends { thread_id: string }>(
   const { user } = useAuth()
   const { threads, myProjectRoles, myMemberThreadIds, myAssigneeThreadIds } =
     useWorkspaceAccessData(workspaceId)
+  // Право «видит все проекты» (владелец / view_all_projects). Раньше здесь был
+  // хардкод false — и фильтр вырезал у владельца треды проектов, где он не
+  // записан участником, ХОТЯ сервер их уже отдал (материализованный inbox
+  // отдаёт пассивному view_all тред только когда его @упомянули / ответили —
+  // модель подписки 2026-06-18). Итог: упоминание давало unread в БД, а бейджи
+  // и список молчали (инцидент 2026-07-23). Сервер — источник правды по
+  // доступу; клиентский фильтр остаётся страховкой для не-view_all ролей.
+  const { canViewAllProjects } = useWorkspacePermissions({ workspaceId })
 
   const rolesByProject = useMemo(() => {
     const map = new Map<string, MyProjectRole>()
@@ -126,10 +135,10 @@ function useAccessFilter<T extends { thread_id: string }>(
         projectRoles: myRole?.project_roles ?? null,
         isAssignee: myAssigneeThreadIds.has(entry.thread_id),
         isMember: myMemberThreadIds.has(entry.thread_id),
-        hasViewAllProjects: false,
+        hasViewAllProjects: canViewAllProjects,
       })
     })
-  }, [items, user, threadAccessMap, rolesByProject, myMemberThreadIds, myAssigneeThreadIds])
+  }, [items, user, threadAccessMap, rolesByProject, myMemberThreadIds, myAssigneeThreadIds, canViewAllProjects])
 }
 
 /**
