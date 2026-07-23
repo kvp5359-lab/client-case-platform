@@ -78,7 +78,8 @@ export function PlanGroupContainer({
       className={cn(
         // Вид как у старых разделителей: без фона/рамки, только отступ сверху и
         // крупный жирный заголовок. Кнопки и перетаскивание группы сохранены.
-        'group/plangroup relative mt-3 mb-1',
+        // На hover — лёгкая тень вокруг всей группы, чтобы читались её границы.
+        'group/plangroup relative mt-3 mb-1 rounded-lg transition-shadow duration-150 hover:shadow-[0_0_0_1px_rgba(0,0,0,0.05),0_2px_10px_rgba(0,0,0,0.07)]',
         isDragging && 'opacity-60 z-10',
       )}
     >
