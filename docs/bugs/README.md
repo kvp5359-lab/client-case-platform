@@ -21,6 +21,7 @@
 | [2026-07-08-project-tasks-errorboundary-crash](open/2026-07-08-project-tasks-errorboundary-crash.md) | medium | ProjectPage, tasks, ErrorBoundary, sentry | Краш экрана «Задачи» проекта (ErrorBoundary); стек скрывала проводка логгера — исправлено, ждёт следующего краша со стеком | 2026-07-08 |
 | [2026-07-08-sentry-load-fail-noise](open/2026-07-08-sentry-load-fail-noise.md) | low | sentry, logger, data-loading, noise | Sentry шумит на транзиентных «Не удалось загрузить …» (69 путей → алерты) | 2026-07-08 |
 | [2026-07-10-project-page-max-update-depth](open/2026-07-10-project-page-max-update-depth.md) | medium | ProjectPage, react, render-loop, sentry | «Maximum update depth exceeded» на странице проекта (бесконечный setState-цикл); стек минифицирован — нужны sourcemaps | 2026-07-10 |
+| [2026-07-23-thread-draft-server-wipe-on-second-device](open/2026-07-23-thread-draft-server-wipe-on-second-device.md) | high | messenger, thread_input_drafts, useDraftMessage | Открытие треда на втором устройстве (без локального черновика) удаляет серверный черновик — потеря кросс-девайс синхронизации | 2026-07-23 |
 
 ## Решённые
 
