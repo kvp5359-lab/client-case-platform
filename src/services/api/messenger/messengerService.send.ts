@@ -15,7 +15,6 @@ import { logSendFailure } from './logSendFailure'
 import {
   MESSAGE_SELECT,
   castToProjectMessage,
-  hydrateReplyMessages,
 } from './messengerService.helpers'
 import type { ForwardedAttachment, MessageChannel, MessageVisibility, ProjectMessage } from './messengerService.types'
 
@@ -140,9 +139,6 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
       reactions: [],
       attachments: [],
     })
-    if (params.replyToMessageId) {
-      await hydrateReplyMessages([textMessage])
-    }
   }
 
   const { data, error } = await supabase
@@ -225,7 +221,6 @@ export async function sendMessage(params: SendMessageParams): Promise<ProjectMes
 
     if (fullMessage) {
       message = castToProjectMessage(fullMessage)
-      await hydrateReplyMessages([message])
     }
   }
 

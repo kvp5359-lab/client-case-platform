@@ -4,15 +4,21 @@
  * MESSAGE_SELECT, cast-функции и hydrateReplyMessages без цикла.
  */
 
-import { supabase } from '@/lib/supabase'
-import type { ProjectMessage, ReplyMessage } from './messengerService.types'
+import type { ProjectMessage } from './messengerService.types'
 
 export const MESSAGE_SELECT = `
   *,
   sender:participants!sender_participant_id(name, last_name, avatar_url),
   reactions:message_reactions(*, participant:participants!participant_id(name, last_name, avatar_url)),
-  attachments:message_attachments(*)
+  attachments:message_attachments(*),
+  reply_to_message:reply_to_message_id(id, content, sender_name, sender_participant_id)
 `
+// ⚠️ reply_to_message — self-join embed ЧЕРЕЗ ИМЯ КОЛОНКИ (`:reply_to_message_id`),
+// НЕ через имя FK: у самоссылки хинт по FK/колонке с `!` разворачивает ОБРАТНУЮ
+// сторону (массив ответов НА это сообщение) — проверено живым запросом
+// 2026-07-23. Синтаксис `alias:column(cols)` даёт родителя (объект/null).
+// Он заменил отдельный второй запрос hydrateReplyMessages (−1 сетевой
+// round-trip на каждое открытие треда, цитаты на месте с первого кадра).
 
 /**
  * Кастит "сырой" ряд из `supabase.from('project_messages').select(MESSAGE_SELECT)`
@@ -30,23 +36,6 @@ export function castToProjectMessages(rows: Record<string, unknown>[]): ProjectM
   return rows as unknown as ProjectMessage[]
 }
 
-/** Hydrate reply_to_message for messages with reply_to_message_id */
-export async function hydrateReplyMessages(messages: ProjectMessage[]): Promise<void> {
-  const replyIds = [
-    ...new Set(messages.map((m) => m.reply_to_message_id).filter(Boolean) as string[]),
-  ]
-  if (replyIds.length === 0) return
-
-  const { data } = await supabase
-    .from('project_messages')
-    .select('id, content, sender_name, sender_participant_id')
-    .in('id', replyIds)
-
-  if (!data) return
-  const map = new Map(data.map((r) => [r.id, r as ReplyMessage]))
-  for (const msg of messages) {
-    msg.reply_to_message = msg.reply_to_message_id
-      ? (map.get(msg.reply_to_message_id) ?? null)
-      : null
-  }
-}
+// hydrateReplyMessages удалена 2026-07-23: цитаты приезжают embed'ом в
+// MESSAGE_SELECT (см. комментарий выше). Набор полей цитаты при расширении
+// менять в embed'е, тип — ReplyMessage.

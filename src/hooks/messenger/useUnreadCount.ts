@@ -20,10 +20,12 @@ import {
   messengerKeys,
   inboxKeys,
   invalidateMessengerCaches,
+  invalidateAfterThreadRead,
   STALE_TIME,
 } from '@/hooks/queryKeys'
 import { patchInboxThreadInCache, patchInboxAggregateInCache } from './useInbox'
 import { dismissProjectToasts } from './useMessageToastPayload'
+import type { InboxThreadEntry } from '@/services/api/inboxService'
 
 type CachePatchParams = {
   threadId: string
@@ -84,6 +86,18 @@ export function patchCachesForMarkRead(queryClient: QueryClient, params: CachePa
         unread_reaction_count: 0,
         unread_event_count: 0,
       }),
+    )
+    // Прочитанный тред мгновенно уходит из вкладок «Непрочитанные» и
+    // «Заглушённые» (это отдельные кэши-списки, patch выше их не покрывает).
+    // Благодаря этому патчу markRead больше НЕ рефетчит полный
+    // get_inbox_unread_threads на каждое открытие треда (перф 2026-07-23).
+    queryClient.setQueryData<InboxThreadEntry[] | undefined>(
+      inboxKeys.unread(workspaceId),
+      (prev) => prev?.filter((t) => t.thread_id !== threadId),
+    )
+    queryClient.setQueryData<InboxThreadEntry[] | undefined>(
+      inboxKeys.muted(workspaceId),
+      (prev) => prev?.filter((t) => t.thread_id !== threadId),
     )
   }
 }
@@ -202,6 +216,12 @@ function snapshotMarkCaches(
     inboxAggregates: workspaceId
       ? queryClient.getQueryData(inboxKeys.aggregates(workspaceId))
       : undefined,
+    inboxUnread: workspaceId
+      ? queryClient.getQueryData(inboxKeys.unread(workspaceId))
+      : undefined,
+    inboxMuted: workspaceId
+      ? queryClient.getQueryData(inboxKeys.muted(workspaceId))
+      : undefined,
   }
 }
 
@@ -216,6 +236,8 @@ function restoreMarkCaches(
   if (workspaceId) {
     queryClient.setQueryData(inboxKeys.threads(workspaceId), snap.inboxThreads)
     queryClient.setQueryData(inboxKeys.aggregates(workspaceId), snap.inboxAggregates)
+    queryClient.setQueryData(inboxKeys.unread(workspaceId), snap.inboxUnread)
+    queryClient.setQueryData(inboxKeys.muted(workspaceId), snap.inboxMuted)
   }
 }
 
@@ -235,7 +257,10 @@ function invalidateAfterMarkRead(
       queryKey: messengerKeys.lastReadAtByProjectPrefix(projectId),
     })
   }
-  if (workspaceId) invalidateMessengerCaches(queryClient, workspaceId)
+  // Узкая инвалидация вместо invalidateMessengerCaches: видимое уже обновлено
+  // патчем в onMutate, полный рефетч 8 ключей на каждое открытие треда был
+  // главным сетевым хвостом переключения чатов (см. invalidateAfterThreadRead).
+  if (workspaceId) invalidateAfterThreadRead(queryClient, workspaceId)
   if (projectId) dismissProjectToasts(projectId)
 }
 

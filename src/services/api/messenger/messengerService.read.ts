@@ -8,11 +8,7 @@
 import { supabase } from '@/lib/supabase'
 import { ConversationError } from '@/services/errors/AppError'
 import { perfMark } from '@/utils/perfTrace'
-import {
-  MESSAGE_SELECT,
-  castToProjectMessages,
-  hydrateReplyMessages,
-} from './messengerService.helpers'
+import { MESSAGE_SELECT, castToProjectMessages } from './messengerService.helpers'
 import type { MessageChannel, ProjectMessage } from './messengerService.types'
 
 /**
@@ -63,15 +59,8 @@ export async function getMessages(
     perfMark(threadId, 'query:net', { netMs: Math.round(netMs), rows: messages.length })
   }
 
-  const hydrateStart =
-    typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()
-  await hydrateReplyMessages(messages)
-  if (!options.before) {
-    const hydrateMs =
-      (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()) -
-      hydrateStart
-    perfMark(threadId, 'query:hydrateReplies', { hydrateMs: Math.round(hydrateMs) })
-  }
+  // Цитаты (reply_to_message) приезжают тем же запросом — self-join embed в
+  // MESSAGE_SELECT. Отдельной догидрации больше нет (−1 round-trip на открытие).
 
   return { messages: messages.reverse(), hasMore }
 }
@@ -104,8 +93,6 @@ export async function getProjectMessagesByChannel(
   const messages = castToProjectMessages(data ?? [])
   const hasMore = messages.length > limit
   if (hasMore) messages.pop()
-
-  await hydrateReplyMessages(messages)
 
   return { messages: messages.reverse(), hasMore }
 }
@@ -190,8 +177,6 @@ export async function getProjectMessages(
   const hasMore = messages.length > limit
   if (hasMore) messages.pop()
 
-  await hydrateReplyMessages(messages)
-
   return { messages: messages.reverse(), hasMore }
 }
 
@@ -218,8 +203,6 @@ export async function getThreadMessages(
   const messages = castToProjectMessages(data ?? [])
   const hasMore = messages.length > limit
   if (hasMore) messages.pop()
-
-  await hydrateReplyMessages(messages)
 
   return { messages: messages.reverse(), hasMore }
 }

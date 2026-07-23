@@ -12,7 +12,6 @@ import type { ProjectMessage } from './messengerService.types'
 import {
   MESSAGE_SELECT,
   castToProjectMessages,
-  hydrateReplyMessages,
 } from './messengerService.helpers'
 
 export type ThreadSearchFilters = {
@@ -64,7 +63,6 @@ export async function searchThreadMessages(
   if (error) throw error
 
   const messages = castToProjectMessages((data ?? []) as unknown as Record<string, unknown>[])
-  await hydrateReplyMessages(messages)
 
   // RPC уже отсортировала (created_at desc); восстанавливаем этот порядок после
   // `.in()` (он не гарантирует порядок аргументов).

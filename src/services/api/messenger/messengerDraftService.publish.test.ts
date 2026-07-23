@@ -26,7 +26,6 @@ vi.mock('@/lib/supabase', () => ({
 }))
 vi.mock('./messengerService.helpers', async (orig) => ({
   ...(await orig<typeof import('./messengerService.helpers')>()),
-  hydrateReplyMessages: vi.fn().mockResolvedValue(undefined),
 }))
 
 import { publishDraftMessage } from './messengerDraftService'

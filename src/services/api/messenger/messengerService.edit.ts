@@ -11,7 +11,6 @@ import { humanizeSendError } from '@/lib/messenger/sendErrorMessages'
 import {
   MESSAGE_SELECT,
   castToProjectMessage,
-  hydrateReplyMessages,
 } from './messengerService.helpers'
 import { resolveMessageChannelKind } from './messengerAttachmentService'
 import type { ProjectMessage } from './messengerService.types'
@@ -164,7 +163,6 @@ export async function editMessage(
   if (error) throw new ConversationError(`Ошибка загрузки сообщения: ${error.message}`)
 
   const message = castToProjectMessage(data)
-  await hydrateReplyMessages([message])
 
   let channelWarning: string | null = null
 

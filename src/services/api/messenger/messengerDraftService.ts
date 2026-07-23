@@ -11,7 +11,6 @@ import { isClientVisibleForDelivery } from '@/lib/messenger/visibility'
 import {
   MESSAGE_SELECT,
   castToProjectMessage,
-  hydrateReplyMessages,
 } from './messengerService.helpers'
 import type { ProjectMessage, MessageChannel, MessageVisibility } from './messengerService.types'
 
@@ -148,7 +147,6 @@ export async function updateDraftMessage(
   if (error) throw new ConversationError(`Ошибка загрузки черновика: ${error.message}`)
 
   const message = castToProjectMessage(data)
-  await hydrateReplyMessages([message])
   return message
 }
 
@@ -194,7 +192,6 @@ export async function publishDraftMessage(
   if (error) throw new ConversationError(`Ошибка загрузки сообщения: ${error.message}`)
 
   const message = castToProjectMessage(data)
-  await hydrateReplyMessages([message])
 
   // Email-вложения диспетчер НЕ шлёт (архитектурно только фронт, из-за гонки
   // загрузки) → дошлём здесь. Гейт isClientVisible обязателен: этот путь минует

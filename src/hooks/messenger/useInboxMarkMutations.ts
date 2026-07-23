@@ -17,7 +17,7 @@ import {
   markAsUnread,
   type MessageChannel,
 } from '@/services/api/messenger/messengerService'
-import { inboxKeys, invalidateMessengerCaches } from '@/hooks/queryKeys'
+import { inboxKeys, invalidateMessengerCaches, invalidateAfterThreadRead } from '@/hooks/queryKeys'
 import { patchCachesForMarkRead, patchCachesForMarkUnread } from './useUnreadCount'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { InboxInfiniteData } from './useInbox'
@@ -59,13 +59,19 @@ export function useInboxMarkMutations(workspaceId: string) {
       return { prev }
     },
     onSuccess: () => {
-      invalidateMessengerCaches(queryClient, workspaceId)
+      // Узко: видимое обновлено патчем в onMutate (threads/aggregates/unread/
+      // muted), полный invalidateMessengerCaches рефетчил 8 ключей на каждый ✓✓.
+      invalidateAfterThreadRead(queryClient, workspaceId)
     },
     onError: (err, _chat, ctx) => {
       if (ctx?.prev) {
         queryClient.setQueryData(inboxKeys.threads(workspaceId), ctx.prev)
       }
       queryClient.invalidateQueries({ queryKey: inboxKeys.threads(workspaceId) })
+      // Патч onMutate убрал строку и из вкладок «Непрочитанные»/«Заглушённые» —
+      // при ошибке возвращаем их рефетчем (редкий путь, точность важнее).
+      queryClient.invalidateQueries({ queryKey: inboxKeys.unread(workspaceId) })
+      queryClient.invalidateQueries({ queryKey: inboxKeys.muted(workspaceId) })
       const desc = err instanceof Error ? err.message : undefined
       toast.error('Не удалось отметить как прочитанное', desc ? { description: desc } : undefined)
     },

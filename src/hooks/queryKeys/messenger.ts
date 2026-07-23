@@ -179,6 +179,27 @@ export const timelineKeys = {
  * Инвалидировать все кэши мессенджера: inbox v2 + sidebar projects.
  * Вызывать после markAsRead, markAsUnread, отправки сообщения, реакций и т.д.
  */
+/**
+ * Узкая инвалидация после «прочитано» (авто-markRead при открытии треда и
+ * ✓✓ в списке). Видимые кэши уже обновлены патчем `patchCachesForMarkRead`
+ * (threads, aggregates, unread, muted), полный рефетч не нужен. Инвалидируем
+ * только сегментные списки «Нужно ответить»/«Ждём клиента»: прочтение меняет
+ * их состав, а их запросы почти всегда disabled (грузятся лениво при активной
+ * вкладке) — инвалидация лишь помечает stale, БЕЗ сетевого запроса.
+ *
+ * Раньше здесь был `invalidateMessengerCaches` — 8 ключей, включая полный
+ * `get_inbox_unread_threads` на КАЖДОЕ открытие треда (замер 2026-07-23,
+ * ledger (7)). Для «непрочитано» (markUnread) по-прежнему используется полный
+ * `invalidateMessengerCaches` — там строка должна ПОЯВИТЬСЯ в списках.
+ */
+export function invalidateAfterThreadRead(
+  queryClient: { invalidateQueries: (opts: { queryKey: readonly unknown[] }) => void },
+  workspaceId: string,
+) {
+  queryClient.invalidateQueries({ queryKey: inboxKeys.needsReply(workspaceId) })
+  queryClient.invalidateQueries({ queryKey: inboxKeys.awaitingReply(workspaceId) })
+}
+
 export function invalidateMessengerCaches(
   queryClient: { invalidateQueries: (opts: { queryKey: readonly unknown[] }) => void },
   workspaceId: string,
