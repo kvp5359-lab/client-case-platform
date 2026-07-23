@@ -1,7 +1,11 @@
 /**
  * Подгрузка start_at/end_at для набора тредов — для календарного вида.
- * Отдельный запрос, чтобы не менять get_workspace_threads. Чанки по 40,
- * чтобы GET-URL не упирался в лимит PostgREST.
+ * Отдельный запрос, чтобы не менять get_workspace_threads.
+ *
+ * ⚠️ Только RPC с массивом id (POST), НЕ `.in('id', chunk)` GET-чанками:
+ * чанки по 40 на списке «Календарь» (~2000 тредов) давали ~50 параллельных
+ * запросов на каждый маунт доски (аудит 2026-07-23, суммарно ~13с сетевого
+ * времени). RPC — один запрос без лимита URL, RLS та же (SECURITY INVOKER).
  */
 
 import { useMemo } from 'react'
@@ -18,27 +22,15 @@ export function useBoardListTimes(workspaceId: string, taskIds: string[]) {
     queryKey: [...calendarKeys.all, 'board-list-times', workspaceId, idsKey],
     enabled: taskIds.length > 0,
     queryFn: async (): Promise<ThreadTimes> => {
-      const chunks: string[][] = []
-      for (let i = 0; i < taskIds.length; i += 40) chunks.push(taskIds.slice(i, i + 40))
-
-      const results = await Promise.all(
-        chunks.map((chunk) =>
-          supabase
-            .from('project_threads')
-            .select('id, start_at, end_at')
-            .in('id', chunk)
-            .not('start_at', 'is', null)
-            .not('end_at', 'is', null),
-        ),
-      )
+      const { data, error } = await supabase.rpc('get_thread_times_for_threads', {
+        p_thread_ids: taskIds,
+      })
+      if (error) throw error
 
       const map: ThreadTimes = {}
-      for (const { data, error } of results) {
-        if (error) throw error
-        for (const row of data ?? []) {
-          if (row.start_at && row.end_at) {
-            map[row.id] = { start_at: row.start_at, end_at: row.end_at }
-          }
+      for (const row of data ?? []) {
+        if (row.start_at && row.end_at) {
+          map[row.id] = { start_at: row.start_at, end_at: row.end_at }
         }
       }
       return map

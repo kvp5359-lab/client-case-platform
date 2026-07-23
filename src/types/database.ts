@@ -12032,12 +12032,30 @@ export type Database = {
         Args: { p_thread_id: string }
         Returns: string
       }
+      get_task_assignees_for_threads: {
+        Args: { p_thread_ids: string[] }
+        Returns: {
+          thread_id: string
+          participant_id: string
+          name: string
+          last_name: string | null
+          avatar_url: string | null
+        }[]
+      }
       get_thread_senders: {
         Args: { p_thread_id: string }
         Returns: {
           avatar_url: string
           name: string
           participant_id: string
+        }[]
+      }
+      get_thread_times_for_threads: {
+        Args: { p_thread_ids: string[] }
+        Returns: {
+          id: string
+          start_at: string
+          end_at: string
         }[]
       }
       get_thread_subscribers: {

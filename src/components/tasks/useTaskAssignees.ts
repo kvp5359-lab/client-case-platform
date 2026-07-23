@@ -26,9 +26,11 @@ export const assigneeKeys = {
 /** Batch-загрузка исполнителей для списка задач.
  *  keepPreviousData — при добавлении/удалении задачи показываем старую карту исполнителей,
  *  пока грузится новая. Иначе UI мигает (все аватарки пропадают на момент загрузки).
- *  Chunking — IN-фильтр PostgREST бьётся об URL-лимит при ~50+ UUID. Бьём на чанки. */
-const ASSIGNEE_CHUNK_SIZE = 40
-
+ *
+ *  ⚠️ Только RPC с массивом id (POST), НЕ `.in('thread_id', chunk)` GET-чанками:
+ *  чанки по 40 на доске с календарным списком (~2000 тредов) давали ~50
+ *  параллельных запросов на маунт (аудит 2026-07-23, суммарно ~19с сетевого
+ *  времени). RPC — один запрос без лимита URL, RLS та же (SECURITY INVOKER). */
 export function useTaskAssigneesMap(threadIds: string[]) {
   const key = [...threadIds].sort().join(',')
   return useQuery({
@@ -36,26 +38,20 @@ export function useTaskAssigneesMap(threadIds: string[]) {
     queryFn: async () => {
       if (threadIds.length === 0) return {} as Record<string, AvatarParticipant[]>
 
-      const chunks: string[][] = []
-      for (let i = 0; i < threadIds.length; i += ASSIGNEE_CHUNK_SIZE) {
-        chunks.push(threadIds.slice(i, i + ASSIGNEE_CHUNK_SIZE))
-      }
+      const { data, error } = await supabase.rpc('get_task_assignees_for_threads', {
+        p_thread_ids: threadIds,
+      })
+      if (error) throw error
 
-      const results = await Promise.all(
-        chunks.map((chunk) =>
-          supabase
-            .from('task_assignees')
-            .select('thread_id, participants!inner(id, name, last_name, avatar_url)')
-            .in('thread_id', chunk),
-        ),
-      )
-
-      const merged: Array<{ thread_id: string; participants: unknown }> = []
-      for (const { data, error } of results) {
-        if (error) throw error
-        if (data) merged.push(...(data as typeof merged))
-      }
-
+      const merged = (data ?? []).map((r) => ({
+        thread_id: r.thread_id,
+        participants: {
+          id: r.participant_id,
+          name: r.name,
+          last_name: r.last_name,
+          avatar_url: r.avatar_url,
+        },
+      }))
       return buildParticipantMap(merged)
     },
     enabled: threadIds.length > 0,
