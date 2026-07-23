@@ -34,3 +34,19 @@
 - `src/services/documents/sourceDocumentService.ts`
 - `src/hooks/documents/useSourceDocumentsQuery.ts`
 - `src/hooks/queryKeys/misc.ts`
+
+---
+
+## Правки по ревью
+
+- Формула «файл непрочитан» вынесена в чистую `src/lib/sourceUpdates.ts`
+  (`isSourceUpdateUnread`) + 5 тестов (свежее/старше отметки, без отметки vs
+  epoch, NULL created_at, граница строгого `>`). Это зеркало серверной RPC —
+  теперь под тестом, а не только под комментарием.
+- `formatTime` («сегодня ЧЧ:ММ / вчера / дата») переехал из
+  `inboxChatItem.helpers` в `utils/format/dateFormat.ts` — generic-форматтер с
+  двумя потребителями (превью «Входящих» + «Недавнее» поиска); в helpers
+  реэкспорт.
+- `getMySourceReadMarks` логирует ошибку перед throw — как остальные 18
+  функций сервиса.
+- Тумблер «Показать прочитанные» скрыт, пока файлов из источников нет вовсе.

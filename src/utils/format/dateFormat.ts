@@ -134,6 +134,25 @@ export function formatShortDate(dateStr: string | null | undefined): string {
   return `${date.getDate()} ${MONTHS_SHORT_RU[date.getMonth()]}`
 }
 
+/**
+ * Компактное «когда»: сегодня → "14:32", вчера → "вчера", раньше → короткая
+ * дата. Используется во «Входящих» (превью) и в «Недавнем» глобального поиска.
+ */
+export function formatTime(isoString: string | null): string {
+  if (!isoString) return ''
+  const date = new Date(isoString)
+  const now = new Date()
+  if (date.toDateString() === now.toDateString()) {
+    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  }
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  if (date.toDateString() === yesterday.toDateString()) {
+    return 'вчера'
+  }
+  return formatShortDate(isoString)
+}
+
 const MONTHS_LONG_RU = [
   'января',
   'февраля',

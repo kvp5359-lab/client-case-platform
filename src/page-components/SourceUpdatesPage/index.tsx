@@ -36,6 +36,7 @@ import {
   useMarkAllSourceUpdatesReadMutation,
 } from '@/hooks/documents/useSourceDocumentsQuery'
 import { SourceFileRow } from '@/components/documents/Documents/SourceFileRow'
+import { isSourceUpdateUnread } from '@/lib/sourceUpdates'
 import type { SourceDocument } from '@/types/documents'
 import type { WorkspaceSourceUpdate } from '@/services/documents/sourceDocumentService'
 
@@ -122,14 +123,12 @@ export default function SourceUpdatesPage() {
 
   const executorIds = useMemo(() => new Set(executorProjectIds), [executorProjectIds])
 
-  // «Файл непрочитан» — зеркало серверной формулы (get_source_update_unread_projects):
-  // created_at строки позже отметки прочтения проекта (или epoch, если отметки нет).
+  // «Файл непрочитан» — общая чистая формула (зеркало серверной, см. lib/sourceUpdates).
   const isUnreadFile = useMemo(() => {
     const lastSeen = new Map((readMarks?.reads ?? []).map((r) => [r.projectId, r.lastSeenAt]))
     const epoch = readMarks?.epochAt ?? new Date(0).toISOString()
     return (u: WorkspaceSourceUpdate) =>
-      // NULL created_at на сервере не проходит `>` → файл не считается непрочитанным.
-      !!u.createdAtDb && new Date(u.createdAtDb) > new Date(lastSeen.get(u.projectId) ?? epoch)
+      isSourceUpdateUnread(u.createdAtDb, lastSeen.get(u.projectId), epoch)
   }, [readMarks])
 
   // Проекты с непрочитанными (RPC уже скоуплен по исполнителю; пересечение —
@@ -230,6 +229,8 @@ export default function SourceUpdatesPage() {
           <div className="flex items-start justify-between gap-4">
             <h1 className="text-xl font-semibold">Обновления источников</h1>
             <div className="flex items-center gap-2 shrink-0">
+              {/* Пока файлов нет вовсе — переключать нечего, кнопку не показываем. */}
+              {updates.length > 0 && (
               <Button
                 variant="ghost"
                 onClick={() => setShowRead((v) => !v)}
@@ -246,6 +247,7 @@ export default function SourceUpdatesPage() {
                 )}
                 {showRead ? 'Скрыть прочитанные' : 'Показать прочитанные'}
               </Button>
+              )}
               {unreadProjectIds.size > 0 && (
                 <Button
                   variant="ghost"

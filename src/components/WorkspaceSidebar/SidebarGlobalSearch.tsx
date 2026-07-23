@@ -29,7 +29,7 @@ import { supabase } from '@/lib/supabase'
 import { globalOpenThread } from '@/components/tasks/TaskPanelContext'
 import { knowledgeArticleHref, projectHref, threadHref, entityLinkClickHandlers } from '@/lib/entityLinks'
 import { useThreadNameResolver } from '@/hooks/useThreadUserNames'
-import { formatTime } from '@/components/messenger/inboxChatItem.helpers'
+import { formatTime } from '@/utils/format/dateFormat'
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   SearchInputInline,

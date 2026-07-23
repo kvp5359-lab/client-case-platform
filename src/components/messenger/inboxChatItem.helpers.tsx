@@ -5,7 +5,6 @@
 import { MessageSquare, Send, Mail, Check, CheckCheck, Clock } from 'lucide-react'
 import type { InboxChannelType } from '@/services/api/inboxService'
 import type { DeliveryStatus } from './DeliveryIndicator'
-import { formatShortDate } from '@/utils/format/dateFormat'
 import { THREAD_ICONS } from './threadConstants'
 import { acc, ACCENT_SLUGS } from '@/lib/accentPalette'
 
@@ -14,21 +13,9 @@ export const STATUS_PREFIX = 'Статус: '
 /** Стиль имени отправителя в превью — только вес; цвет берём из акцента треда. */
 export const SENDER_NAME_CLASS = 'font-normal'
 
-export function formatTime(isoString: string | null): string {
-  if (!isoString) return ''
-  const date = new Date(isoString)
-  const now = new Date()
-  const isToday = date.toDateString() === now.toDateString()
-  if (isToday) {
-    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-  }
-  const yesterday = new Date(now)
-  yesterday.setDate(yesterday.getDate() - 1)
-  if (date.toDateString() === yesterday.toDateString()) {
-    return 'вчера'
-  }
-  return formatShortDate(isoString)
-}
+// formatTime переехал в utils/format/dateFormat.ts (generic-форматтер, второй
+// потребитель — «Недавнее» глобального поиска). Реэкспорт для старых импортов.
+export { formatTime } from '@/utils/format/dateFormat'
 
 export function truncateText(text: string | null, maxLen = 50): string {
   if (!text) return ''

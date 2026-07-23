@@ -212,8 +212,11 @@ export async function getMySourceReadMarks(): Promise<SourceReadMarks> {
     // RLS отдаёт только собственные строки пользователя.
     supabase.from('source_update_reads').select('project_id, last_seen_at'),
   ])
-  if (config.error) throw new DocumentError('Не удалось загрузить отметки прочтения', config.error)
-  if (reads.error) throw new DocumentError('Не удалось загрузить отметки прочтения', reads.error)
+  const err = config.error ?? reads.error
+  if (err) {
+    logger.error('Ошибка загрузки отметок прочтения обновлений:', err)
+    throw new DocumentError('Не удалось загрузить отметки прочтения', err)
+  }
   return {
     epochAt: config.data?.epoch_at ?? new Date(0).toISOString(),
     reads: (reads.data ?? []).map((r) => ({
