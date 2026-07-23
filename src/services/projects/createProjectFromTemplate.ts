@@ -413,7 +413,15 @@ export async function seedProjectContent(
         neededGroups = tGroups.filter((g) => usedGroupIds.has(g.id))
       }
 
-      for (const g of neededGroups) {
+      // Группы на верхнем уровне вкладки «Задачи» сливаются с одиночными
+      // строками ПО ОБЩЕЙ шкале sort_order (usePlanGroupsDnd.topLevelEntries),
+      // а в шаблоне sort_order группы — независимая шкала «порядок среди групп»
+      // (редактор шаблона всегда рисует группы ПОСЛЕ одиночных строк).
+      // Копировать его как есть нельзя: группа с sort_order=0 всплывала бы в
+      // самый верх списка. Переводим на общую шкалу — за последний элемент
+      // посева, с сохранением порядка групп между собой.
+      const groupSortBase = sortOffset + selectedThreadTemplates.length + contentBlocks.length
+      for (const [gi, g] of neededGroups.entries()) {
         const reused = existingGroupByName.get((g.name ?? '').trim().toLowerCase())
         if (reused) {
           groupMap.set(g.id, reused)
@@ -425,7 +433,7 @@ export async function seedProjectContent(
             workspace_id: workspaceId,
             project_id: projectId,
             name: g.name,
-            sort_order: g.sort_order,
+            sort_order: groupSortBase + gi,
             accent_color: g.accent_color,
             visible_to_client: g.visible_to_client,
           })
