@@ -246,14 +246,13 @@ export function WorkspaceSidebarFull({
   const { data: sidebarSettings } = useWorkspaceSidebarSettings(workspaceId)
   const { data: taskCounts } = useMyTaskCounts(workspaceId)
 
-  // Бейдж «Обновления источников» = число ДОСТУПНЫХ проектов с новыми файлами
-  // (пересекаем результат RPC с проектами, которые реально видит пользователь).
+  // Бейдж «Обновления источников» = число проектов с новыми файлами. Доступ
+  // гейтит САМА RPC (миграция 20260710190000: только проекты, где вызывающий —
+  // Исполнитель/Администратор). Пересекать с `projects` НЕЛЬЗЯ: список сайдбара
+  // обрезан до 35 по активности, и проекты вне топа выпадали из счётчика
+  // (ловили: сервер 8 непрочитанных, бейдж 3).
   const { data: sourceUpdatesUnread = [] } = useSourceUpdatesUnread(workspaceId)
-  const sourceUpdatesProjectCount = useMemo(() => {
-    if (sourceUpdatesUnread.length === 0) return 0
-    const accessible = new Set(projects.map((p) => p.id))
-    return sourceUpdatesUnread.filter((u) => accessible.has(u.projectId)).length
-  }, [sourceUpdatesUnread, projects])
+  const sourceUpdatesProjectCount = sourceUpdatesUnread.length
 
   // Закреплённые доски — настройка на уровне воркспейса (внутри slots).
   const { togglePin: toggleBoardPin } = usePinnedBoards(workspaceId)
