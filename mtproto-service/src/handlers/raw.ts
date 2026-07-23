@@ -112,6 +112,34 @@ async function processReactions(
     byUser.set(uid, arr)
   }
 
+  // Все Telegram-строки реакций этого сообщения — одним запросом. Нужны и для
+  // идемпотентной сверки по каждому юзеру, и для снятия: юзер, УБРАВШИЙ
+  // реакцию, из recentReactions пропадает совсем — его строки иначе никто не
+  // почистит. Внутренние реакции из ЛК (telegram_user_id IS NULL) не трогаем.
+  const { data: existingAll } = await supabase
+    .from("message_reactions")
+    .select("id, emoji, telegram_user_id")
+    .eq("message_id", msg.id)
+    .eq("telegram_source_message_id", telegramMessageId)
+    .not("telegram_user_id", "is", null)
+  const existingByUser = new Map<number, Array<{ id: string; emoji: string }>>()
+  for (const row of existingAll ?? []) {
+    const uid = Number(row.telegram_user_id)
+    const arr = existingByUser.get(uid) ?? []
+    arr.push({ id: row.id as string, emoji: row.emoji as string })
+    existingByUser.set(uid, arr)
+  }
+
+  // Юзеры, у которых строки есть, а в свежем списке их нет — сняли реакцию.
+  const removedIds: string[] = []
+  for (const [uid, rows] of existingByUser) {
+    if (!byUser.has(uid)) removedIds.push(...rows.map((r) => r.id))
+  }
+  if (removedIds.length > 0) {
+    const { error } = await supabase.from("message_reactions").delete().in("id", removedIds)
+    if (error) logger.error("[reactions] delete removed error:", error)
+  }
+
   // В личке от клиента может прийти только реакция от него самого, плюс
   // апдейт о моих собственных реакциях, поставленных с другого устройства.
   // Обрабатываем все.
@@ -151,28 +179,47 @@ async function processReactions(
       }
     }
 
-    // Сначала чистим прежние реакции этого юзера на это сообщение.
-    await supabase
-      .from("message_reactions")
-      .delete()
-      .eq("message_id", msg.id)
-      .eq("telegram_user_id", tgUserId)
-      .eq("telegram_source_message_id", telegramMessageId)
+    // Идемпотентная сверка вместо DELETE+INSERT (зеркало ботового фикса
+    // 2026-07-21 в `_shared/syncTelegramReactions.ts`): снимаем только
+    // исчезнувшие эмодзи, вставляем только новые — у неизменившихся строк
+    // `created_at` СОХРАНЯЕТСЯ. Иначе Telegram переприсылает те же реакции
+    // пачкой (ночной catch-up после reconnect аккаунта — все диалоги разом),
+    // DELETE+INSERT пересоздавал строку с `created_at = now()`, время
+    // перепрыгивало за момент «Прочитано» → прочитанные чаты «воскресали»
+    // непрочитанными (инцидент 2026-07-23, три чата в 00:02).
+    const existing = existingByUser.get(tgUserId) ?? []
 
-    if (emojis.length === 0) continue
+    const desired = new Set(emojis)
+    const keep = new Set<string>()
+    const toDeleteIds: string[] = []
+    for (const row of existing) {
+      // Дубли одного эмодзи от одного юзера (легаси-строки) — оставляем один.
+      if (desired.has(row.emoji) && !keep.has(row.emoji)) keep.add(row.emoji)
+      else toDeleteIds.push(row.id)
+    }
+    const toInsert = emojis.filter((e) => !keep.has(e))
 
-    const rows = emojis.map((emoji) => ({
-      message_id: msg.id,
-      participant_id: participantId,
-      telegram_user_id: tgUserId,
-      telegram_user_name: userName,
-      emoji,
-      telegram_source_message_id: telegramMessageId,
-    }))
+    if (toDeleteIds.length > 0) {
+      const { error } = await supabase
+        .from("message_reactions")
+        .delete()
+        .in("id", toDeleteIds)
+      if (error) logger.error("[reactions] delete error:", error)
+    }
 
-    const { error } = await supabase.from("message_reactions").insert(rows)
-    if (error) {
-      logger.error("[reactions] insert error:", error)
+    if (toInsert.length > 0) {
+      const rows = toInsert.map((emoji) => ({
+        message_id: msg.id,
+        participant_id: participantId,
+        telegram_user_id: tgUserId,
+        telegram_user_name: userName,
+        emoji,
+        telegram_source_message_id: telegramMessageId,
+      }))
+      const { error } = await supabase.from("message_reactions").insert(rows)
+      if (error) {
+        logger.error("[reactions] insert error:", error)
+      }
     }
   }
 }
