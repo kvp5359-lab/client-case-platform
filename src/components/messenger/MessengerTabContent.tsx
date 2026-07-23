@@ -303,7 +303,12 @@ export function MessengerTabContent({
   ])
   // Показывать «тихую» подсветку только у заглушённого треда с непрочитанным.
   const mutedUnreadActive = isMutedByMe && !state.showUnread && hasUnreadByLastRead
-  const unreadTone: 'red' | 'slate' = state.showUnread ? 'red' : 'slate'
+  // Глобальный тон (разделитель «Непрочитанные», события, кнопка «Прочитано»):
+  // в заглушённом треде — всегда спокойный slate, даже если mute пробит
+  // упоминанием. Красным в mute красятся ТОЛЬКО пробившие сообщения —
+  // по-сообщенный тон считает MessageList (mutedPriorityHighlight), иначе
+  // бейдж «1» расходился с лентой, красившей красным все непрочитанные.
+  const unreadTone: 'red' | 'slate' = state.showUnread && !isMutedByMe ? 'red' : 'slate'
 
   // Черновик письма: email-тред БЕЗ отправленных сообщений (сохранённый
   // is_draft-баббл не считается отправкой — иначе тред «выходил» из режима
@@ -472,6 +477,7 @@ export function MessengerTabContent({
             isForeignPersonalThread || (!state.showUnread && !mutedUnreadActive)
           }
           unreadTone={unreadTone}
+          mutedPriorityHighlight={isMutedByMe}
           viewerGetsEvents={viewerGetsEvents}
         />
 
@@ -511,7 +517,9 @@ export function MessengerTabContent({
           <div className="shrink-0 px-2 pointer-events-auto">
             <ReadUnreadButton
               showUnread={state.showUnread || mutedUnreadActive}
-              tone={mutedUnreadActive && !state.showUnread ? 'slate' : 'red'}
+              // В заглушённом треде кнопка спокойная (slate), даже когда mute
+              // пробит упоминанием — красное там только у пробивших баблов.
+              tone={isMutedByMe ? 'slate' : state.showUnread ? 'red' : 'slate'}
               onMarkRead={() => state.markAsRead.mutate()}
               onMarkUnread={() => state.markAsUnread.mutate()}
               isMarkReadPending={state.markAsRead.isPending}

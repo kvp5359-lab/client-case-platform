@@ -42,6 +42,8 @@ export type ReplyMessage = {
   id: string
   content: string
   sender_name: string
+  /** Автор оригинала — нужен, чтобы отличить «ответ на МОЁ» (пробивает mute). */
+  sender_participant_id?: string | null
 }
 
 export type EmailMetadata = {

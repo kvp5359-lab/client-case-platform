@@ -39,7 +39,7 @@ export async function hydrateReplyMessages(messages: ProjectMessage[]): Promise<
 
   const { data } = await supabase
     .from('project_messages')
-    .select('id, content, sender_name')
+    .select('id, content, sender_name, sender_participant_id')
     .in('id', replyIds)
 
   if (!data) return

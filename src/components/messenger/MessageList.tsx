@@ -14,6 +14,7 @@ import { perfEnd } from '@/utils/perfTrace'
 import { wrapOrphanListItems } from '@/utils/messenger/listAwareCopy'
 import { DateSeparator, UnreadSeparator, isSameDay } from './messageListParts'
 import { buildMessageTimeline, timelineItemDate } from './buildMessageTimeline'
+import { isMutePiercingMessage } from '@/lib/messenger/mutePiercing'
 import { mergeAlbumMessages } from './mergeAlbumMessages'
 import { useFloatingDateBadge } from './hooks/useFloatingDateBadge'
 import type { ProjectMessage } from '@/services/api/messenger/messengerService'
@@ -62,6 +63,14 @@ type MessageListProps = {
    */
   unreadTone?: 'red' | 'slate'
   /**
+   * Заглушённый МНОЙ тред: тон контура считается для каждого сообщения — красный
+   * только у пробивших mute (@упоминание меня / ответ на моё, зеркало
+   * серверного v_priority), остальные непрочитанные — спокойный slate. Без
+   * этого бейдж треда говорил «1», а лента красила красным все непрочитанные
+   * (жалоба 2026-07-23). false/не задан — единый unreadTone, как раньше.
+   */
+  mutedPriorityHighlight?: boolean
+  /**
    * Считать ли служебные события (смена статуса, создание, переименование…)
    * непрочитанными для текущего зрителя. true — если зритель исполнитель задачи
    * ИЛИ у треда нет исполнителей вообще (тогда события видят все участники).
@@ -90,6 +99,7 @@ export function MessageList({
   isBackfilling = false,
   suppressUnread = false,
   unreadTone = 'red',
+  mutedPriorityHighlight = false,
   viewerGetsEvents = true,
 }: MessageListProps) {
   const {
@@ -499,6 +509,10 @@ export function MessageList({
               : false
 
           const showUnreadSeparator = i === firstUnreadIndex
+          // Тон контура: в заглушённом треде красное — только пробившее mute.
+          const bubbleTone: 'red' | 'slate' = mutedPriorityHighlight
+            ? isMutePiercingMessage(msg, currentParticipantId) ? 'red' : 'slate'
+            : unreadTone
           // Если last_read_at отсутствует — тред никогда не открывался, все чужие сообщения непрочитанные.
           // Пока lastReadAt ещё грузится (isLastReadAtLoaded=false) — не подсвечиваем, чтобы не мигало.
           const isUnread =
@@ -540,7 +554,7 @@ export function MessageList({
                   delayedExpiresAt={getDelayedExpiresAt?.(msg.id) ?? undefined}
                   onCancelDelayed={onCancelDelayed}
                   isUnread={isUnread}
-                  unreadTone={unreadTone}
+                  unreadTone={bubbleTone}
                   lastReadAt={lastReadAt}
                 />
               )}
