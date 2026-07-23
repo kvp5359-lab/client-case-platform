@@ -12,11 +12,13 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { calendarKeys } from '@/hooks/queryKeys'
+import { hashIdList } from '@/lib/hashIdList'
 
 export type ThreadTimes = Record<string, { start_at: string; end_at: string }>
 
 export function useBoardListTimes(workspaceId: string, taskIds: string[]) {
-  const idsKey = useMemo(() => taskIds.join(','), [taskIds])
+  // Хеш вместо join 2000 UUID: ключ кэша был строкой ~74 КБ (аудит №12).
+  const idsKey = useMemo(() => hashIdList(taskIds), [taskIds])
 
   return useQuery({
     queryKey: [...calendarKeys.all, 'board-list-times', workspaceId, idsKey],

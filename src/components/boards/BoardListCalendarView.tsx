@@ -103,23 +103,48 @@ export function BoardListCalendarView({
 
   const { data: times = {} } = useBoardListTimes(workspaceId, taskIds)
 
+  const nextNDaysForRange = Math.max(2, Math.min(60, cs.next_n_days ?? 7))
+
+  // Видимое окно текущего вида (+1 день запаса с каждой стороны). Дальше
+  // события режутся ДО передачи в react-big-calendar: DOM он ограничивает сам,
+  // а вот CPU — нет: сканирует/сортирует ВСЕ события на каждый рендер. На
+  // календарном списке с ~2000 задач это было заметно (аудит 2026-07-23, №10).
+  const visibleRange = useMemo(() => {
+    const DAY = 24 * 60 * 60 * 1000
+    if (view === Views.DAY) {
+      const from = startOfDay(date).getTime()
+      return { from: from - DAY, to: from + 2 * DAY }
+    }
+    if (view === NEXT_N_VIEW) {
+      const from = startOfDay(date).getTime()
+      return { from: from - DAY, to: from + (nextNDaysForRange + 1) * DAY }
+    }
+    // week / work_week
+    const from = startOfWeek(date, { locale: ru }).getTime()
+    return { from: from - DAY, to: from + 8 * DAY }
+  }, [view, date, nextNDaysForRange])
+
   const taskEvents: CalEvent[] = useMemo(
     () =>
       tasks
         .map((t) => {
           const time = times[t.id]
           if (!time) return null
+          const start = new Date(time.start_at)
+          const end = new Date(time.end_at)
+          // Пересечение с видимым окном (событие, накрывающее окно, остаётся).
+          if (end.getTime() <= visibleRange.from || start.getTime() >= visibleRange.to) return null
           return {
             id: t.id,
             title: t.name,
-            start: new Date(time.start_at),
-            end: new Date(time.end_at),
+            start,
+            end,
             kind: 'task' as const,
             resource: { ...t, start_at: time.start_at, end_at: time.end_at },
           } as CalEvent
         })
         .filter((x): x is CalEvent => x !== null),
-    [tasks, times],
+    [tasks, times, visibleRange],
   )
 
   // Внешние события (Google Calendar и т.п.) из выбранных календарей-источников.
@@ -127,8 +152,13 @@ export function BoardListCalendarView({
   const { data: externalEvents = [] } = useExternalCalendarEvents(workspaceId, calendarIds)
 
   const events: CalEvent[] = useMemo(
-    () => [...taskEvents, ...externalEvents],
-    [taskEvents, externalEvents],
+    () => [
+      ...taskEvents,
+      ...externalEvents.filter(
+        (e) => e.end.getTime() > visibleRange.from && e.start.getTime() < visibleRange.to,
+      ),
+    ],
+    [taskEvents, externalEvents, visibleRange],
   )
 
   const updateTime = useUpdateThreadTime()

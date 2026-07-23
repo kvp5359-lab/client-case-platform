@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { supabase } from '@/lib/supabase'
 import { buildParticipantMap } from '@/utils/format/buildParticipantMap'
 import { workspaceTaskKeys, STALE_TIME } from '@/hooks/queryKeys'
+import { hashIdList } from '@/lib/hashIdList'
 import type { AvatarParticipant } from '@/components/participants/ParticipantAvatars'
 
 export const assigneeKeys = {
@@ -32,7 +33,8 @@ export const assigneeKeys = {
  *  параллельных запросов на маунт (аудит 2026-07-23, суммарно ~19с сетевого
  *  времени). RPC — один запрос без лимита URL, RLS та же (SECURITY INVOKER). */
 export function useTaskAssigneesMap(threadIds: string[]) {
-  const key = [...threadIds].sort().join(',')
+  // Хеш вместо join: на доске с календарём ключ был строкой ~74 КБ (аудит №12).
+  const key = hashIdList(threadIds)
   return useQuery({
     queryKey: assigneeKeys.map(key),
     queryFn: async () => {
