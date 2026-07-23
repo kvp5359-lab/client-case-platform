@@ -9,6 +9,7 @@ import {
   isEmailChannelThread,
 } from '@/services/api/messenger/deliverEmailAttachments'
 import { messengerKeys } from '@/hooks/queryKeys'
+import { watchSendStatusSettled } from './watchSendStatusSettled'
 
 /**
  * Кнопка «Повторить» под красным баблом «не доставлено».
@@ -117,9 +118,12 @@ export function useRetryTelegramSend(threadId: string) {
       toast.error('Не удалось запустить повторную отправку')
     },
 
-    onSuccess: () => {
+    onSuccess: (_data, { message }) => {
       toast.success('Отправка запущена')
       queryClient.invalidateQueries({ queryKey: messagesKey })
+      // Страховка от «глухого» realtime — как у обычной отправки: если статус
+      // в кэше не станет финальным, перечитаем сами (см. watchSendStatusSettled).
+      watchSendStatusSettled(queryClient, threadId, [message.id])
     },
   })
 }

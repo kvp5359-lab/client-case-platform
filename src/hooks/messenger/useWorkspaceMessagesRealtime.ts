@@ -91,12 +91,20 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
     }
 
     // ── Подписка на Broadcast из БД (приватный топик inbox:<ws>) ──
+    //
+    // 🪤 Приватный канал авторизуется access-токеном, а тот живёт ~час.
+    // Раньше setAuth делался ОДИН раз при монтировании: вкладка, открытая со
+    // вчера / ноут поспал → сокет переподключался, канал молча переставал
+    // получать события до F5 — «Отправляется» не гасло, инбокс замирал
+    // (инцидент 2026-07-23). Теперь: (1) setAuth обновляется на каждом
+    // рефреше токена; (2) при ошибке/таймауте канала — переподписка с паузой.
     let cancelled = false
     let broadcastChannel: ReturnType<typeof supabase.channel> | null = null
-    void supabase.auth.getSession().then(({ data }) => {
+    let resubTimer: ReturnType<typeof setTimeout> | null = null
+
+    const joinChannel = () => {
       if (cancelled) return
-      const token = data.session?.access_token
-      if (token) supabase.realtime.setAuth(token)
+      if (broadcastChannel) supabase.removeChannel(broadcastChannel)
       broadcastChannel = supabase
         .channel(`inbox:${workspaceId}`, { config: { private: true } })
         .on('broadcast', { event: 'inbox_changed' }, (msg) => {
@@ -108,13 +116,42 @@ export function useWorkspaceMessagesRealtime(workspaceId: string | undefined) {
           // inboxBroadcastBus: нельзя дважды подписаться на один топик).
           emitInboxBroadcast(payload)
         })
-        .subscribe()
+        .subscribe((status) => {
+          // CLOSED не трогаем: это штатное removeChannel (unmount/re-join).
+          if (status !== 'CHANNEL_ERROR' && status !== 'TIMED_OUT') return
+          if (cancelled || resubTimer) return
+          resubTimer = setTimeout(() => {
+            resubTimer = null
+            void supabase.auth.getSession().then(({ data }) => {
+              if (cancelled) return
+              const token = data.session?.access_token
+              if (token) supabase.realtime.setAuth(token)
+              joinChannel()
+            })
+          }, 5_000)
+        })
+    }
+
+    void supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return
+      const token = data.session?.access_token
+      if (token) supabase.realtime.setAuth(token)
+      joinChannel()
+    })
+
+    // Свежий токен → сразу в realtime (иначе rejoin после реконнекта идёт
+    // с протухшим и канал остаётся глухим).
+    const { data: authSub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event !== 'TOKEN_REFRESHED' && event !== 'SIGNED_IN') return
+      if (session?.access_token) supabase.realtime.setAuth(session.access_token)
     })
 
     return () => {
       cancelled = true
       if (lightTimer) clearTimeout(lightTimer)
       if (heavyTimer) clearTimeout(heavyTimer)
+      if (resubTimer) clearTimeout(resubTimer)
+      authSub.subscription.unsubscribe()
       if (broadcastChannel) supabase.removeChannel(broadcastChannel)
     }
   }, [workspaceId, queryClient])

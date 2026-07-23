@@ -27,6 +27,7 @@ import { useEmailAccounts } from '@/hooks/email/useEmailAccounts'
 import { patchCachesForMarkRead } from './useUnreadCount'
 import { dismissProjectToasts } from './useMessageToastPayload'
 import { logSendFailure } from '@/services/api/messenger/logSendFailure'
+import { watchSendStatusSettled } from './watchSendStatusSettled'
 
 export function useSendMessage(
   projectId: string | undefined,
@@ -342,6 +343,12 @@ export function useSendMessage(
         (variables.forwardedAttachments?.length ?? 0) > 0
       if (!hasFiles) {
         queryClient.refetchQueries({ queryKey: qk })
+      }
+      // Страховка от «глухого» realtime: немедленный рефетч выше обычно
+      // обгоняет подтверждение канала (~0.6с) и приносит ещё pending, а
+      // realtime-сигнал может потеряться → бабл висел «Отправляется» до F5.
+      if (threadId) {
+        watchSendStatusSettled(queryClient, threadId, result.map((m) => m.id))
       }
 
       // Dismiss toast notifications for this project
