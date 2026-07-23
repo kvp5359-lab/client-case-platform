@@ -34,6 +34,14 @@ export function useDraftMessage(
   const remoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const skipDraftRestoreRef = useRef(false)
+  // «Взведён» ли серверный сброс: пустой remote-save (= DELETE строки черновика)
+  // разрешён ТОЛЬКО после непустого сохранения в этом же треде — т.е. когда
+  // пользователь реально стёр набранный текст. Без гейта открытие треда на
+  // устройстве БЕЗ локального черновика УДАЛЯЛО серверный: clearContent при
+  // маунте эмитит update (tiptap v3) → saveDraft('','') → через 2с DELETE,
+  // без единого нажатия (замерено на проде 2026-07-23, багдок
+  // docs/bugs/open/2026-07-23-thread-draft-server-wipe-on-second-device.md).
+  const remoteDeleteArmedRef = useRef(false)
   // Keep latest editor content in refs so we can flush on unmount
   // (editor instance may already be destroyed by the time cleanup runs)
   const lastHtmlRef = useRef('')
@@ -61,6 +69,15 @@ export function useDraftMessage(
       // Сервер — реже, чем localStorage: печать не должна порождать запрос на
       // каждую паузу в полсекунды.
       if (!syncEnabled) return
+      if (text.trim()) {
+        remoteDeleteArmedRef.current = true
+      } else if (!remoteDeleteArmedRef.current) {
+        // Пустой контент БЕЗ предшествующей непустой активности — это
+        // programmatic-очистка редактора при открытии/переключении треда,
+        // а не «пользователь стёр текст». Сервер не трогаем, иначе сотрём
+        // черновик, набранный на другом устройстве.
+        return
+      }
       if (remoteTimerRef.current) clearTimeout(remoteTimerRef.current)
       remoteTimerRef.current = setTimeout(() => {
         saveThreadDraft(threadId!, userId!, text.trim() ? html : '')
@@ -107,6 +124,10 @@ export function useDraftMessage(
   useEffect(() => {
     const editor = editorRef.current
     if (!editor || !editorReady || editingMessage) return
+    // Новый тред/маунт — серверный сброс снова «не взведён» (см. комментарий
+    // у remoteDeleteArmedRef): удалить черновик на сервере можно только после
+    // непустой активности пользователя в ЭТОМ треде.
+    remoteDeleteArmedRef.current = false
     if (skipDraftRestoreRef.current) {
       skipDraftRestoreRef.current = false
       return
