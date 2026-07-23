@@ -44,6 +44,16 @@ interface WahaPayload {
   notifyName?: string;
   _data?: { notifyName?: string; pushName?: string; chat?: { name?: string } };
 }
+/**
+ * Payload события `message.revoked` (клиент удалил сообщение «для всех»).
+ * `before` — оригинал (id удалённого), `after` — ревок-событие; движок может
+ * прислать любой из них (before бывает null, если оригинала нет в кэше WAHA).
+ */
+interface WahaRevokePayload {
+  after?: { id?: string } | null;
+  before?: { id?: string } | null;
+  revokedMessageId?: string;
+}
 interface WahaReactionPayload {
   fromMe?: boolean;
   participant?: string;
@@ -53,7 +63,7 @@ interface WahaReactionPayload {
 interface WahaEvent {
   event?: string;
   session?: string;
-  payload?: WahaPayload & WahaReactionPayload & { name?: string; status?: string; ack?: number; ackName?: string };
+  payload?: WahaPayload & WahaReactionPayload & WahaRevokePayload & { name?: string; status?: string; ack?: number; ackName?: string };
 }
 
 Deno.serve(async (req: Request) => {
@@ -75,6 +85,8 @@ Deno.serve(async (req: Request) => {
       await handleMessage(service, evt.session ?? "", evt.payload);
     } else if (evt.event === "message.ack" && evt.payload) {
       await handleAck(service, evt.payload);
+    } else if (evt.event === "message.revoked" && evt.payload) {
+      await handleRevoke(service, evt.payload);
     }
   } catch (err) {
     console.error("[waha-webhook] handler error:", err);
@@ -121,6 +133,32 @@ async function findMessageByWahaId<T = { id: string; thread_id: string }>(
     if (data) return data as T;
   }
   return null;
+}
+
+/**
+ * Клиент (или сотрудник с телефона) удалил сообщение «для всех» —
+ * event `message.revoked`. НЕ стираем: мягкая пометка is_deleted, как в личном
+ * Telegram (17.06) — в ленте плашка «Сообщение удалено» с раскрытием оригинала,
+ * переписка сохраняется как доказательство. Группа и личка — одно событие.
+ */
+async function handleRevoke(
+  service: SupabaseClient,
+  payload: WahaRevokePayload,
+): Promise<void> {
+  const candidates = [payload.before?.id, payload.after?.id, payload.revokedMessageId]
+    .filter((v): v is string => !!v);
+  for (const extId of candidates) {
+    const row = await findMessageByWahaId<{ id: string; is_deleted: boolean | null }>(
+      service, extId, "id, is_deleted");
+    if (!row) continue;
+    if (!row.is_deleted) {
+      await service.from("project_messages")
+        .update({ is_deleted: true, deleted_at: new Date().toISOString() })
+        .eq("id", row.id);
+    }
+    return;
+  }
+  console.warn("[waha-webhook] revoke: message not found", candidates);
 }
 
 /** Числовой ранг статуса доставки — чтобы ack-события не понижали статус (приходят не по порядку). */

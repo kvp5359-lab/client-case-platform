@@ -76,7 +76,10 @@ Deno.serve(async (req) => {
   const webhookUrl = `${SUPABASE_URL}/functions/v1/waha-webhook?key=${WAHA_WEBHOOK_SECRET}`;
   const sessionConfig = {
     noweb: { store: { enabled: true, fullSync: true } },
-    webhooks: [{ url: webhookUrl, events: ["message.any", "message.reaction", "message.ack", "session.status"] }],
+    // message.revoked — удаление «для всех» (soft-delete в сервисе, 2026-07-23).
+    // 🪤 У УЖЕ существующих сессий набор событий надо дозаливать вручную
+    // (WAHA PUT /api/sessions/{name}) — конфиг применяется при создании.
+    webhooks: [{ url: webhookUrl, events: ["message.any", "message.reaction", "message.ack", "message.revoked", "session.status"] }],
   };
 
   // Резолв имени сессии по session_id (с проверкой воркспейса)
