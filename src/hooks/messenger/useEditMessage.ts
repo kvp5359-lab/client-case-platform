@@ -61,8 +61,14 @@ export function useEditMessage(threadId: string) {
       toast.error('Не удалось отредактировать сообщение')
     },
 
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: messagesKey })
+      // Правка сохранилась в сервисе, но канал её не принял (напр. лимит
+      // подписи Telegram 1024) — раньше это глоталось молча, и текст в ЛК
+      // тихо расходился с Telegram (инцидент 2026-07-23).
+      if (result.channelWarning) {
+        toast.warning(result.channelWarning, { duration: 8000 })
+      }
     },
   })
 }

@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { STORAGE_BUCKETS, removeFromStorage } from '@/lib/storage'
 import { ConversationError } from '@/services/errors/AppError'
 import { logger } from '@/utils/logger'
+import { humanizeSendError } from '@/lib/messenger/sendErrorMessages'
 import {
   MESSAGE_SELECT,
   castToProjectMessage,
@@ -130,12 +131,23 @@ export async function deleteMessage(messageId: string): Promise<void> {
 /**
  * Edit message (with Telegram sync)
  */
+/**
+ * Результат правки: сообщение + предупреждение канала, если правка сохранена
+ * в сервисе, но НЕ дошла во внешний канал (раньше такой сбой глотался молча —
+ * текст в ЛК менялся, в Telegram нет, и никто не знал; инцидент 2026-07-23).
+ */
+export type EditMessageResult = {
+  message: ProjectMessage
+  /** Человекочитаемая причина, почему канал не принял правку. null — дошло. */
+  channelWarning: string | null
+}
+
 export async function editMessage(
   messageId: string,
   newContent: string,
   senderName: string,
   senderRole: string | null,
-): Promise<ProjectMessage> {
+): Promise<EditMessageResult> {
   const { error: updateError } = await supabase
     .from('project_messages')
     .update({ content: newContent, is_edited: true })
@@ -153,6 +165,8 @@ export async function editMessage(
 
   const message = castToProjectMessage(data)
   await hydrateReplyMessages([message])
+
+  let channelWarning: string | null = null
 
   // Маршрут правки в канал по типу треда. Раньше ЛЮБОЙ тред с telegram_*
   // полями шёл в telegram-edit-message (бот-канал) — для MTProto-треда это НЕ
@@ -175,8 +189,10 @@ export async function editMessage(
         })
     } else if (message.telegram_message_id && message.telegram_chat_id) {
       await supabase.auth.getSession()
-      supabase.functions
-        .invoke('telegram-edit-message', {
+      // Ждём результат: функция отвечает 200 и на отказ Telegram (ok:false +
+      // description) — сбой правки в канале не должен глотаться молча.
+      try {
+        const { data, error } = await supabase.functions.invoke('telegram-edit-message', {
           body: {
             message_id: messageId,
             content: newContent,
@@ -186,13 +202,22 @@ export async function editMessage(
             telegram_message_id: message.telegram_message_id,
           },
         })
-        .catch((err) => {
-          logger.error('Failed to edit message in Telegram:', err)
-        })
+        if (error) throw error
+        const payload = data as { ok?: boolean; error?: string } | null
+        if (payload && payload.ok === false) {
+          logger.error('Telegram rejected message edit:', payload.error)
+          channelWarning =
+            humanizeSendError(payload.error ?? null) ??
+            'Правка сохранена в сервисе, но не применилась в Telegram.'
+        }
+      } catch (err) {
+        logger.error('Failed to edit message in Telegram:', err)
+        channelWarning = 'Правка сохранена в сервисе, но не применилась в Telegram.'
+      }
     }
   }
 
-  return message
+  return { message, channelWarning }
 }
 
 // Participant functions вынесены в messengerParticipantService.ts — реэкспортированы выше.

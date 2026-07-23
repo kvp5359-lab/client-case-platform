@@ -71,14 +71,19 @@ Deno.serve(async (req: Request) => {
     // у него и токен другой, и формат текста без префикса "(Имя):".
     let TELEGRAM_BOT_TOKEN: string;
     let isEmployeeBot = false;
+    // У сообщения с файлами в Telegram правится ПОДПИСЬ (editMessageCaption),
+    // а не текст: editMessageText для медиа отвечает 400 «there is no text in
+    // the message to edit» — правка молча не долетала (инцидент 2026-07-23).
+    let hasAttachments = false;
     {
       let savedIntegrationId: string | null = null;
       if (body.message_id && isValidUUID(body.message_id)) {
         const { data: msgRow } = await serviceClient
           .from("project_messages")
-          .select("telegram_bot_integration_id, visibility")
+          .select("telegram_bot_integration_id, visibility, has_attachments")
           .eq("id", body.message_id)
           .maybeSingle();
+        hasAttachments = msgRow?.has_attachments === true;
         // Backstop видимости: правку внутреннего (team/self) в Telegram не шлём —
         // единый контракт со всеми send-функциями (аудит 2026-07-12).
         if (isInternalVisibility(msgRow?.visibility as string | null)) {
@@ -145,15 +150,19 @@ Deno.serve(async (req: Request) => {
       ? contentForTelegram
       : `<b>${escapeHtmlEntities(body.sender_name)}:</b>\n${contentForTelegram}`;
 
+    // Файлы → правим подпись (у альбома telegram_message_id хранит ПЕРВЫЙ
+    // элемент — подпись первого элемента показывается под всем альбомом).
+    // Текст → editMessageText, как раньше.
+    const method = hasAttachments ? "editMessageCaption" : "editMessageText";
     const tgResponse = await fetch(
-      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${method}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chat_id: body.telegram_chat_id,
           message_id: body.telegram_message_id,
-          text: formattedText,
+          ...(hasAttachments ? { caption: formattedText } : { text: formattedText }),
           parse_mode: "HTML",
         }),
       },
@@ -162,10 +171,14 @@ Deno.serve(async (req: Request) => {
     const tgData = await tgResponse.json();
 
     if (!tgData.ok) {
-      console.error("Telegram editMessageText error:", tgData);
+      console.error(`Telegram ${method} error:`, tgData);
+      // 200 + ok:false, а НЕ 502: invoke на не-2xx прячет тело ответа, и фронт
+      // не мог показать причину — правка молча расходилась с Telegram
+      // (в сервисе текст есть, в TG нет). Description отдаём наружу — его
+      // переводит humanizeSendError (напр. лимит подписи 1024).
       return new Response(
-        JSON.stringify({ error: "Telegram API error" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ ok: false, error: (tgData.description as string) ?? "Telegram API error" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
