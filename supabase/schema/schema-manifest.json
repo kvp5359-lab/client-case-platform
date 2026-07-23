@@ -1607,12 +1607,12 @@
     },
     {
       "name": "project_tg_chats_select",
-      "def_md5": "8f88d5643062c7af0801b149a8687113",
+      "def_md5": "6218f76533dadd54b21de237c42731a0",
       "table_name": "project_telegram_chats"
     },
     {
       "name": "project_tg_chats_update",
-      "def_md5": "ecf7611f118ad55106fc749ddfc1a7c9",
+      "def_md5": "c0625634443b14272b28adb98f8e6b6a",
       "table_name": "project_telegram_chats"
     },
     {
