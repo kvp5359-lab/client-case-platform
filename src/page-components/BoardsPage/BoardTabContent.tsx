@@ -23,6 +23,18 @@ import { useFilteredInbox } from '@/hooks/messenger/useFilteredInbox'
 import type { Board } from '@/components/boards/types'
 import type { TaskItem } from '@/components/tasks/types'
 
+/**
+ * Изолированный «прогреватель» inbox-кэша (для UnreadBadge и counterpart-имён
+ * в карточках). Вынесен в null-компонент, потому что подписка на infinite-query
+ * инбокса получает новую ссылку данных при каждом realtime-тике (~1.5с на
+ * активном воркспейсе) — если держать её в самом BoardTabContent, каждый тик
+ * ре-рендерит ВСЮ доску (все колонки/списки/строки), даже без inbox-списков.
+ */
+function InboxCacheWarmer({ workspaceId }: { workspaceId: string }) {
+  useInboxThreadsV2(workspaceId)
+  return null
+}
+
 export function BoardTabContent({
   board,
   workspaceId,
@@ -33,8 +45,6 @@ export function BoardTabContent({
   createListDialog: { isOpen: boolean; open: () => void; close: () => void }
 }) {
   const { user } = useAuth()
-  // Загружаем inbox-кеш, чтобы UnreadBadge в карточках работал
-  useInboxThreadsV2(workspaceId)
   const { data: lists } = useBoardLists(board.id)
 
   const hasTaskLists = lists?.some((l) => l.entity_type === 'thread')
@@ -54,7 +64,7 @@ export function BoardTabContent({
   )
   const { data: inboxThreads = [] } = useFilteredInbox(hasInboxLists ? workspaceId : '')
 
-  const taskIds = (tasks ?? []).map((t) => t.id)
+  const taskIds = useMemo(() => (tasks ?? []).map((t) => t.id), [tasks])
   const { data: assigneesMap } = useTaskAssigneesMap(taskIds)
 
   const { data: participants } = useWorkspaceParticipants(workspaceId)
@@ -113,6 +123,16 @@ export function BoardTabContent({
     [updateDeadline],
   )
 
+  // Стабильная ссылка: инлайновая стрелка в JSX пересоздавалась каждый рендер и
+  // ломала memo у всей цепочки BoardColumn → BoardListCard → строки (аудит
+  // 2026-07-23, находка №1).
+  const handleStatusChange = useCallback(
+    (taskId: string, statusId: string | null) => {
+      updateStatus.mutate({ threadId: taskId, statusId })
+    },
+    [updateStatus],
+  )
+
   // TaskPanel — единая layout-уровневая через TaskPanelContext.
   // BoardTabContent больше не держит свой локальный TaskPanel — все клики
   // идут в layout shell (новая система вкладок per-project).
@@ -145,6 +165,7 @@ export function BoardTabContent({
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
+      <InboxCacheWarmer workspaceId={workspaceId} />
       <div className="flex-1 overflow-x-auto overflow-y-hidden snap-x snap-mandatory md:snap-none">
         <BoardView
           boardId={board.id}
@@ -162,7 +183,7 @@ export function BoardTabContent({
           boardGlobalFilter={board.global_filter}
           onOpenTask={handleOpenTask}
           onOpenThread={handleOpenThread}
-          onStatusChange={(taskId, statusId) => updateStatus.mutate({ threadId: taskId, statusId })}
+          onStatusChange={handleStatusChange}
           onDeleteTask={isWorkspaceOwner ? handleDeleteTask : undefined}
           onDeadlineChange={handleDeadlineChange}
           selectedThreadId={layoutPanel?.activeThreadId ?? null}

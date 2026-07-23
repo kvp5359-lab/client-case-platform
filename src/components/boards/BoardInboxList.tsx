@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { perfOpen } from '@/utils/perfTrace'
@@ -21,6 +21,8 @@ import { useInboxMarkMutations } from '@/hooks/messenger/useInboxMarkMutations'
 import { useMySenderName } from '@/hooks/messenger/useMySenderName'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
+import type { DraftPreview } from '@/services/api/messenger/threadDraftService'
+import type { DeliveryStatus } from '@/types/delivery'
 
 type InboxFilter = 'all' | 'unread' | 'awaiting' | 'needs_reply' | 'muted'
 
@@ -50,6 +52,52 @@ type BoardInboxListProps = {
   defaultFilter?: InboxFilter
   workspaceId: string
 }
+
+/**
+ * Мемо-обёртка строки инбокса. Per-row стрелки (`onClick={() => …}`) раньше
+ * создавались прямо в map() родителя и на каждом realtime-тике ре-рендерили все
+ * 50 строк (аудит 2026-07-23, находка №6). Здесь стрелки создаются внутри
+ * обёртки, а сама она ре-рендерится только при смене своих пропов (chat,
+ * isSelected, черновик, статус доставки).
+ */
+const InboxRow = memo(function InboxRow({
+  chat,
+  isSelected,
+  onOpen,
+  onRead,
+  onUnread,
+  workspaceId,
+  serverDraft,
+  deliveryStatus,
+  selfSenderName,
+  mutedBadge,
+}: {
+  chat: InboxThreadEntry
+  isSelected: boolean
+  onOpen: (chat: InboxThreadEntry) => void
+  onRead: (chat: InboxThreadEntry) => void
+  onUnread: (chat: InboxThreadEntry) => void
+  workspaceId: string
+  serverDraft: DraftPreview | undefined
+  deliveryStatus: DeliveryStatus | undefined
+  selfSenderName: string | null
+  mutedBadge: boolean
+}) {
+  return (
+    <InboxChatItem
+      chat={chat}
+      isSelected={isSelected}
+      onClick={() => onOpen(chat)}
+      onMarkAsRead={() => onRead(chat)}
+      onMarkAsUnread={() => onUnread(chat)}
+      workspaceId={workspaceId}
+      serverDraft={serverDraft}
+      deliveryStatus={deliveryStatus}
+      selfSenderName={selfSenderName}
+      mutedBadge={mutedBadge}
+    />
+  )
+})
 
 export function BoardInboxList({
   threads,
@@ -115,6 +163,19 @@ export function BoardInboxList({
   // Общие mark-read/unread мутации — одна реализация на InboxPage и BoardInboxList.
   const { markRead: markReadMutation, markUnread: markUnreadMutation } =
     useInboxMarkMutations(workspaceId)
+
+  // Стабильные per-row колбэки для мемо-строк (см. InboxRow выше).
+  const { mutate: mutateMarkRead } = markReadMutation
+  const { mutate: mutateMarkUnread } = markUnreadMutation
+  const handleOpenRow = useCallback(
+    (chat: InboxThreadEntry) => {
+      perfOpen(chat.thread_id, { channel: chat.channel_type, type: chat.thread_type })
+      onOpenThread(threadToTaskItem(chat))
+    },
+    [onOpenThread],
+  )
+  const handleReadRow = useCallback((chat: InboxThreadEntry) => mutateMarkRead(chat), [mutateMarkRead])
+  const handleUnreadRow = useCallback((chat: InboxThreadEntry) => mutateMarkUnread(chat), [mutateMarkUnread])
 
   // Точный счётчик непрочитанных — из полного списка, не из загруженных страниц.
   const unreadCount = unreadThreads.length
@@ -289,19 +350,13 @@ export function BoardInboxList({
         ) : (
           <>
             {filteredThreads.map((chat) => (
-              <InboxChatItem
+              <InboxRow
                 key={chat.thread_id}
                 chat={chat}
                 isSelected={selectedThreadId === chat.thread_id}
-                onClick={() => {
-                  perfOpen(chat.thread_id, {
-                    channel: chat.channel_type,
-                    type: chat.thread_type,
-                  })
-                  onOpenThread(threadToTaskItem(chat))
-                }}
-                onMarkAsRead={() => markReadMutation.mutate(chat)}
-                onMarkAsUnread={() => markUnreadMutation.mutate(chat)}
+                onOpen={handleOpenRow}
+                onRead={handleReadRow}
+                onUnread={handleUnreadRow}
                 workspaceId={workspaceId}
                 serverDraft={draftPreviews.get(chat.thread_id)}
                 deliveryStatus={deliveryStatuses.get(chat.thread_id)}

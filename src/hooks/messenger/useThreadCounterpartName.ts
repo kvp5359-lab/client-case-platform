@@ -50,27 +50,98 @@ function useInboxThreadsCache(
   )
 }
 
+function buildCounterpartMap(data: InboxInfiniteData | undefined): Map<string, string | null> {
+  const map = new Map<string, string | null>()
+  if (!data?.pages) return map
+  for (const page of data.pages) {
+    for (const e of page.items) {
+      if (!map.has(e.thread_id)) map.set(e.thread_id, e.counterpart_name ?? null)
+    }
+  }
+  return map
+}
+
+function mapsEqual(a: Map<string, string | null>, b: Map<string, string | null>): boolean {
+  if (a.size !== b.size) return false
+  for (const [k, v] of a) {
+    if (!b.has(k) || b.get(k) !== v) return false
+  }
+  return true
+}
+
 /**
  * Карта thread_id → counterpart_name по всему загруженному inbox-кэшу.
  * Одна подписка + один проход. Звать на уровне таблицы, значение раздавать
  * пропом в строки (см. предупреждение выше).
+ *
+ * ⚠️ Стабильность ссылки (перф-фикс 2026-07-23): inbox-кэш рефетчится каждым
+ * realtime-тиком (~1.5с на активном воркспейсе) и получает НОВУЮ ссылку данных,
+ * хотя имена собеседников меняются редко. Если возвращать новую Map на каждый
+ * тик, все memo-потребители (BoardListCard и др.) ре-рендерятся зря. Поэтому
+ * снапшот кэшируется: карта пересобирается при смене данных, но если содержимое
+ * НЕ изменилось — возвращается прежняя ссылка.
  */
+type CounterpartStore = {
+  subscribe: (onChange: () => void) => () => void
+  getSnapshot: () => Map<string, string | null>
+  getServerSnapshot: () => Map<string, string | null>
+}
+
+// Сторы живут на модульном уровне (WeakMap по queryClient → Map по workspaceId):
+// кэш снапшота нельзя держать в ref/замыкании рендера (react-hooks/immutability),
+// а getSnapshot обязан возвращать стабильную ссылку, пока содержимое эквивалентно.
+const counterpartStores = new WeakMap<QueryClient, Map<string, CounterpartStore>>()
+
+function getCounterpartStore(queryClient: QueryClient, workspaceId: string): CounterpartStore {
+  let byWs = counterpartStores.get(queryClient)
+  if (!byWs) {
+    byWs = new Map()
+    counterpartStores.set(queryClient, byWs)
+  }
+  const existing = byWs.get(workspaceId)
+  if (existing) return existing
+
+  const queryKey = inboxKeys.threads(workspaceId)
+  let cachedData: InboxInfiniteData | undefined
+  let cachedMap: Map<string, string | null> = new Map()
+
+  const store: CounterpartStore = {
+    subscribe: (onChange: () => void) => {
+      const cache = queryClient.getQueryCache()
+      return cache.subscribe((event) => {
+        const evKey = event.query.queryKey
+        if (
+          !Array.isArray(evKey) ||
+          evKey.length !== queryKey.length ||
+          evKey[0] !== queryKey[0] ||
+          evKey[1] !== queryKey[1] ||
+          evKey[2] !== queryKey[2]
+        ) {
+          return
+        }
+        onChange()
+      })
+    },
+    getSnapshot: () => {
+      const data = queryClient.getQueryData<InboxInfiniteData>(queryKey)
+      if (data === cachedData) return cachedMap
+      const next = buildCounterpartMap(data)
+      cachedData = data
+      if (!mapsEqual(cachedMap, next)) cachedMap = next
+      return cachedMap
+    },
+    getServerSnapshot: () => cachedMap,
+  }
+  byWs.set(workspaceId, store)
+  return store
+}
+
 export function useThreadCounterpartNameMap(
   workspaceId: string,
 ): Map<string, string | null> {
   const queryClient = useQueryClient()
-  const data = useInboxThreadsCache(queryClient, workspaceId)
-
-  return useMemo(() => {
-    const map = new Map<string, string | null>()
-    if (!data?.pages) return map
-    for (const page of data.pages) {
-      for (const e of page.items) {
-        if (!map.has(e.thread_id)) map.set(e.thread_id, e.counterpart_name ?? null)
-      }
-    }
-    return map
-  }, [data])
+  const store = getCounterpartStore(queryClient, workspaceId)
+  return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot)
 }
 
 /**

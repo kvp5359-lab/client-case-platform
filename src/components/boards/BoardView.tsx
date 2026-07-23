@@ -50,6 +50,14 @@ import type { BoardProject } from './hooks/useWorkspaceProjects'
 import type { InboxThreadEntry } from '@/services/api/inboxService'
 import type { TaskItem } from '@/components/tasks/types'
 
+// Стабильные ссылки для дефолтов пропов: инлайновые `?? (() => {})` / `?? []`
+// пересоздавались каждый рендер и ломали memo(BoardColumn/BoardListCard).
+const NOOP_OPEN_TASK = (_taskId: string) => {}
+const NOOP_OPEN_THREAD = (_task: TaskItem) => {}
+const NOOP_STATUS_CHANGE = (_taskId: string, _statusId: string | null) => {}
+const EMPTY_STATUSES: StatusOption[] = []
+const EMPTY_INBOX_THREADS: InboxThreadEntry[] = []
+
 type BoardViewProps = {
   boardId: string
   lists: BoardList[]
@@ -375,17 +383,24 @@ export function BoardView({
                 lists={col.lists}
                 tasks={tasks}
                 projects={projects}
-                inboxThreads={inboxThreads}
+                // inboxThreads меняет ссылку при каждом realtime-тике инбокса
+                // (~1.5с) — отдаём его только колонкам, где реально есть
+                // inbox-список, чтобы не инвалидировать memo остальных.
+                inboxThreads={
+                  col.lists.some((l) => l.entity_type === 'inbox')
+                    ? inboxThreads
+                    : EMPTY_INBOX_THREADS
+                }
                 assigneesMap={assigneesMap}
                 filterCtx={filterCtx}
                 workspaceId={workspaceId}
-                statuses={statuses ?? []}
+                statuses={statuses ?? EMPTY_STATUSES}
                 width={columnWidths?.[idx] ?? DEFAULT_COLUMN_WIDTH}
                 boardGlobalFilter={effectiveBoardFilter}
                 boardCardDnd={cardDndState}
-                onOpenTask={onOpenTask ?? (() => {})}
-                onOpenThread={onOpenThread ?? (() => {})}
-                onStatusChange={onStatusChange ?? (() => {})}
+                onOpenTask={onOpenTask ?? NOOP_OPEN_TASK}
+                onOpenThread={onOpenThread ?? NOOP_OPEN_THREAD}
+                onStatusChange={onStatusChange ?? NOOP_STATUS_CHANGE}
                 onDeleteTask={onDeleteTask}
                 onDeadlineChange={onDeadlineChange}
                 selectedThreadId={selectedThreadId}
@@ -411,7 +426,7 @@ export function BoardView({
           lists={lists}
           workspaceId={workspaceId}
           assigneesMap={assigneesMap}
-          statuses={statuses ?? []}
+          statuses={statuses ?? EMPTY_STATUSES}
         />
       </DragOverlay>
     </DndContext>

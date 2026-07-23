@@ -1,6 +1,6 @@
 "use client"
 
-import { lazy, Suspense } from 'react'
+import { lazy, memo, Suspense, useCallback } from 'react'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { cn } from '@/lib/utils'
 import { BoardGroupDropZone, BoardListCardsDropZone } from './board-list/BoardListDropZones'
@@ -57,7 +57,16 @@ type BoardListCardProps = {
   boardCardDnd?: BoardCardDndState
 }
 
-export function BoardListCard({
+// Стабильные дефолты пропов строк: инлайновые `?? []` / `?? [...]` создавали
+// новую ссылку на каждый рендер и ломали memo(DraggableBoardTaskRow) (аудит
+// 2026-07-23, находка №7).
+const EMPTY_ASSIGNEES: AvatarParticipant[] = []
+const DEFAULT_TASK_FIELDS = ['status', 'deadline', 'assignees', 'project']
+const DEFAULT_PROJECT_FIELDS = ['status', 'template']
+
+// memo: список пересчитывает фильтрацию/группировку только при смене своих
+// пропов, а не при каждом ре-рендере доски (аудит 2026-07-23, находка №2).
+export const BoardListCard = memo(function BoardListCard({
   list,
   tasks,
   projects,
@@ -127,6 +136,20 @@ export function BoardListCard({
 
   const count = isInbox ? inboxThreads.length : isProject ? filteredProjects.length : filteredTasks.length
   const collapsed = userCollapsed ?? (!isInbox && count === 0)
+
+  // Стабильные хендлеры для lazy-календаря: инлайновые стрелки пересоздавались
+  // каждый рендер и заставляли react-big-calendar пересчитываться зря.
+  const handleCalendarOpenTask = useCallback(
+    (task: WorkspaceTask) => onOpenTask(task.id),
+    [onOpenTask],
+  )
+  const handleCalendarCreateAtSlot = useCallback(
+    (start: Date, end: Date) => {
+      setCalendarSlot({ start: start.toISOString(), end: end.toISOString() })
+      createDialog.open()
+    },
+    [setCalendarSlot, createDialog],
+  )
 
   return (
     <div className={cn('rounded-lg', listHeight === 'full' && 'flex flex-col flex-1 min-h-0')}>
@@ -213,7 +236,7 @@ export function BoardListCard({
                               project={project}
                               workspaceId={workspaceId}
                               displayMode={list.display_mode ?? 'list'}
-                              visibleFields={list.visible_fields ?? ['status', 'template']}
+                              visibleFields={list.visible_fields ?? DEFAULT_PROJECT_FIELDS}
                               isSelected={selectedProjectId === project.id}
                               cardLayout={list.card_layout}
                               nextTask={nextTaskByProjectId[project.id]}
@@ -239,13 +262,10 @@ export function BoardListCard({
                   listId={list.id}
                   workspaceId={workspaceId}
                   tasks={filteredTasks}
-                  onOpenTask={(task) => onOpenTask(task.id)}
+                  onOpenTask={handleCalendarOpenTask}
                   settings={list.calendar_settings}
                   listHeight={listHeight}
-                  onCreateAtSlot={(start, end) => {
-                    setCalendarSlot({ start: start.toISOString(), end: end.toISOString() })
-                    createDialog.open()
-                  }}
+                  onCreateAtSlot={handleCalendarCreateAtSlot}
                 />
               </Suspense>
             ) : filteredTasks.length > 0 ? (
@@ -279,9 +299,9 @@ export function BoardListCard({
                               listId={list.id}
                               task={task}
                               workspaceId={workspaceId}
-                              assignees={assigneesMap[task.id] ?? []}
+                              assignees={assigneesMap[task.id] ?? EMPTY_ASSIGNEES}
                               statuses={statuses}
-                              visibleFields={list.visible_fields ?? ['status', 'deadline', 'assignees', 'project']}
+                              visibleFields={list.visible_fields ?? DEFAULT_TASK_FIELDS}
                               displayMode={list.display_mode ?? 'list'}
                               onOpenTask={onOpenTask}
                               onStatusChange={onStatusChange}
@@ -311,9 +331,9 @@ export function BoardListCard({
                         listId={list.id}
                         task={task}
                         workspaceId={workspaceId}
-                        assignees={assigneesMap[task.id] ?? []}
+                        assignees={assigneesMap[task.id] ?? EMPTY_ASSIGNEES}
                         statuses={statuses}
-                        visibleFields={list.visible_fields ?? ['status', 'deadline', 'assignees', 'project']}
+                        visibleFields={list.visible_fields ?? DEFAULT_TASK_FIELDS}
                         displayMode={list.display_mode ?? 'list'}
                         onOpenTask={onOpenTask}
                         onStatusChange={onStatusChange}
@@ -374,4 +394,4 @@ export function BoardListCard({
       )}
     </div>
   )
-}
+})

@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { cn } from '@/lib/utils'
 import { BoardListCard } from './BoardListCard'
@@ -39,7 +40,13 @@ type BoardColumnProps = {
   dropIndicator?: { overListId: string; position: 'top' | 'bottom' } | null
 }
 
-export function BoardColumn({
+// Стабильная пустая ссылка для списков без инбокса (см. комментарий у пропа ниже).
+const EMPTY_INBOX_THREADS: InboxThreadEntry[] = []
+
+// memo: колонка ре-рендерится только при смене своих пропов. Без этого каждый
+// realtime-тик инбокса (~1.5с) прогонял фильтрацию/сортировку всех списков всех
+// колонок (аудит 2026-07-23, находка №2).
+export const BoardColumn = memo(function BoardColumn({
   lists,
   tasks,
   projects,
@@ -77,7 +84,9 @@ export function BoardColumn({
             list={list}
             tasks={tasks}
             projects={projects}
-            inboxThreads={inboxThreads}
+            // Живую ссылку inboxThreads получает только inbox-список — остальным
+            // она не нужна, а её смена (каждый realtime-тик) ломала бы их memo.
+            inboxThreads={list.entity_type === 'inbox' ? inboxThreads : EMPTY_INBOX_THREADS}
             assigneesMap={assigneesMap}
             filterCtx={filterCtx}
             workspaceId={workspaceId}
@@ -101,7 +110,7 @@ export function BoardColumn({
       ))}
     </div>
   )
-}
+})
 
 function DroppableListWrapper({
   listId,
