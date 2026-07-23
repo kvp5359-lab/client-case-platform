@@ -182,11 +182,26 @@ export async function editMessage(
 
     if (isMtproto) {
       await supabase.auth.getSession()
-      supabase.functions
-        .invoke('telegram-mtproto-edit', { body: { message_id: messageId, content: newContent } })
-        .catch((err) => {
-          logger.error('Failed to edit message via MTProto:', err)
+      // Тот же паттерн, что у бот-канала ниже: ждём результат и показываем
+      // warning — функция отвечает 200 {ok:false, reason} при отказе канала
+      // (файловые сообщения тут правятся нативно: в MTProto текст и подпись
+      // медиа — одно поле, отдельный метод не нужен).
+      try {
+        const { data, error } = await supabase.functions.invoke('telegram-mtproto-edit', {
+          body: { message_id: messageId, content: newContent },
         })
+        if (error) throw error
+        const payload = data as { ok?: boolean; reason?: string } | null
+        if (payload && payload.ok === false) {
+          logger.error('MTProto rejected message edit:', payload.reason)
+          channelWarning =
+            humanizeSendError(payload.reason ?? null) ??
+            'Правка сохранена в сервисе, но не применилась в Telegram.'
+        }
+      } catch (err) {
+        logger.error('Failed to edit message via MTProto:', err)
+        channelWarning = 'Правка сохранена в сервисе, но не применилась в Telegram.'
+      }
     } else if (message.telegram_message_id && message.telegram_chat_id) {
       await supabase.auth.getSession()
       // Ждём результат: функция отвечает 200 и на отказ Telegram (ok:false +
