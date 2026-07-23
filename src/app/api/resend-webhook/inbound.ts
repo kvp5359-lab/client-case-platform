@@ -3,6 +3,7 @@ import { extractOriginalFrom } from '@/lib/resendWebhook'
 import { fetchResendInbound } from './api'
 import {
   normalizeAddressList,
+  normalizeEmailSubject,
   normalizeHeaders,
   parseAddress,
   pickContent,
@@ -188,12 +189,38 @@ export async function handleInbound(supabase: ServiceClient, event: ResendEvent)
         const m = (matchRows as { thread_id: string | null; project_id: string | null; match_method: string }[] | null)?.[0]
         if (m && (m.match_method === 'in_reply_to' || m.match_method === 'references')) {
           matchedThread = { thread_id: m.thread_id, project_id: m.project_id }
+          // Правило Gmail: ответ со СМЕНОЙ темы — новый разговор. Корреспонденты
+          // часто жмут «Ответить» на старое письмо и меняют тему под новый вопрос —
+          // References при этом остаются, и по RFC письмо клеилось в старую цепочку
+          // (у нас), хотя Gmail показывает его отдельной беседой (инцидент
+          // 2026-07-23). Если нормализованная тема письма непуста и НЕ совпадает
+          // с темой треда — сбрасываем матч: письмо пойдёт по subject-матчу ниже
+          // либо создаст новый тред.
+          const incoming = normalizeEmailSubject(data.subject)
+          if (incoming && m.thread_id) {
+            const { data: mt } = await supabase
+              .from('project_threads')
+              .select('email_subject_root')
+              .eq('id', m.thread_id)
+              .maybeSingle()
+            const threadSubject = normalizeEmailSubject(
+              (mt as { email_subject_root: string | null } | null)?.email_subject_root,
+            )
+            if (threadSubject && threadSubject !== incoming) {
+              console.log('[resend-webhook] reply with changed subject → new thread:', {
+                thread_subject: threadSubject,
+                incoming_subject: incoming,
+                dropped_thread_id: m.thread_id,
+              })
+              matchedThread = null
+            }
+          }
         }
       }
       if (!matchedThread && assignedAccountId) {
         // Тот же отправитель → ищем тред с тем же email_subject_root,
         // чтобы не склеивать разные обращения одного клиента в один тред.
-        const incomingSubject = (data.subject ?? '').replace(/^\s*(?:Re|Fwd?|Fw):\s*/i, '').trim()
+        const incomingSubject = normalizeEmailSubject(data.subject)
         if (incomingSubject) {
           const { data: ownThread } = await supabase
             .from('project_threads')
@@ -206,9 +233,7 @@ export async function handleInbound(supabase: ServiceClient, event: ResendEvent)
             .order('updated_at', { ascending: false })
             .limit(10)
           const found = (ownThread as { id: string; project_id: string | null; email_subject_root: string | null }[] | null)?.find(
-            (t) =>
-              (t.email_subject_root ?? '').replace(/^\s*(?:Re|Fwd?|Fw):\s*/i, '').trim().toLowerCase() ===
-              incomingSubject.toLowerCase(),
+            (t) => normalizeEmailSubject(t.email_subject_root) === incomingSubject,
           )
           if (found) matchedThread = { thread_id: found.id, project_id: found.project_id }
         }
@@ -306,6 +331,23 @@ export async function handleInbound(supabase: ServiceClient, event: ResendEvent)
     .select('id')
     .single()
   if (insertError) {
+    // Дубль доставки — ШТАТНО, не сбой. Одно письмо приходит к нам дважды
+    // (напр. to: адрес сотрудника + cc: владельца через пересылку) — вторая
+    // копия честно упирается в UNIQUE по email_message_id, письмо УЖЕ в чате.
+    // Раньше эта ветка не отличала дубль от настоящего сбоя → писала письмо в
+    // «Несопоставленные» и постила тревожную плашку «не загрузилось в чат»
+    // прямо под нормально доставленным письмом (инцидент 2026-07-23).
+    if (
+      insertError.code === '23505' &&
+      insertError.message.includes('idx_project_messages_email_message_id')
+    ) {
+      console.log('[resend-webhook] duplicate delivery skipped:', {
+        message_id: messageIdHeader,
+        resend_id: resendId,
+        thread_id: threadId,
+      })
+      return NextResponse.json({ status: 'duplicate', thread_id: threadId }, { status: 200 })
+    }
     // Вставка письма упала. Раньше тут был тихий 500 без логов → письмо
     // терялось, а только что созданный тред оставался пустым призраком
     // («Нет сообщений»). Теперь — fail-safe, чтобы пользователь точно узнал,

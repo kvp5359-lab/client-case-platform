@@ -24,6 +24,27 @@ export function pickContent(data: ResendEmailData): string {
   return '<p><i>(пустое тело письма)</i></p>'
 }
 
+/**
+ * Нормализовать тему письма для сравнения «это тот же разговор?»: срезать
+ * префиксы ответа/пересылки (Re:/Fwd:/Fw:, в т.ч. цепочки «Re: Re:» и
+ * «Re[2]:»), схлопнуть пробелы, привести к нижнему регистру.
+ *
+ * Используется правилом Gmail «ответ со СМЕНОЙ темы — новый разговор»: если
+ * корреспондент нажал «Ответить» и заменил тему (не просто Re:-префикс),
+ * письмо не должно клеиться в старую цепочку по References (инцидент
+ * 2026-07-23 — «Certificados pendientes» упало в тред «Plan de negocios…»).
+ */
+export function normalizeEmailSubject(subject: string | null | undefined): string {
+  let s = (subject ?? '').trim()
+  // Цикл: «Re: Fwd: Re: тема» срезается целиком, по одному префиксу за шаг.
+  for (;;) {
+    const next = s.replace(/^\s*(?:Re|Fwd?|Fw)(?:\[\d+\])?:\s*/i, '')
+    if (next === s) break
+    s = next
+  }
+  return s.replace(/\s+/g, ' ').trim().toLowerCase()
+}
+
 export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')

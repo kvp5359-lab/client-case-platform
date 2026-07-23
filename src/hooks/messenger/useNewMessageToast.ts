@@ -183,14 +183,33 @@ export function useNewMessageToast(workspaceId: string | undefined) {
               if (!allowed) {
                 const myPids = [...myParticipantIdsRef.current]
                 if (myPids.length) {
-                  // @упоминание меня в этом сообщении
-                  const { data: mentioned } = await supabase
-                    .from('message_mentions')
-                    .select('message_id')
-                    .eq('message_id', msg.id)
-                    .in('participant_id', myPids)
-                    .limit(1)
-                  allowed = !!mentioned?.length
+                  // @упоминание меня в этом сообщении. 🪤 Гонка: упоминания
+                  // пишутся ОТДЕЛЬНЫМ запросом ПОСЛЕ вставки сообщения, а
+                  // realtime доносит сообщение мгновенно — первая проверка
+                  // почти всегда видит «пусто». Для подписанных это неважно
+                  // (их пропускает подписка), а для «упомянули человека не из
+                  // треда» тост терялся СИСТЕМАТИЧЕСКИ (инцидент 2026-07-23).
+                  // Поэтому при пустом результате перепроверяем с паузами —
+                  // тост опоздает на секунду-другую, но покажется.
+                  const checkMentioned = async (): Promise<boolean> => {
+                    const { data: mentioned } = await supabase
+                      .from('message_mentions')
+                      .select('message_id')
+                      .eq('message_id', msg.id)
+                      .in('participant_id', myPids)
+                      .limit(1)
+                    return !!mentioned?.length
+                  }
+                  allowed = await checkMentioned()
+                  if (!allowed) {
+                    for (const delayMs of [1200, 2500]) {
+                      await new Promise((r) => setTimeout(r, delayMs))
+                      if (await checkMentioned()) {
+                        allowed = true
+                        break
+                      }
+                    }
+                  }
                   // ответ на моё сообщение
                   if (!allowed) {
                     const replyToId = msg.reply_to_message_id
