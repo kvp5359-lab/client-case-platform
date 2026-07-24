@@ -31,6 +31,19 @@ export function useProjectParticipants(projectId: string | undefined) {
   })
 }
 
+/** Строка useWorkspaceProjects — единый тип для пикеров проекта
+ *  (ChatSettingsProjectSelector, форма операций и т.п.). */
+export type WorkspaceProjectOption = {
+  id: string
+  short_id: number | null
+  name: string
+  description: string | null
+  currency: string | null
+  template_id: string | null
+  status_id: string | null
+  project_templates: { name: string } | null
+}
+
 export function useWorkspaceProjects(workspaceId: string | undefined) {
   return useQuery({
     queryKey: chatSettingsKeys.workspaceProjects(workspaceId),
@@ -45,16 +58,7 @@ export function useWorkspaceProjects(workspaceId: string | undefined) {
         // недавно активные проекты вверху, далее по убыванию.
         .order('last_activity_at', { ascending: false, nullsFirst: false })
       if (error) throw error
-      return (data ?? []) as {
-        id: string
-        short_id: number | null
-        name: string
-        description: string | null
-        currency: string | null
-        template_id: string | null
-        status_id: string | null
-        project_templates: { name: string } | null
-      }[]
+      return (data ?? []) as WorkspaceProjectOption[]
     },
     enabled: !!workspaceId,
     staleTime: STALE_TIME.STANDARD,

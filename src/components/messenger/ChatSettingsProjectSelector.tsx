@@ -141,7 +141,7 @@ export function ChatSettingsProjectSelector({
               <Plus className="w-4 h-4" />
             </button>
           </div>
-          <div className="max-h-[325px] overflow-y-auto py-1">
+          <div className="max-h-[325px] overflow-y-auto overflow-x-hidden py-1">
             {/* Без проекта */}
             {!search.trim() && (
               <button
@@ -179,7 +179,10 @@ export function ChatSettingsProjectSelector({
                   strokeWidth: 1.5,
                   style: { color: safeCssColor(iconColor) },
                 })}
-                <span className="shrink-0">{p.name}</span>
+                {/* shrink-0 не даёт имени сжиматься (первым усечётся хинт
+                    шаблона), max-w + truncate — слишком длинное имя получает
+                    многоточие вместо горизонтального скролла списка. */}
+                <span className="shrink-0 max-w-full truncate">{p.name}</span>
                 {p.project_templates?.name && (
                   <span className="truncate text-muted-foreground/40 font-normal">
                     {p.project_templates.name}
