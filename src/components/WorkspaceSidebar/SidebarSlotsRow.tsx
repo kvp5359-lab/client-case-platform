@@ -35,6 +35,7 @@ import {
   type SidebarSlot,
 } from '@/lib/sidebarSettings'
 import { useActiveInterfacePreset } from '@/hooks/useInterfacePresets'
+import { useWorkspacePermissions } from '@/hooks/permissions'
 import { useQuickActionsRunner } from '@/components/quick-actions/QuickActionsProvider'
 import { getChatIconComponent } from '@/components/messenger/chatVisuals'
 
@@ -241,9 +242,13 @@ function QuickActionSlotButton({
 }) {
   const { quickActions } = useActiveInterfacePreset(workspaceId)
   const { run } = useQuickActionsRunner()
+  const { can, isClientOnly } = useWorkspacePermissions({ workspaceId: workspaceId || '' })
   const actionId = quickActionIdFromSlotId(slotRef(slot))
   const action = quickActions.find((a) => a.id === actionId)
   if (!action) return null
+  // Финансовые действия видят только те, у кого есть доступ к модулю
+  // «Финансы» — тот же гейт, что у пункта сайдбара nav:finance.
+  if (action.kind === 'new_transaction' && (isClientOnly || !can('view_finance'))) return null
   const m = { Icon: getChatIconComponent(action.icon) }
 
   if (compact) {

@@ -6,7 +6,7 @@
  * раннер. И меню «+», и отдельные кнопки-слоты `quickaction` зовут один `run`.
  */
 
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, lazy, Suspense, useContext, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -22,6 +22,15 @@ import { ChatSettingsDialog, type ChatSettingsResult } from '@/components/messen
 import type { Participant } from '@/types/entities'
 import type { ThreadTemplate } from '@/types/threadTemplate'
 import type { QuickAction } from '@/types/quickActions'
+import type { TransactionType } from '@/hooks/projects/useProjectTransactions'
+
+// Форма операций тянет финансовые хуки/форму — грузим лениво, только когда
+// действие реально запускают (провайдер смонтирован в каждом сайдбаре).
+const WorkspaceTransactionCreateDialog = lazy(() =>
+  import('@/components/projects/finance/WorkspaceTransactionCreateDialog').then((m) => ({
+    default: m.WorkspaceTransactionCreateDialog,
+  })),
+)
 
 type QuickActionsContextValue = {
   run: (action: QuickAction) => void
@@ -59,6 +68,10 @@ export function QuickActionsProvider({
     template: ThreadTemplate | null
     targetProjectId: string | null
   }>({ open: false, template: null, targetProjectId: null })
+  const [transactionDialog, setTransactionDialog] = useState<{
+    open: boolean
+    type: TransactionType
+  }>({ open: false, type: 'expense' })
 
   // Быстрое действие «Задача/Чат» открывает форму создания треда с предзаполненным
   // шаблоном и проектом — пользователь правит название/срок/исполнителя и подтверждает.
@@ -152,6 +165,11 @@ export function QuickActionsProvider({
       case 'new_thread':
         void runNewThread(action)
         break
+      case 'new_transaction':
+        // Кнопки этого kind скрыты у пользователей без view_finance
+        // (QuickActionSlotButton) — здесь доп. гейт не нужен.
+        setTransactionDialog({ open: true, type: action.transactionType ?? 'expense' })
+        break
     }
   }
 
@@ -183,6 +201,18 @@ export function QuickActionsProvider({
         isLoading={addMutation.isPending}
         defaultRole={contactDialog.role ?? undefined}
       />
+
+      {transactionDialog.open && workspaceId && (
+        <Suspense fallback={null}>
+          <WorkspaceTransactionCreateDialog
+            key={`qa-${transactionDialog.type}`}
+            open={transactionDialog.open}
+            onOpenChange={(open) => setTransactionDialog((d) => ({ ...d, open }))}
+            workspaceId={workspaceId}
+            type={transactionDialog.type}
+          />
+        </Suspense>
+      )}
 
       {threadDialog.template && (
         <ChatSettingsDialog

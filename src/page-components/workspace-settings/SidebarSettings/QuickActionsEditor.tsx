@@ -220,6 +220,9 @@ function QuickActionFormDialog({
     () => initial?.targetProjectId ?? 'none',
   )
   const [defaultRole, setDefaultRole] = useState<string>(() => initial?.defaultRole ?? 'Клиент')
+  const [transactionType, setTransactionType] = useState<'income' | 'expense'>(
+    () => initial?.transactionType ?? 'expense',
+  )
   const [route, setRoute] = useState<string>(() => initial?.route ?? 'inbox')
 
   const { data: projectTemplates = [] } = useQuery({
@@ -284,6 +287,7 @@ function QuickActionFormDialog({
       threadTemplateId: kind === 'new_thread' ? threadTemplateId : null,
       targetProjectId: kind === 'new_thread' && targetProjectId !== 'none' ? targetProjectId : null,
       defaultRole: kind === 'new_contact' ? defaultRole : null,
+      transactionType: kind === 'new_transaction' ? transactionType : null,
       route: kind === 'open_route' ? route : null,
     }
     onSubmit(action)
@@ -437,6 +441,27 @@ function QuickActionFormDialog({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {kind === 'new_transaction' && (
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Тип операции</label>
+              <Select
+                value={transactionType}
+                onValueChange={(v) => setTransactionType(v as 'income' | 'expense')}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="income">Доход</SelectItem>
+                  <SelectItem value="expense">Расход</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-[11px] text-gray-400">
+                Кнопку увидят только пользователи с доступом к разделу «Финансы».
+              </p>
             </div>
           )}
 
