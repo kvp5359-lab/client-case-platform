@@ -71,30 +71,32 @@ function invalidate(
   }
 }
 
+/** Создание одной или нескольких операций в проекте (многострочная форма). */
 export function useCreateWorkspaceTransaction(workspaceId: string | undefined) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (params: {
       projectId: string
-      form: ProjectTransactionFormData
-    }): Promise<ProjectTransaction> => {
+      forms: ProjectTransactionFormData[]
+    }): Promise<ProjectTransaction[]> => {
       const { data, error } = await supabase
         .from('project_transactions')
-        .insert({
-          project_id: params.projectId,
-          type: params.form.type,
-          date: params.form.date,
-          participant_id: params.form.participant_id,
-          category_id: params.form.category_id,
-          amount: params.form.amount,
-          comment: params.form.comment?.trim() || null,
-          tax_rate_id: params.form.tax_rate_id,
-          tax_rate: params.form.tax_rate,
-        })
+        .insert(
+          params.forms.map((form) => ({
+            project_id: params.projectId,
+            type: form.type,
+            date: form.date,
+            participant_id: form.participant_id,
+            category_id: form.category_id,
+            amount: form.amount,
+            comment: form.comment?.trim() || null,
+            tax_rate_id: form.tax_rate_id,
+            tax_rate: form.tax_rate,
+          })),
+        )
         .select('*')
-        .single()
       if (error) throw error
-      return data as ProjectTransaction
+      return (data ?? []) as ProjectTransaction[]
     },
     onSuccess: (_data, params) => invalidate(queryClient, workspaceId, [params.projectId]),
   })

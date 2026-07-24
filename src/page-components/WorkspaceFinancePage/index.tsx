@@ -55,7 +55,6 @@ import { useWorkspaceCurrency } from '@/hooks/finance/useCurrencySettings'
 import { formatMoney, formatMoneyByCurrency } from '@/lib/currency'
 import {
   useWorkspaceTransactions,
-  useCreateWorkspaceTransaction,
   useUpdateWorkspaceTransaction,
   useDeleteWorkspaceTransaction,
   usePatchWorkspaceTransaction,
@@ -67,6 +66,7 @@ import type {
   TransactionType,
 } from '@/hooks/projects/useProjectTransactions'
 import { ProjectTransactionFormDialog } from '@/components/projects/finance/ProjectTransactionFormDialog'
+import { WorkspaceTransactionCreateDialog } from '@/components/projects/finance/WorkspaceTransactionCreateDialog'
 import { formatDateToString, formatIsoDateNumeric } from '@/utils/format/dateFormat'
 
 type TypeFilter = 'all' | TransactionType
@@ -210,12 +210,13 @@ export default function WorkspaceFinancePage() {
     return result
   }, [filtered, baseCurrency])
 
-  // ---- Диалог добавления/редактирования ----
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [dialogType, setDialogType] = useState<TransactionType>('income')
+  // ---- Диалоги: создание (обёртка с мутацией) и редактирование ----
+  const [createDialog, setCreateDialog] = useState<{ open: boolean; type: TransactionType }>({
+    open: false,
+    type: 'income',
+  })
   const [editing, setEditing] = useState<WorkspaceTransaction | null>(null)
 
-  const createMutation = useCreateWorkspaceTransaction(workspaceId)
   const updateMutation = useUpdateWorkspaceTransaction(workspaceId)
   const deleteMutation = useDeleteWorkspaceTransaction(workspaceId)
   const patchMutation = usePatchWorkspaceTransaction(workspaceId)
@@ -252,17 +253,15 @@ export default function WorkspaceFinancePage() {
   }
 
   const openCreate = (type: TransactionType) => {
-    setDialogType(type)
     setEditing(null)
-    setDialogOpen(true)
+    setCreateDialog({ open: true, type })
   }
   const openEdit = (t: WorkspaceTransaction) => {
-    setDialogType(t.type as TransactionType)
     setEditing(t)
-    setDialogOpen(true)
   }
 
   const handleSave = (form: ProjectTransactionFormData, projectId?: string | null) => {
+    if (!editing) return
     if (!projectId) {
       toast.error('Выбери проект')
       return
@@ -271,22 +270,17 @@ export default function WorkspaceFinancePage() {
       toast.error('Сумма должна быть больше нуля')
       return
     }
-    const handlers = {
-      onSuccess: () => {
-        toast.success(editing ? 'Сохранено' : 'Добавлено')
-        setDialogOpen(false)
+    updateMutation.mutate(
+      { id: editing.id, projectId, prevProjectId: editing.project_id, form },
+      {
+        onSuccess: () => {
+          toast.success('Сохранено')
+          setEditing(null)
+        },
+        onError: (e: unknown) =>
+          toast.error('Не удалось сохранить', { description: getUserFacingErrorMessage(e) }),
       },
-      onError: (e: unknown) =>
-        toast.error('Не удалось сохранить', { description: getUserFacingErrorMessage(e) }),
-    }
-    if (editing) {
-      updateMutation.mutate(
-        { id: editing.id, projectId, prevProjectId: editing.project_id, form },
-        handlers,
-      )
-    } else {
-      createMutation.mutate({ projectId, form }, handlers)
-    }
+    )
   }
 
   const askDelete = async (t: WorkspaceTransaction) => {
@@ -561,19 +555,32 @@ export default function WorkspaceFinancePage() {
         )}
       </div>
 
-      {dialogOpen && (
-        <ProjectTransactionFormDialog
-          key={editing?.id ?? `new-${dialogType}`}
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
+      {createDialog.open && (
+        <WorkspaceTransactionCreateDialog
+          key={`new-${createDialog.type}`}
+          open={createDialog.open}
+          onOpenChange={(open) => setCreateDialog((d) => ({ ...d, open }))}
           workspaceId={workspaceId}
-          type={dialogType}
+          type={createDialog.type}
+          initialProjectId={projectFilter}
+        />
+      )}
+
+      {editing && (
+        <ProjectTransactionFormDialog
+          key={editing.id}
+          open
+          onOpenChange={(open) => {
+            if (!open) setEditing(null)
+          }}
+          workspaceId={workspaceId}
+          type={editing.type as TransactionType}
           editing={editing}
           onSave={handleSave}
-          saving={createMutation.isPending || updateMutation.isPending}
-          projects={projects.map((p) => ({ id: p.id, name: p.name, currency: p.currency }))}
+          saving={updateMutation.isPending}
+          projects={projects}
           baseCurrency={baseCurrency}
-          initialProjectId={editing?.project_id ?? projectFilter}
+          initialProjectId={editing.project_id}
         />
       )}
 

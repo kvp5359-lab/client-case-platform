@@ -37,6 +37,7 @@ import { formatIsoDateNumeric } from '@/utils/format/dateFormat'
 import { InlineEditCell } from '@/components/ui/inline-edit-cell'
 import { InlineEditSelect } from '@/components/ui/inline-edit-select'
 import { ProjectTransactionFormDialog } from './ProjectTransactionFormDialog'
+import { guardTransactionForms, transactionsAddedMessage } from './saveTransactionForms'
 
 const TYPE_CONFIG: Record<
   TransactionType,
@@ -180,23 +181,34 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type, curre
   }
 
   const handleSave = (form: ProjectTransactionFormData) => {
+    if (!editing) return
     if (form.amount <= 0) {
       toast.error('Сумма должна быть больше нуля')
       return
     }
-    const handlers = {
+    updateMutation.mutate(
+      { id: editing.id, form },
+      {
+        onSuccess: () => {
+          toast.success('Сохранено')
+          setDialogOpen(false)
+        },
+        onError: (e: unknown) =>
+          toast.error('Не удалось сохранить', { description: getUserFacingErrorMessage(e) }),
+      },
+    )
+  }
+
+  const handleSaveMany = (forms: ProjectTransactionFormData[]) => {
+    if (!guardTransactionForms(forms)) return
+    createMutation.mutate(forms, {
       onSuccess: () => {
-        toast.success(editing ? 'Сохранено' : 'Добавлено')
+        toast.success(transactionsAddedMessage(forms.length))
         setDialogOpen(false)
       },
       onError: (e: unknown) =>
         toast.error('Не удалось сохранить', { description: getUserFacingErrorMessage(e) }),
-    }
-    if (editing) {
-      updateMutation.mutate({ id: editing.id, form }, handlers)
-    } else {
-      createMutation.mutate(form, handlers)
-    }
+    })
   }
 
   const askDelete = async (trx: ProjectTransaction) => {
@@ -405,6 +417,7 @@ export function ProjectTransactionsSection({ projectId, workspaceId, type, curre
           type={type}
           editing={editing}
           onSave={handleSave}
+          onSaveMany={handleSaveMany}
           saving={createMutation.isPending || updateMutation.isPending}
           suggestedAmount={remainingAmount}
           suggestedLabel="Остаток"

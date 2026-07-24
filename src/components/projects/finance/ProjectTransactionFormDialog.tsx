@@ -1,13 +1,20 @@
 /**
- * ProjectTransactionFormDialog — добавление/редактирование транзакции
+ * ProjectTransactionFormDialog — добавление/редактирование транзакций
  * (доход или расход). Контрагент и статья — необязательные.
+ *
+ * Создание — многострочное: проект (в режиме общего журнала) выбирается один
+ * раз, ниже — записи таблицей. Каждая запись занимает две строки:
+ *   1) Дата · Статья · Налог · Сумма
+ *   2) Кому/От кого · Комментарий
+ * «+ Ещё строка» добавляет запись; сохранение создаёт все заполненные разом.
+ * Редактирование — та же вёрстка, но ровно одна запись без добавления строк.
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
   DialogContent,
@@ -17,10 +24,19 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { ChatSettingsProjectSelector } from '@/components/messenger/ChatSettingsProjectSelector'
+import { cn } from '@/lib/utils'
 import { currencySymbol, DEFAULT_CURRENCY, formatAmount } from '@/lib/currency'
 import { useFinanceTxCategories } from '@/hooks/finance/useFinanceTransactionCategories'
 import { useFinanceTaxRates } from '@/hooks/finance/useFinanceTaxRates'
 import { useWorkspaceParticipants } from '@/hooks/shared/useWorkspaceParticipants'
+import {
+  isRowBlank,
+  isRowValid,
+  rowAmount,
+  type TransactionEntryRow as EntryRow,
+} from '@/lib/finance/transactionEntryRow'
+import type { WorkspaceProjectOption } from '@/components/messenger/hooks/useChatSettingsData'
 import type {
   ProjectTransaction,
   ProjectTransactionFormData,
@@ -37,18 +53,29 @@ const todayISO = (): string => new Date().toISOString().slice(0, 10)
 const fullName = (p: { name: string; last_name: string | null }): string =>
   [p.name, p.last_name].filter(Boolean).join(' ') || p.name
 
+/* Сетка первой строки записи: Дата | Статья | Налог | Сумма | (×).
+   Заголовки колонок используют тот же template, чтобы совпадать по ширине. */
+const ROW_GRID = 'grid grid-cols-[8.75rem_minmax(0,1fr)_minmax(0,8.5rem)_6.5rem_1.5rem] gap-2'
+/* Правый отступ второй строки записи = последняя колонка ROW_GRID (кнопка «×»,
+   1.5rem) + gap-2 (0.5rem) — чтобы поля не заезжали под кнопку удаления.
+   При изменении ширины колонки «×» или gap в ROW_GRID — править синхронно. */
+const ROW_TRAILING_PAD = 'pr-[calc(1.5rem+0.5rem)]'
+
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   workspaceId: string
   type: TransactionType
   editing: ProjectTransaction | null
-  onSave: (form: ProjectTransactionFormData, projectId?: string | null) => void
+  /** Сохранение при редактировании (одна запись). Обязателен, если editing задан. */
+  onSave?: (form: ProjectTransactionFormData, projectId?: string | null) => void
+  /** Создание — все заполненные записи разом. Обязателен, если editing НЕ задан. */
+  onSaveMany?: (forms: ProjectTransactionFormData[], projectId?: string | null) => void
   saving: boolean
   /**
    * Подсказка-сумма (например, остаток к оплате для дохода). Если задано
-   * и > 0, рядом с полем «Сумма» появляется кликабельный тег — клик
-   * подставляет это значение в поле.
+   * и > 0, над таблицей появляется кликабельный тег — клик подставляет
+   * значение в первую запись без суммы.
    */
   suggestedAmount?: number | null
   /** Подпись тега (например, «Остаток»). */
@@ -56,9 +83,9 @@ type Props = {
   /**
    * Список проектов — если задан, в форме появляется обязательное поле
    * «Проект» (режим общего журнала воркспейса), выбранный id уходит
-   * вторым аргументом onSave. На вкладке проекта проп не передаётся.
+   * вторым аргументом onSave/onSaveMany. На вкладке проекта проп не передаётся.
    */
-  projects?: { id: string; name: string; currency?: string | null }[]
+  projects?: WorkspaceProjectOption[]
   /** Стартовый проект (при редактировании — проект операции). */
   initialProjectId?: string | null
   /**
@@ -80,6 +107,7 @@ export function ProjectTransactionFormDialog({
   type,
   editing,
   onSave,
+  onSaveMany,
   saving,
   suggestedAmount,
   suggestedLabel = 'Остаток',
@@ -94,17 +122,29 @@ export function ProjectTransactionFormDialog({
   const { data: taxRates = [] } = useFinanceTaxRates(workspaceId)
   const defaultTax = taxRates.find((t) => t.is_default)
 
-  // Инициализация — пересоздание через key={editing?.id ?? 'new'} снаружи.
-  const [date, setDate] = useState(editing?.date ?? todayISO())
-  const [participantId, setParticipantId] = useState<string | null>(
-    editing ? editing.participant_id : (defaultParticipantId ?? null),
-  )
-  const [categoryId, setCategoryId] = useState<string | null>(editing?.category_id ?? null)
-  const [amountText, setAmountText] = useState(editing ? String(editing.amount) : '')
-  const [comment, setComment] = useState(editing?.comment ?? '')
-  const [taxRateId, setTaxRateId] = useState<string | null>(
-    editing ? editing.tax_rate_id : (defaultTax?.id ?? null),
-  )
+  // Инициализация — пересоздание через key={editing?.id ?? 'new-…'} снаружи.
+  const [rows, setRows] = useState<EntryRow[]>(() => [
+    editing
+      ? {
+          key: 0,
+          date: editing.date,
+          categoryId: editing.category_id,
+          taxRateId: editing.tax_rate_id,
+          amountText: String(editing.amount),
+          participantId: editing.participant_id,
+          comment: editing.comment ?? '',
+        }
+      : {
+          key: 0,
+          date: todayISO(),
+          categoryId: null,
+          taxRateId: defaultTax?.id ?? null,
+          amountText: '',
+          participantId: defaultParticipantId ?? null,
+          comment: '',
+        },
+  ])
+  const [nextKey, setNextKey] = useState(1)
   const [projectId, setProjectId] = useState<string | null>(initialProjectId ?? null)
   const showProjectField = projects !== undefined
 
@@ -118,34 +158,91 @@ export function ProjectTransactionFormDialog({
 
   const labels = TYPE_LABELS[type]
 
-  const selectedTax = taxRates.find((t) => t.id === taxRateId)
+  const participantOptions = useMemo(
+    () =>
+      participants.map((p) => ({
+        value: p.id,
+        label: fullName(p),
+        hint: p.email ?? undefined,
+      })),
+    [participants],
+  )
+  const categoryOptions = useMemo(
+    () => categories.map((c) => ({ value: c.id, label: c.name })),
+    [categories],
+  )
+  const taxOptions = useMemo(
+    () => taxRates.map((t) => ({ value: t.id, label: t.name, hint: `${Number(t.rate)}%` })),
+    [taxRates],
+  )
 
-  const handleSubmit = () => {
-    const amount = Number(amountText.replace(',', '.'))
-    onSave(
+  const patchRow = (key: number, patch: Partial<EntryRow>) =>
+    setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
+
+  const addRow = () => {
+    setRows((prev) => [
+      ...prev,
       {
-        type,
-        date,
-        participant_id: participantId,
-        category_id: categoryId,
-        amount: Number.isFinite(amount) && amount > 0 ? amount : 0,
-        comment: comment.trim() || null,
-        tax_rate_id: taxRateId,
-        tax_rate: selectedTax ? Number(selectedTax.rate) : null,
+        key: nextKey,
+        // Дату наследуем от последней строки — обычно вносят операции одного дня.
+        date: prev[prev.length - 1]?.date ?? todayISO(),
+        categoryId: null,
+        taxRateId: defaultTax?.id ?? null,
+        amountText: '',
+        participantId: defaultParticipantId ?? null,
+        comment: '',
       },
-      projectId,
-    )
+    ])
+    setNextKey((k) => k + 1)
   }
 
-  const amountNum = Number(amountText.replace(',', '.')) || 0
-  const canSave = amountNum > 0 && !!date && (!showProjectField || !!projectId)
+  const removeRow = (key: number) =>
+    setRows((prev) => (prev.length > 1 ? prev.filter((r) => r.key !== key) : prev))
+
+  const toForm = (row: EntryRow): ProjectTransactionFormData => {
+    const selectedTax = taxRates.find((t) => t.id === row.taxRateId)
+    return {
+      type,
+      date: row.date,
+      participant_id: row.participantId,
+      category_id: row.categoryId,
+      amount: rowAmount(row),
+      comment: row.comment.trim() || null,
+      tax_rate_id: row.taxRateId,
+      tax_rate: selectedTax ? Number(selectedTax.rate) : null,
+    }
+  }
+
+  // Заполненные записи: пустые строки-заготовки игнорируются, но строка с
+  // данными без корректной суммы блокирует сохранение (ничего молча не теряем).
+  const filledRows = rows.filter((r) => !isRowBlank(r))
+  // Проект обязателен в обоих режимах: пикер позволяет «Без проекта»
+  // (снять выбор), но операция без проекта не сохраняется.
+  const projectChosen = !showProjectField || !!projectId
+  const canSave = editing
+    ? isRowValid(rows[0]) && projectChosen
+    : filledRows.length > 0 && filledRows.every(isRowValid) && projectChosen
+
+  const handleSubmit = () => {
+    if (editing) {
+      onSave?.(toForm(rows[0]), projectId)
+    } else {
+      onSaveMany?.(filledRows.map(toForm), projectId)
+    }
+  }
 
   const hasSuggestion =
     typeof suggestedAmount === 'number' && Number.isFinite(suggestedAmount) && suggestedAmount > 0
 
+  // Клик по тегу-подсказке — в первую запись без суммы (иначе в последнюю).
+  const applySuggestion = () => {
+    const target = rows.find((r) => r.amountText.trim() === '') ?? rows[rows.length - 1]
+    if (target) patchRow(target.key, { amountText: String(suggestedAmount) })
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>
             {editing ? `Редактировать ${labels.full}` : `Новый ${labels.full}`}
@@ -155,129 +252,157 @@ export function ProjectTransactionFormDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-3 py-2">
           {showProjectField && (
-            <div className="space-y-1.5">
-              <Label htmlFor="trx-project">Проект</Label>
-              <SearchableSelect
-                id="trx-project"
-                value={projectId}
-                onChange={setProjectId}
-                options={(projects ?? []).map((p) => ({ value: p.id, label: p.name }))}
-                placeholder="Выбери проект"
-                noneLabel={null}
-                searchPlaceholder="Поиск проекта"
-                emptyText="Проектов не нашли"
+            <div className="flex items-center gap-2">
+              <Label className="text-base">Проект:</Label>
+              {/* Тот же пикер, что в шапке треда: единый список с иконками
+                  проектов + «+» создать проект из шаблона. «Без проекта»
+                  просто снимает выбор — без проекта операцию не сохранить. */}
+              <ChatSettingsProjectSelector
+                workspaceProjects={projects ?? []}
+                selectedProjectId={projectId}
+                isEditMode
+                workspaceId={workspaceId}
+                onSelect={setProjectId}
+                label="Выбрать проект"
+                triggerClassName={cn(
+                  'flex items-center gap-1.5 text-base font-semibold rounded px-2 py-1 transition-colors shrink-0',
+                  projectId
+                    ? 'text-brand-700 bg-brand-100/75 hover:bg-brand-100'
+                    : 'text-brand-500/70 hover:text-brand-600 hover:bg-brand-100/75',
+                )}
+                iconClassName="w-4 h-4"
               />
             </div>
           )}
-          <div className="flex gap-3">
-            <div className="flex-1 min-w-0 space-y-1.5">
-              <Label htmlFor="trx-date">Дата</Label>
-              <Input
-                id="trx-date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
+
+          {hasSuggestion && (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={applySuggestion}
+                className="inline-flex items-center gap-1 rounded-full bg-blue-100 hover:bg-blue-200 px-2 py-0.5 text-xs text-blue-900 transition-colors"
+                title="Подставить сумму в запись без суммы"
+              >
+                <span>{suggestedLabel}:</span>
+                <span className="font-semibold tabular-nums">
+                  {formatAmount(suggestedAmount as number)}
+                </span>
+              </button>
             </div>
-            <div className="flex-1 min-w-0 space-y-1.5">
-              <Label htmlFor="trx-amount">
-                Сумма, {currencySymbol(effectiveCurrency)}
-                {hasSuggestion && (
-                  <button
-                    type="button"
-                    onClick={() => setAmountText(String(suggestedAmount))}
-                    className="ml-2 inline-flex items-center gap-1 rounded-full bg-blue-100 hover:bg-blue-200 px-2 py-0.5 text-xs font-normal text-blue-900 transition-colors align-middle"
-                    title="Подставить сумму в поле"
-                  >
-                    <span>{suggestedLabel}:</span>
-                    <span className="font-semibold tabular-nums">{formatAmount(suggestedAmount as number)}</span>
-                  </button>
-                )}
-              </Label>
-              <Input
-                id="trx-amount"
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step="0.01"
-                value={amountText}
-                onChange={(e) => setAmountText(e.target.value)}
-                placeholder="0.00"
-              />
-            </div>
+          )}
+
+          {/* Заголовки колонок первой строки записи. */}
+          <div className={`${ROW_GRID} px-3 text-xs font-medium text-gray-500`}>
+            <span>Дата</span>
+            <span>Статья (за что)</span>
+            <span>Налог</span>
+            <span>Сумма, {currencySymbol(effectiveCurrency)}</span>
+            <span />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="trx-participant">{labels.subject}</Label>
-            <SearchableSelect
-              id="trx-participant"
-              value={participantId}
-              onChange={setParticipantId}
-              options={participants.map((p) => ({
-                value: p.id,
-                label: fullName(p),
-                hint: p.email ?? undefined,
-              }))}
-              placeholder="Не указан"
-              noneLabel="— Не указан —"
-              searchPlaceholder="Поиск по имени или email"
-              emptyText="Никого не нашли"
-            />
+          <div className="rounded-md border divide-y">
+            {rows.map((row) => (
+              <div key={row.key} className="p-3 space-y-2">
+                <div className={`${ROW_GRID} items-center`}>
+                  <Input
+                    type="date"
+                    aria-label="Дата"
+                    value={row.date}
+                    onChange={(e) => patchRow(row.key, { date: e.target.value })}
+                    // Клик по любому месту поля открывает нативный календарь —
+                    // иначе Chrome ждёт клика точно по иконке-индикатору.
+                    onClick={(e) => {
+                      try {
+                        e.currentTarget.showPicker?.()
+                      } catch {
+                        /* Не поддерживается/запрещено — остаётся ручной ввод. */
+                      }
+                    }}
+                    className="h-9 cursor-pointer"
+                  />
+                  <SearchableSelect
+                    value={row.categoryId}
+                    onChange={(id) => patchRow(row.key, { categoryId: id })}
+                    options={categoryOptions}
+                    placeholder="Не указана"
+                    noneLabel="— Не указана —"
+                    searchPlaceholder="Поиск статьи"
+                    emptyText={
+                      categories.length === 0
+                        ? type === 'income'
+                          ? 'Справочник статей доходов пуст'
+                          : 'Справочник статей расходов пуст'
+                        : 'Ничего не нашли'
+                    }
+                  />
+                  <SearchableSelect
+                    value={row.taxRateId}
+                    onChange={(id) => patchRow(row.key, { taxRateId: id })}
+                    options={taxOptions}
+                    placeholder="Без налога"
+                    noneLabel="— Без налога —"
+                    searchPlaceholder="Поиск ставки"
+                    emptyText={taxRates.length === 0 ? 'Справочник налогов пуст' : 'Ничего не нашли'}
+                  />
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    aria-label="Сумма"
+                    min={0}
+                    step="0.01"
+                    value={row.amountText}
+                    onChange={(e) => patchRow(row.key, { amountText: e.target.value })}
+                    placeholder="0.00"
+                    className="h-9 text-right tabular-nums"
+                  />
+                  {!editing && rows.length > 1 ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-gray-400 hover:text-red-600"
+                      onClick={() => removeRow(row.key)}
+                      aria-label="Убрать строку"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <span />
+                  )}
+                </div>
+                {/* Вторая строка записи: контрагент + комментарий. */}
+                <div
+                  className={`grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-2 ${ROW_TRAILING_PAD}`}
+                >
+                  <SearchableSelect
+                    value={row.participantId}
+                    onChange={(id) => patchRow(row.key, { participantId: id })}
+                    options={participantOptions}
+                    placeholder={labels.subject}
+                    noneLabel="— Не указан —"
+                    searchPlaceholder="Поиск по имени или email"
+                    emptyText="Никого не нашли"
+                  />
+                  <Input
+                    type="text"
+                    aria-label="Комментарий"
+                    value={row.comment}
+                    onChange={(e) => patchRow(row.key, { comment: e.target.value })}
+                    placeholder="Комментарий"
+                    className="h-9"
+                  />
+                </div>
+              </div>
+            ))}
           </div>
 
-          <div className="flex gap-3">
-            <div className="flex-1 min-w-0 space-y-1.5">
-              <Label htmlFor="trx-category">Статья (за что)</Label>
-              <SearchableSelect
-                id="trx-category"
-                value={categoryId}
-                onChange={setCategoryId}
-                options={categories.map((c) => ({ value: c.id, label: c.name }))}
-                placeholder="Не указана"
-                noneLabel="— Не указана —"
-                searchPlaceholder="Поиск статьи"
-                emptyText={
-                  categories.length === 0
-                    ? type === 'income'
-                      ? 'Справочник статей доходов пуст'
-                      : 'Справочник статей расходов пуст'
-                    : 'Ничего не нашли'
-                }
-              />
-            </div>
-            <div className="flex-1 min-w-0 space-y-1.5">
-              <Label htmlFor="trx-tax">Налог</Label>
-              <SearchableSelect
-                id="trx-tax"
-                value={taxRateId}
-                onChange={setTaxRateId}
-                options={taxRates.map((t) => ({
-                  value: t.id,
-                  label: t.name,
-                  hint: `${Number(t.rate)}%`,
-                }))}
-                placeholder="Без налога"
-                noneLabel="— Без налога —"
-                searchPlaceholder="Поиск ставки"
-                emptyText={
-                  taxRates.length === 0 ? 'Справочник налогов пуст' : 'Ничего не нашли'
-                }
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="trx-comment">Комментарий</Label>
-            <Textarea
-              id="trx-comment"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              rows={2}
-              placeholder="Опционально"
-            />
-          </div>
+          {!editing && (
+            <Button variant="ghost" size="sm" onClick={addRow} className="text-gray-600">
+              <Plus className="h-4 w-4 mr-1" />
+              Ещё строка
+            </Button>
+          )}
         </div>
 
         <DialogFooter>
@@ -285,7 +410,13 @@ export function ProjectTransactionFormDialog({
             Отмена
           </Button>
           <Button onClick={handleSubmit} disabled={saving || !canSave}>
-            {saving ? 'Сохранение…' : editing ? 'Сохранить' : 'Добавить'}
+            {saving
+              ? 'Сохранение…'
+              : editing
+                ? 'Сохранить'
+                : filledRows.length > 1
+                  ? `Добавить (${filledRows.length})`
+                  : 'Добавить'}
           </Button>
         </DialogFooter>
       </DialogContent>

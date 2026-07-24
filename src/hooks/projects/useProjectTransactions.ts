@@ -66,28 +66,32 @@ function invalidate(queryClient: ReturnType<typeof useQueryClient>, projectId?: 
   queryClient.invalidateQueries({ queryKey: workspaceTransactionKeys.all })
 }
 
+/** Создание одной или нескольких операций (многострочная форма). */
 export function useCreateProjectTransaction(projectId: string | undefined) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (form: ProjectTransactionFormData): Promise<ProjectTransaction> => {
+    mutationFn: async (
+      forms: ProjectTransactionFormData[],
+    ): Promise<ProjectTransaction[]> => {
       if (!projectId) throw new Error('projectId required')
       const { data, error } = await supabase
         .from('project_transactions')
-        .insert({
-          project_id: projectId,
-          type: form.type,
-          date: form.date,
-          participant_id: form.participant_id,
-          category_id: form.category_id,
-          amount: form.amount,
-          comment: form.comment?.trim() || null,
-          tax_rate_id: form.tax_rate_id,
-          tax_rate: form.tax_rate,
-        })
+        .insert(
+          forms.map((form) => ({
+            project_id: projectId,
+            type: form.type,
+            date: form.date,
+            participant_id: form.participant_id,
+            category_id: form.category_id,
+            amount: form.amount,
+            comment: form.comment?.trim() || null,
+            tax_rate_id: form.tax_rate_id,
+            tax_rate: form.tax_rate,
+          })),
+        )
         .select('*')
-        .single()
       if (error) throw error
-      return data as ProjectTransaction
+      return (data ?? []) as ProjectTransaction[]
     },
     onSuccess: () => invalidate(queryClient, projectId),
   })
